@@ -10,7 +10,15 @@
       "Bash(openspec:*)",
       "Bash(openspec new:*)",
       "Bash(openspec status:*)",
-      "Bash(openspec instructions:*)"
+      "Bash(openspec instructions:*)",
+      "Bash(bun add:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(bunx biome:*)",
+      "Bash(. \"$HOME/.cargo/env\")",
+      "Bash(bunx tauri:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(bun run:*)"
     ]
   }
 }

@@ -1,0 +1,46 @@
+{
+  "name": "wviewer",
+  "version": "2.0.0",
+  "description": "A desktop image viewer with waterfall layout",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev:vite": "vite",
+    "build:vite": "vite build",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "preview": "vite preview",
+    "check": "biome ci . && tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.9",
+    "@tauri-apps/cli": "^2.10.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/material": "^7.3.9",
+    "@tailwindcss/vite": "^4.2.2",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-opener": "^2.5.3",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-store": "^2.4.2",
+    "@tauri-apps/plugin-updater": "^2.10.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "masonic": "^4.1.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "tailwindcss": "^4.2.2",
+    "typesafe-i18n": "^5.27.1",
+    "vite": "^8.0.3",
+    "wouter": "^3.9.0",
+    "yet-another-react-lightbox": "^3.30.1",
+    "zustand": "^5.0.12"
+  }
+}
