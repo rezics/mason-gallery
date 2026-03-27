@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-tree:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:bun.com)",
+      "WebFetch(domain:dev.to)",
+      "Bash(openspec:*)",
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)"
+    ]
+  }
+}
