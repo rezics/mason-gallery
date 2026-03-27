@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicebuzzy/tauri-schema/refs/heads/v2/schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "WViewer",
   "version": "2.0.0",
   "identifier": "com.wviewer.app",
@@ -39,5 +39,12 @@
       "icons/icon.ico"
     ]
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "active": false,
+      "endpoints": [
+        "https://api.github.com/repos/wviewer/wviewer/releases/latest"
+      ]
+    }
+  }
 }
