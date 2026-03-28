@@ -4,13 +4,11 @@ use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 use tauri::{AppHandle, Emitter};
-use url::Url;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WImage {
     pub source: String,
-    pub src: String,
     pub width: Option<u32>,
     pub height: Option<u32>,
 }
@@ -27,16 +25,6 @@ pub struct ScanParams {
     pub formats: Vec<String>,
     pub page_size: usize,
     pub sort_method: String,
-}
-
-fn path_to_asset_url(path: &str) -> String {
-    match Url::from_file_path(path) {
-        Ok(file_url) => {
-            let encoded_path = &file_url.as_str()["file://".len()..];
-            format!("asset://localhost{}", encoded_path)
-        }
-        Err(_) => format!("asset://localhost/{}", path),
-    }
 }
 
 fn get_image_dimensions(path: &Path) -> (Option<u32>, Option<u32>) {
@@ -108,7 +96,6 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                 let (width, height) = get_image_dimensions(Path::new(&entry.path));
                 WImage {
                     source: entry.path.clone(),
-                    src: path_to_asset_url(&entry.path),
                     width,
                     height,
                 }

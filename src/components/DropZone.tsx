@@ -1,7 +1,8 @@
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { Box, Button, Typography } from "@mui/material";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useI18n } from "@/i18n";
 
 interface DropZoneProps {
@@ -10,6 +11,20 @@ interface DropZoneProps {
 
 export default function DropZone({ onFoldersSelected }: DropZoneProps) {
   const t = useI18n();
+
+  useEffect(() => {
+    const unlisten = getCurrentWebviewWindow().onDragDropEvent((event) => {
+      if (event.payload.type === "drop") {
+        const paths = event.payload.paths;
+        if (paths.length > 0) {
+          onFoldersSelected(paths);
+        }
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [onFoldersSelected]);
 
   const handleSelectFolder = useCallback(async () => {
     const selected = await open({ directory: true, multiple: true });
@@ -21,31 +36,8 @@ export default function DropZone({ onFoldersSelected }: DropZoneProps) {
     }
   }, [onFoldersSelected]);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const paths: string[] = [];
-      for (const item of Array.from(e.dataTransfer.items)) {
-        const entry = item.webkitGetAsEntry?.();
-        if (entry?.isDirectory) {
-          paths.push(entry.fullPath);
-        }
-      }
-      if (paths.length > 0) {
-        onFoldersSelected(paths);
-      }
-    },
-    [onFoldersSelected],
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
-
   return (
     <Box
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
       onClick={handleSelectFolder}
       sx={{
         display: "flex",

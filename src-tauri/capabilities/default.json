@@ -1,0 +1,18 @@
+{
+  "identifier": "default",
+  "description": "Main window capabilities for WViewer",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-start-dragging",
+    "core:event:default",
+    "core:webview:default",
+    "dialog:default",
+    "fs:default",
+    "store:default",
+    "opener:default",
+    "process:default",
+    "updater:default"
+  ]
+}

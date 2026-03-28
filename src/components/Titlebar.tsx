@@ -56,7 +56,7 @@ export default function Titlebar() {
           <MenuItem
             onClick={() => {
               setFileAnchor(null);
-              appWindow.close();
+              appWindow.close().catch(console.error);
             }}
           >
             {t.menu.quit}
@@ -78,7 +78,7 @@ export default function Titlebar() {
           <MenuItem
             onClick={() => {
               setWindowAnchor(null);
-              appWindow.emit("tauri://devtools");
+              appWindow.emit("tauri://devtools").catch(console.error);
             }}
           >
             {t.menu.devTools}
@@ -111,21 +111,21 @@ export default function Titlebar() {
 
         <IconButton
           size="small"
-          onClick={() => appWindow.minimize()}
+          onClick={() => appWindow.minimize().catch(console.error)}
           sx={{ borderRadius: 0, width: 36, height: 36 }}
         >
           <MinimizeIcon sx={{ fontSize: 18 }} />
         </IconButton>
         <IconButton
           size="small"
-          onClick={() => appWindow.toggleMaximize()}
+          onClick={() => appWindow.toggleMaximize().catch(console.error)}
           sx={{ borderRadius: 0, width: 36, height: 36 }}
         >
           <CropSquareIcon sx={{ fontSize: 16 }} />
         </IconButton>
         <IconButton
           size="small"
-          onClick={() => appWindow.close()}
+          onClick={() => appWindow.close().catch(console.error)}
           sx={{
             borderRadius: 0,
             width: 36,

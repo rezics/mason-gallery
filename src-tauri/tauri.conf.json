@@ -41,7 +41,7 @@
   },
   "plugins": {
     "updater": {
-      "active": false,
+      "pubkey": "",
       "endpoints": [
         "https://api.github.com/repos/wviewer/wviewer/releases/latest"
       ]

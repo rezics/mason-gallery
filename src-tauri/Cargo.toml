@@ -30,4 +30,3 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 rayon = "1"
 trash = "5"
 natord = "1"
-url = "2"

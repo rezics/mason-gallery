@@ -1,5 +1,5 @@
 import { Masonry, type RenderComponentProps } from "masonic";
-import { useCallback, useMemo } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { WImage } from "@/types";
@@ -33,7 +33,7 @@ function ImageCell({ data, index }: RenderComponentProps<WImage>) {
       onClick={() => openViewer(index)}
     >
       <img
-        src={data.src}
+        src={convertFileSrc(data.source)}
         alt=""
         loading="lazy"
         className="w-full block"

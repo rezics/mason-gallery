@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { useViewerStore } from "@/stores/viewerStore";
 
 export default function ImageViewer() {
@@ -14,7 +14,7 @@ export default function ImageViewer() {
   const removeImage = useViewerStore((s) => s.removeImage);
 
   const slides = images.map((img) => ({
-    src: img.src,
+    src: convertFileSrc(img.source),
     width: img.width ?? undefined,
     height: img.height ?? undefined,
   }));
