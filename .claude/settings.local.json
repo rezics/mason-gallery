@@ -1,5 +1,21 @@
 {
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "allowWrite": ["."],
+      "denyWrite": [
+        "~/.ssh/**",
+        "~/.gnupg/**",
+        "~/.config/**",
+        "~/.bashrc",
+        "~/.zshrc"
+      ],
+      "denyRead": ["~/.ssh/**", "~/.gnupg/**"]
+    }
+  },
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(git ls-tree:*)",
       "WebSearch",
@@ -18,7 +34,9 @@
       "Bash(bunx tauri:*)",
       "Bash(cargo check:*)",
       "Bash(cargo fmt:*)",
-      "Bash(bun run:*)"
-    ]
+      "Bash(bun run:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": ["Bash(sudo:*)", "Bash(rm -rf /*)"]
   }
 }
