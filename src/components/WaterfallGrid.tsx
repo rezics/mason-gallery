@@ -50,13 +50,17 @@ function ImageCell({ data, index }: RenderComponentProps<WImage>) {
 
 export default function WaterfallGrid() {
   const images = useViewerStore((s) => s.images);
+  const scanId = useViewerStore((s) => s.scanId);
   const breakpoints = useSettingsStore((s) => s.breakpoints);
 
   const columnGutter = 8;
 
+  if (images.length === 0) return <div className="p-2" />;
+
   return (
     <div className="p-2">
       <Masonry
+        key={scanId}
         items={images}
         columnGutter={columnGutter}
         columnWidth={200}
