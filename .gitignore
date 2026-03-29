@@ -2,6 +2,9 @@
 node_modules
 git-staged.txt
 
+#claude
+./claude/settings.local.json
+
 # output
 out
 dist
