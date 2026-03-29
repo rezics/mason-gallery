@@ -5,6 +5,7 @@ import {
   AppBar,
   Box,
   Button,
+  Divider,
   IconButton,
   Menu,
   MenuItem,
@@ -14,6 +15,11 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useI18n } from "@/i18n";
+import {
+  openFolderAndScan,
+  refresh,
+  resetToDropZone,
+} from "@/lib/scanActions";
 
 const appWindow = getCurrentWindow();
 
@@ -22,8 +28,16 @@ export default function Titlebar() {
   const [, navigate] = useLocation();
 
   const [fileAnchor, setFileAnchor] = useState<null | HTMLElement>(null);
+  const [viewAnchor, setViewAnchor] = useState<null | HTMLElement>(null);
   const [windowAnchor, setWindowAnchor] = useState<null | HTMLElement>(null);
   const [helpAnchor, setHelpAnchor] = useState<null | HTMLElement>(null);
+
+  const menuButtonSx = {
+    textTransform: "none",
+    fontSize: 13,
+    minWidth: "auto",
+    px: 1,
+  } as const;
 
   return (
     <AppBar
@@ -41,10 +55,11 @@ export default function Titlebar() {
         data-tauri-drag-region
         sx={{ minHeight: 36, px: 1, gap: 0 }}
       >
+        {/* File Menu */}
         <Button
           size="small"
           onClick={(e) => setFileAnchor(e.currentTarget)}
-          sx={{ textTransform: "none", fontSize: 13, minWidth: "auto", px: 1 }}
+          sx={menuButtonSx}
         >
           {t.menu.file}
         </Button>
@@ -56,6 +71,24 @@ export default function Titlebar() {
           <MenuItem
             onClick={() => {
               setFileAnchor(null);
+              openFolderAndScan();
+            }}
+          >
+            {t.menu.openFolder}
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setFileAnchor(null);
+              resetToDropZone();
+              navigate("/");
+            }}
+          >
+            {t.menu.reset}
+          </MenuItem>
+          <Divider />
+          <MenuItem
+            onClick={() => {
+              setFileAnchor(null);
               appWindow.close().catch(console.error);
             }}
           >
@@ -63,10 +96,34 @@ export default function Titlebar() {
           </MenuItem>
         </Menu>
 
+        {/* View Menu */}
+        <Button
+          size="small"
+          onClick={(e) => setViewAnchor(e.currentTarget)}
+          sx={menuButtonSx}
+        >
+          {t.menu.view}
+        </Button>
+        <Menu
+          anchorEl={viewAnchor}
+          open={!!viewAnchor}
+          onClose={() => setViewAnchor(null)}
+        >
+          <MenuItem
+            onClick={() => {
+              setViewAnchor(null);
+              refresh();
+            }}
+          >
+            {t.menu.refresh}
+          </MenuItem>
+        </Menu>
+
+        {/* Window Menu */}
         <Button
           size="small"
           onClick={(e) => setWindowAnchor(e.currentTarget)}
-          sx={{ textTransform: "none", fontSize: 13, minWidth: "auto", px: 1 }}
+          sx={menuButtonSx}
         >
           {t.menu.window}
         </Button>
@@ -85,10 +142,11 @@ export default function Titlebar() {
           </MenuItem>
         </Menu>
 
+        {/* Help Menu */}
         <Button
           size="small"
           onClick={(e) => setHelpAnchor(e.currentTarget)}
-          sx={{ textTransform: "none", fontSize: 13, minWidth: "auto", px: 1 }}
+          sx={menuButtonSx}
         >
           {t.menu.help}
         </Button>
@@ -109,6 +167,7 @@ export default function Titlebar() {
 
         <Box sx={{ flex: 1 }} data-tauri-drag-region />
 
+        {/* Window Controls */}
         <IconButton
           size="small"
           onClick={() => appWindow.minimize().catch(console.error)}

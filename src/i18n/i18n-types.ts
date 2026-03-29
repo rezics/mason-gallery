@@ -4,6 +4,8 @@ export type TranslationKeys = {
   appName: string;
   menu: {
     file: string;
+    openFolder: string;
+    reset: string;
     quit: string;
     view: string;
     refresh: string;

@@ -4,6 +4,8 @@ const zh: TranslationKeys = {
   appName: "WViewer",
   menu: {
     file: "文件",
+    openFolder: "打开文件夹",
+    reset: "新窗口",
     quit: "退出",
     view: "视图",
     refresh: "刷新",

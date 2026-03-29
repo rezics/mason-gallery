@@ -4,6 +4,8 @@ const en: TranslationKeys = {
   appName: "WViewer",
   menu: {
     file: "File",
+    openFolder: "Open Folder",
+    reset: "New Window",
     quit: "Quit",
     view: "View",
     refresh: "Refresh",
