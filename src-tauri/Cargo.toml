@@ -1,12 +1,12 @@
 [package]
-name = "wviewer"
+name = "mason-gallery"
 version = "2.0.0"
-description = "A desktop image viewer with waterfall layout"
-authors = ["WViewer"]
+description = "A desktop image viewer with masonry layout"
+authors = ["MasonGallery"]
 edition = "2021"
 
 [lib]
-name = "wviewer_lib"
+name = "mason_gallery_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

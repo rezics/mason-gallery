@@ -1,7 +1,7 @@
 import type { TranslationKeys } from "../i18n-types";
 
 const en: TranslationKeys = {
-  appName: "WViewer",
+  appName: "MasonGallery",
   menu: {
     file: "File",
     openFolder: "Open Folder",
@@ -39,9 +39,9 @@ const en: TranslationKeys = {
     deleteConfirm: "Move this image to trash?",
   },
   about: {
-    title: "About WViewer",
+    title: "About MasonGallery",
     version: "Version",
-    description: "A desktop image viewer with waterfall layout",
+    description: "A desktop image viewer with masonry layout",
     github: "View on GitHub",
   },
   actions: {

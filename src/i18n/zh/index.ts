@@ -1,7 +1,7 @@
 import type { TranslationKeys } from "../i18n-types";
 
 const zh: TranslationKeys = {
-  appName: "WViewer",
+  appName: "MasonGallery",
   menu: {
     file: "文件",
     openFolder: "打开文件夹",
@@ -39,7 +39,7 @@ const zh: TranslationKeys = {
     deleteConfirm: "将此图片移至回收站？",
   },
   about: {
-    title: "关于 WViewer",
+    title: "关于 MasonGallery",
     version: "版本",
     description: "瀑布流布局桌面图片查看器",
     github: "在 GitHub 上查看",

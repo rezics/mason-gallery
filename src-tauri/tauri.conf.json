@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "WViewer",
+  "productName": "MasonGallery",
   "version": "2.0.0",
-  "identifier": "com.wviewer.app",
+  "identifier": "com.mason-gallery.app",
   "build": {
     "beforeDevCommand": "bun run dev:vite",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "WViewer",
+        "title": "MasonGallery",
         "width": 1200,
         "height": 800,
         "minWidth": 600,
@@ -43,7 +43,7 @@
     "updater": {
       "pubkey": "UPDATER_PUBKEY",
       "endpoints": [
-        "https://github.com/nicepkg/wviewer/releases/latest/download/latest.json"
+        "https://github.com/nicepkg/mason-gallery/releases/latest/download/latest.json"
       ]
     }
   }

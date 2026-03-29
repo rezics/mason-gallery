@@ -1,6 +1,10 @@
-# WViewer
+# Mason Gallery
 
-Waterfall Image Viewer
+![banner](./public/logo/banner.svg)
+
+Masonry layout Image Viewer
+
+[繁體中文](./doc/readme/zh-Hant.md)
 
 ## Development
 
@@ -20,11 +24,11 @@ bun run dev
 The auto-updater requires a signing key pair. Generate one with:
 
 ```bash
-bunx @tauri-apps/cli signer generate -w ~/.tauri/wviewer.key
+bunx @tauri-apps/cli signer generate -w ~/.tauri/mason-gallery.key
 ```
 
 This creates:
-- **Private key**: `~/.tauri/wviewer.key` (keep secret)
+- **Private key**: `~/.tauri/mason-gallery.key` (keep secret)
 - **Public key**: printed to stdout
 
 **Configure the project:**
