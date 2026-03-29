@@ -100,7 +100,7 @@
 - [x] 12.3 Add sort method selector (MUI Select with 4 options)
 - [x] 12.4 Add per-page count input (MUI Slider or NumberInput)
 - [x] 12.5 Add language selector (MUI Select: English / 简体中文)
-- [ ] 12.6 Add waterfall breakpoint editor
+- [x] 12.6 Add waterfall breakpoint editor
 - [x] 12.7 Wire all settings controls to `useSettingsStore` with immediate persistence
 
 ## 13. About Page
@@ -121,7 +121,7 @@
 - [x] 15.3 Configure release workflow matrix: windows-latest, macos-latest (x64 + ARM64), ubuntu-22.04
 - [x] 15.4 Add `oven-sh/setup-bun@v2` and `Swatinem/rust-cache@v2` to both workflows
 - [x] 15.5 Configure updater artifact generation (`latest.json`) in release workflow
-- [ ] 15.6 Generate Tauri updater signing key pair and document secret setup in README
+- [x] 15.6 Generate Tauri updater signing key pair and document secret setup in README
 
 ## 16. Dependency Management
 
@@ -129,15 +129,15 @@
 
 ## 17. Auto-Update Integration
 
-- [ ] 17.1 Configure `tauri-plugin-updater` in `tauri.conf.json` with public key and GitHub Releases endpoint
-- [ ] 17.2 Implement update check on app launch with user notification (MUI Snackbar or Dialog)
-- [ ] 17.3 Implement download + install + relaunch flow
+- [x] 17.1 Configure `tauri-plugin-updater` in `tauri.conf.json` with public key and GitHub Releases endpoint
+- [x] 17.2 Implement update check on app launch with user notification (MUI Snackbar or Dialog)
+- [x] 17.3 Implement download + install + relaunch flow
 
 ## 18. Polish and Verification
 
 - [x] 18.1 Verify all Biome, tsc, cargo fmt, and cargo clippy checks pass
-- [ ] 18.2 Test cross-platform: Windows, macOS, Linux builds produce valid artifacts
-- [ ] 18.3 Test full user flow: select folder → waterfall loads → click image → viewer opens → navigate → delete → close → position restored
-- [ ] 18.4 Test settings persistence across app restarts
-- [ ] 18.5 Test drag-and-drop folder opening
-- [ ] 18.6 Test i18n switching (English ↔ Chinese)
+- [x] 18.2 Test cross-platform: Windows, macOS, Linux builds produce valid artifacts
+- [x] 18.3 Test full user flow: select folder → waterfall loads → click image → viewer opens → navigate → delete → close → position restored
+- [x] 18.4 Test settings persistence across app restarts
+- [x] 18.5 Test drag-and-drop folder opening
+- [x] 18.6 Test i18n switching (English ↔ Chinese)
