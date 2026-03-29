@@ -7,8 +7,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@wviewer/core": path.resolve(__dirname, "../core/src/index.ts"),
+      "@mason-gallery/core/src": path.resolve(__dirname, "../core/src"),
+      "@mason-gallery/core": path.resolve(__dirname, "../core/src/index.ts"),
+      "@/": path.resolve(__dirname, "../core/src") + "/",
     },
   },
   base: "./",

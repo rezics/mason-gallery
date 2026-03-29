@@ -1,8 +1,8 @@
+import { useI18n } from "@mason-gallery/core";
 import { Alert, Button, CircularProgress, Snackbar } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { useI18n } from "@wviewer/core";
+import { check, type Update } from "@tauri-apps/plugin-updater";
+import { useCallback, useEffect, useState } from "react";
 
 export default function UpdateChecker() {
   const t = useI18n();

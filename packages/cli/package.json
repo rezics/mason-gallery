@@ -1,9 +1,9 @@
 {
-  "name": "@wviewer/cli",
+  "name": "@mason-gallery/cli",
   "version": "2.0.0",
   "type": "module",
   "bin": {
-    "wviewer": "./dist/index.js"
+    "mason-gallery": "./dist/index.js"
   },
   "files": [
     "dist/"

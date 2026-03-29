@@ -6,7 +6,9 @@ const PlatformContext = createContext<PlatformService | null>(null);
 export function usePlatform(): PlatformService {
   const platform = useContext(PlatformContext);
   if (!platform) {
-    throw new Error("usePlatform must be used within a PlatformContext.Provider");
+    throw new Error(
+      "usePlatform must be used within a PlatformContext.Provider",
+    );
   }
   return platform;
 }

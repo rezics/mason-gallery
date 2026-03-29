@@ -1,3 +1,9 @@
+import {
+  openFolderAndScan,
+  refresh,
+  resetToDropZone,
+  useI18n,
+} from "@mason-gallery/core";
 import CloseIcon from "@mui/icons-material/Close";
 import CropSquareIcon from "@mui/icons-material/CropSquare";
 import MinimizeIcon from "@mui/icons-material/Minimize";
@@ -14,12 +20,6 @@ import {
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import {
-  useI18n,
-  openFolderAndScan,
-  refresh,
-  resetToDropZone,
-} from "@wviewer/core";
 
 const appWindow = getCurrentWindow();
 

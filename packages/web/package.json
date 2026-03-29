@@ -1,5 +1,5 @@
 {
-  "name": "@wviewer/web",
+  "name": "@mason-gallery/web",
   "version": "2.0.0",
   "type": "module",
   "private": true,
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@wviewer/core": "workspace:*",
+    "@mason-gallery/core": "workspace:*",
     "image-dimensions": "^2.3.0",
     "react": "^19",
     "react-dom": "^19"

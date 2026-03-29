@@ -10,10 +10,10 @@
       },
     },
     "packages/cli": {
-      "name": "@wviewer/cli",
+      "name": "@mason-gallery/cli",
       "version": "2.0.0",
       "bin": {
-        "wviewer": "./dist/index.js",
+        "mason-gallery": "./dist/index.js",
       },
       "dependencies": {
         "sirv": "^3.0.1",
@@ -24,7 +24,7 @@
       },
     },
     "packages/core": {
-      "name": "@wviewer/core",
+      "name": "@mason-gallery/core",
       "version": "2.0.0",
       "dependencies": {
         "@emotion/react": "^11.14.0",
@@ -43,9 +43,10 @@
       },
     },
     "packages/desktop": {
-      "name": "@wviewer/desktop",
+      "name": "@mason-gallery/desktop",
       "version": "2.0.0",
       "dependencies": {
+        "@mason-gallery/core": "workspace:*",
         "@tauri-apps/api": "^2",
         "@tauri-apps/plugin-dialog": "^2.6.0",
         "@tauri-apps/plugin-fs": "^2.4.5",
@@ -53,7 +54,6 @@
         "@tauri-apps/plugin-process": "^2.3.1",
         "@tauri-apps/plugin-store": "^2.4.2",
         "@tauri-apps/plugin-updater": "^2.10.0",
-        "@wviewer/core": "workspace:*",
         "react": "^19",
         "react-dom": "^19",
       },
@@ -69,10 +69,10 @@
       },
     },
     "packages/web": {
-      "name": "@wviewer/web",
+      "name": "@mason-gallery/web",
       "version": "2.0.0",
       "dependencies": {
-        "@wviewer/core": "workspace:*",
+        "@mason-gallery/core": "workspace:*",
         "image-dimensions": "^2.3.0",
         "react": "^19",
         "react-dom": "^19",
@@ -178,6 +178,14 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@mason-gallery/cli": ["@mason-gallery/cli@workspace:packages/cli"],
+
+    "@mason-gallery/core": ["@mason-gallery/core@workspace:packages/core"],
+
+    "@mason-gallery/desktop": ["@mason-gallery/desktop@workspace:packages/desktop"],
+
+    "@mason-gallery/web": ["@mason-gallery/web@workspace:packages/web"],
 
     "@mui/core-downloads-tracker": ["@mui/core-downloads-tracker@7.3.9", "", {}, "sha512-MOkOCTfbMJwLshlBCKJ59V2F/uaLYfmKnN76kksj6jlGUVdI25A9Hzs08m+zjBRdLv+sK7Rqdsefe8X7h/6PCw=="],
 
@@ -332,14 +340,6 @@
     "@types/react-transition-group": ["@types/react-transition-group@4.4.12", "", { "peerDependencies": { "@types/react": "*" } }, "sha512-8TV6R3h2j7a91c+1DXdJi3Syo69zzIZbz7Lg5tORM5LEJG7X/E6a1V3drRyBRZq7/utz7A+c4OgYLiLcYGHG6w=="],
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@6.0.1", "", { "dependencies": { "@rolldown/pluginutils": "1.0.0-rc.7" }, "peerDependencies": { "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0", "babel-plugin-react-compiler": "^1.0.0", "vite": "^8.0.0" }, "optionalPeers": ["@rolldown/plugin-babel", "babel-plugin-react-compiler"] }, "sha512-l9X/E3cDb+xY3SWzlG1MOGt2usfEHGMNIaegaUGFsLkb3RCn/k8/TOXBcab+OndDI4TBtktT8/9BwwW8Vi9KUQ=="],
-
-    "@wviewer/cli": ["@wviewer/cli@workspace:packages/cli"],
-
-    "@wviewer/core": ["@wviewer/core@workspace:packages/core"],
-
-    "@wviewer/desktop": ["@wviewer/desktop@workspace:packages/desktop"],
-
-    "@wviewer/web": ["@wviewer/web@workspace:packages/web"],
 
     "babel-plugin-macros": ["babel-plugin-macros@3.1.0", "", { "dependencies": { "@babel/runtime": "^7.12.5", "cosmiconfig": "^7.0.0", "resolve": "^1.19.0" } }, "sha512-Cg7TFGpIr01vOQNODXOOaGz2NpCU5gl8x1qJFbb6hbZxR7XrcE2vtbAsTAbJ7/xwJtUuJEw8K8Zr/AE0LHlesg=="],
 

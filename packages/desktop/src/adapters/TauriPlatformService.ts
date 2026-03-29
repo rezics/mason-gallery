@@ -1,14 +1,14 @@
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { open } from "@tauri-apps/plugin-dialog";
-import { load } from "@tauri-apps/plugin-store";
 import type {
   ImageBatch,
   PlatformService,
   ScanParams,
   Settings,
-} from "@wviewer/core";
+} from "@mason-gallery/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { open } from "@tauri-apps/plugin-dialog";
+import { load } from "@tauri-apps/plugin-store";
 
 const STORE_FILE = "settings.json";
 
@@ -81,8 +81,7 @@ export const tauriPlatformService: PlatformService = {
     const sortMethod = await store.get<Settings["sortMethod"]>("sortMethod");
     const pageSize = await store.get<number>("pageSize");
     const language = await store.get<Settings["language"]>("language");
-    const breakpoints =
-      await store.get<Settings["breakpoints"]>("breakpoints");
+    const breakpoints = await store.get<Settings["breakpoints"]>("breakpoints");
 
     return {
       ...(formats != null && { formats }),

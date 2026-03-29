@@ -1,8 +1,8 @@
 import {
+  type RenderComponentProps,
   useMasonry,
   usePositioner,
   useResizeObserver,
-  type RenderComponentProps,
 } from "masonic";
 import { useEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";

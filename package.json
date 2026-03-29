@@ -4,13 +4,15 @@
   "description": "A multi-platform image viewer with masonry layout",
   "type": "module",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "dev:desktop": "bun run --filter @wviewer/desktop dev",
-    "dev:web": "bun run --filter @wviewer/web dev",
-    "build:desktop": "bun run --filter @wviewer/desktop build",
-    "build:web": "bun run --filter @wviewer/web build",
-    "build:cli": "bun run --filter @wviewer/web build && bun run --filter @wviewer/cli build",
+    "dev:desktop": "bun run --filter @mason-gallery/desktop dev",
+    "dev:web": "bun run --filter @mason-gallery/web dev",
+    "build:desktop": "bun run --filter @mason-gallery/desktop build",
+    "build:web": "bun run --filter @mason-gallery/web build",
+    "build:cli": "bun run --filter @mason-gallery/web build && bun run --filter @mason-gallery/cli build",
     "check": "biome ci . && tsc --build",
     "format": "biome format --write ."
   },

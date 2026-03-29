@@ -152,9 +152,7 @@ export default function SettingsDrawer() {
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
           {t.settings.columns}
         </Typography>
-        {(
-          [500, 800, 1200, 1400] as const
-        ).map((bp) => (
+        {([500, 800, 1200, 1400] as const).map((bp) => (
           <Box
             key={bp}
             sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}

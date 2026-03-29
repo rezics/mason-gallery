@@ -1,9 +1,9 @@
+import { setPlatform } from "@mason-gallery/core";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { setPlatform } from "@wviewer/core";
-import { webPlatformService } from "./adapters/WebPlatformService";
 import App from "./App";
-import "@wviewer/core/src/index.css";
+import { webPlatformService } from "./adapters/WebPlatformService";
+import "@mason-gallery/core/src/index.css";
 
 setPlatform(webPlatformService);
 

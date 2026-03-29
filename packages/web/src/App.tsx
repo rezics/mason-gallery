@@ -1,4 +1,4 @@
-import { PlatformContext, Shell } from "@wviewer/core";
+import { PlatformContext, Shell } from "@mason-gallery/core";
 import { webPlatformService } from "./adapters/WebPlatformService";
 
 export default function App() {

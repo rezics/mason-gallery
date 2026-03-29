@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { createServer } from "node:http";
 import { exec } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { createServer } from "node:http";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import sirv from "sirv";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

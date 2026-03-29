@@ -3,10 +3,10 @@
 - [x] 1.1 Create `packages/` directory with subdirectories: `core/`, `desktop/`, `web/`, `cli/`
 - [x] 1.2 Create root `package.json` with `"workspaces": ["packages/*"]`, move dev scripts (`check`, `format`) to root
 - [x] 1.3 Create root `tsconfig.json` as base config with shared `compilerOptions` (strict, paths, JSX)
-- [x] 1.4 Create `packages/core/package.json` — name `@wviewer/core`, peer deps on react/react-dom, deps on zustand/masonic/wouter/MUI/typesafe-i18n/yet-another-react-lightbox
-- [x] 1.5 Create `packages/desktop/package.json` — name `@wviewer/desktop`, deps on `@wviewer/core` + all `@tauri-apps/*` packages
-- [x] 1.6 Create `packages/web/package.json` — name `@wviewer/web`, deps on `@wviewer/core` + `image-dimensions`
-- [x] 1.7 Create `packages/cli/package.json` — name `@wviewer/cli`, bin field, deps on `sirv` (or `polka` + `sirv`)
+- [x] 1.4 Create `packages/core/package.json` — name `@mason-gallery/core`, peer deps on react/react-dom, deps on zustand/masonic/wouter/MUI/typesafe-i18n/yet-another-react-lightbox
+- [x] 1.5 Create `packages/desktop/package.json` — name `@mason-gallery/desktop`, deps on `@mason-gallery/core` + all `@tauri-apps/*` packages
+- [x] 1.6 Create `packages/web/package.json` — name `@mason-gallery/web`, deps on `@mason-gallery/core` + `image-dimensions`
+- [x] 1.7 Create `packages/cli/package.json` — name `@mason-gallery/cli`, bin field, deps on `sirv` (or `polka` + `sirv`)
 - [x] 1.8 Create per-package `tsconfig.json` files extending root config, with correct `paths` and `references`
 - [x] 1.9 Move `biome.json` to root, update include paths for `packages/*/src`
 - [x] 1.10 Run `bun install` and verify workspace linking resolves all packages
@@ -54,7 +54,7 @@
 - [x] 4.7 Move `index.html` → `packages/desktop/index.html`, update script src to `src/main.tsx`
 - [x] 4.8 Create `packages/desktop/vite.config.ts` — extend shared config, add Tauri-specific `server` settings (port 1420, HMR, watch ignore)
 - [x] 4.9 Update `packages/desktop/src-tauri/tauri.conf.json` — update `frontendDist` and `devUrl` paths if needed
-- [ ] 4.10 Verify `bun run --filter @wviewer/desktop dev` launches the Tauri dev window correctly
+- [ ] 4.10 Verify `bun run --filter @mason-gallery/desktop dev` launches the Tauri dev window correctly (manual test needed)
 
 ## 5. Web Adapter (packages/web)
 
@@ -64,7 +64,7 @@
   - `deleteFile()`: throw or no-op (not supported)
   - `pickFolders()`: `showDirectoryPicker({ mode: "read" })` → return synthetic path IDs
   - `onDragDrop()`: HTML5 `dragenter`/`dragover`/`drop` events on `document`, extract `FileSystemHandle` via `DataTransferItem.getAsFileSystemHandle()`
-  - `loadSettings()`: `JSON.parse(localStorage.getItem("wviewer-settings"))` with fallback to defaults
+  - `loadSettings()`: `JSON.parse(localStorage.getItem("mason-gallery-settings"))` with fallback to defaults
   - `saveSettings()`: merge key into localStorage JSON object
   - `capabilities`: `{ canDeleteFiles: false, canSelectFolder: true, hasCustomTitlebar: false, canAutoUpdate: false, canDragDropFolders: true }`
 - [x] 5.2 Implement internal `FileHandleRegistry` in `WebPlatformService` — maps synthetic string IDs to `{ handle: FileSystemFileHandle, blobUrl: string }`, manages `URL.createObjectURL` / `URL.revokeObjectURL` lifecycle
@@ -74,24 +74,24 @@
 - [x] 5.6 Create `packages/web/src/main.tsx` — calls `setPlatform(webPlatformService)` then renders
 - [x] 5.7 Create `packages/web/index.html` — minimal HTML without Tauri-specific meta tags
 - [x] 5.8 Create `packages/web/vite.config.ts` — extend shared config, standard SPA build, `base: "./"` for relative asset paths
-- [ ] 5.9 Verify `bun run --filter @wviewer/web dev` serves the web app, drag-drop works in Chrome/Edge
+- [ ] 5.9 Verify `bun run --filter @mason-gallery/web dev` serves the web app, drag-drop works in Chrome/Edge (build verified, manual UI test needed)
 
 ## 6. CLI Package (packages/cli)
 
 - [x] 6.1 Create `packages/cli/src/index.ts` — parse args, start HTTP server serving bundled web dist, open browser with `open` package or `child_process`
 - [x] 6.2 Create build script: copies `packages/web/dist/` into `packages/cli/dist/web/` before publish
-- [x] 6.3 Configure `packages/cli/package.json` — `"bin": { "wviewer": "./dist/index.js" }`, `"files": ["dist/"]`
+- [x] 6.3 Configure `packages/cli/package.json` — `"bin": { "mason-gallery": "./dist/index.js" }`, `"files": ["dist/"]`
 - [x] 6.4 Add `sirv` (lightweight static file server) to dependencies
-- [ ] 6.5 Test: `bun run --filter @wviewer/web build && bun run --filter @wviewer/cli start` opens browser with working web app
+- [ ] 6.5 Test: `bun run --filter @mason-gallery/web build && bun run --filter @mason-gallery/cli start` opens browser with working web app (build verified, manual test needed)
 
 ## 7. Build Scripts and Root Configuration
 
 - [x] 7.1 Add root-level scripts to `package.json`:
-  - `"dev:desktop": "bun run --filter @wviewer/desktop dev"`
-  - `"dev:web": "bun run --filter @wviewer/web dev"`
-  - `"build:desktop": "bun run --filter @wviewer/desktop build"`
-  - `"build:web": "bun run --filter @wviewer/web build"`
-  - `"build:cli": "bun run --filter @wviewer/web build && bun run --filter @wviewer/cli build"`
+  - `"dev:desktop": "bun run --filter @mason-gallery/desktop dev"`
+  - `"dev:web": "bun run --filter @mason-gallery/web dev"`
+  - `"build:desktop": "bun run --filter @mason-gallery/desktop build"`
+  - `"build:web": "bun run --filter @mason-gallery/web build"`
+  - `"build:cli": "bun run --filter @mason-gallery/web build && bun run --filter @mason-gallery/cli build"`
   - `"check": "biome ci . && tsc --build"`
 - [x] 7.2 Configure TypeScript project references (`tsconfig.json` `references` array) for incremental builds across packages
 - [x] 7.3 Move shared Vite config into `packages/core/vite.shared.ts` (React plugin, Tailwind plugin, path aliases)
@@ -102,17 +102,17 @@
 
 - [x] 8.1 Update `.github/workflows/ci.yml` — run `bun install` at root, `biome ci .`, `tsc --build`, `cargo fmt`/`clippy` in `packages/desktop/src-tauri/`
 - [x] 8.2 Update `.github/workflows/release.yml` — build desktop via `packages/desktop/`, build web separately
-- [x] 8.3 Add web deployment step to CI: build `@wviewer/web` and deploy to GitHub Pages (or Vercel/Netlify) on push to master
-- [x] 8.4 Add npm publish step for `@wviewer/cli` on version tag push
+- [x] 8.3 Add web deployment step to CI: build `@mason-gallery/web` and deploy to GitHub Pages (or Vercel/Netlify) on push to master
+- [x] 8.4 Add npm publish step for `@mason-gallery/cli` on version tag push
 - [x] 8.5 Update Renovate config for monorepo package grouping
 
 ## 9. Cleanup and Verification
 
-- [ ] 9.1 Remove old root-level `src/`, `src-tauri/`, `index.html`, `vite.config.ts` after confirming packages work
-- [ ] 9.2 Update root `README.md` with monorepo structure, development instructions for each package
-- [ ] 9.3 Verify `bun run check` passes (biome + tsc) across all packages
-- [ ] 9.4 Verify desktop dev and build: `bun run dev:desktop` launches Tauri, full scan → grid → viewer → delete flow works
-- [ ] 9.5 Verify web dev and build: `bun run dev:web` serves SPA, drag-drop folder → grid → viewer flow works in Chrome
-- [ ] 9.6 Verify CLI: `bun run build:cli && npx @wviewer/cli` starts server and opens browser
-- [ ] 9.7 Verify settings persistence on both platforms (desktop: plugin-store, web: localStorage)
-- [ ] 9.8 Verify i18n switching works on both platforms
+- [x] 9.1 Remove old root-level `src/`, `src-tauri/`, `index.html`, `vite.config.ts` after confirming packages work
+- [x] 9.2 Update root `README.md` with monorepo structure, development instructions for each package
+- [x] 9.3 Verify `bun run check` passes (biome + tsc) across all packages
+- [ ] 9.4 Verify desktop dev and build: `bun run dev:desktop` launches Tauri, full scan → grid → viewer → delete flow works (manual test needed)
+- [ ] 9.5 Verify web dev and build: `bun run dev:web` serves SPA, drag-drop folder → grid → viewer flow works in Chrome (manual test needed)
+- [ ] 9.6 Verify CLI: `bun run build:cli && npx @mason-gallery/cli` starts server and opens browser (build verified, manual test needed)
+- [ ] 9.7 Verify settings persistence on both platforms (desktop: plugin-store, web: localStorage) (manual test needed)
+- [ ] 9.8 Verify i18n switching works on both platforms (manual test needed)

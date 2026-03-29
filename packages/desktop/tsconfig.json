@@ -3,8 +3,8 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
-      "@wviewer/core": ["../core/src/index.ts"],
-      "@wviewer/core/*": ["../core/src/*"]
+      "@mason-gallery/core": ["../core/src/index.ts"],
+      "@mason-gallery/core/*": ["../core/src/*"]
     }
   },
   "include": ["src"],

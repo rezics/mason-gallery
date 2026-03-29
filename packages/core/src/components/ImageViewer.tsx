@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
@@ -43,6 +43,12 @@ export default function ImageViewer() {
     },
     [platform.capabilities.canDeleteFiles, handleDeleteCurrent],
   );
+
+  useEffect(() => {
+    if (!isViewerOpen) return;
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isViewerOpen, handleKeyDown]);
 
   if (!isViewerOpen) return null;
 

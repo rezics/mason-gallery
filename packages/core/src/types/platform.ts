@@ -16,7 +16,11 @@ export interface ScanParams {
 }
 
 export interface ImageBatch {
-  images: Array<{ source: string; width: number | null; height: number | null }>;
+  images: Array<{
+    source: string;
+    width: number | null;
+    height: number | null;
+  }>;
   done: boolean;
 }
 

@@ -1,6 +1,6 @@
 ## Context
 
-WViewer v2.0 is a Tauri v2 desktop image viewer with React 19 frontend. The frontend directly imports `@tauri-apps/api` and various Tauri plugins in 7+ source files — components (`WaterfallGrid`, `ImageViewer`, `DropZone`, `Titlebar`, `UpdateChecker`), stores (`settingsStore`), and service modules (`scanActions`). There is no abstraction layer between UI and platform APIs.
+Mason Gallery v2.0 is a Tauri v2 desktop image viewer with React 19 frontend. The frontend directly imports `@tauri-apps/api` and various Tauri plugins in 7+ source files — components (`WaterfallGrid`, `ImageViewer`, `DropZone`, `Titlebar`, `UpdateChecker`), stores (`settingsStore`), and service modules (`scanActions`). There is no abstraction layer between UI and platform APIs.
 
 The goal is to restructure into a monorepo that enables independent desktop and web releases from a shared UI core, plus an npm-installable CLI wrapper for the web build.
 
@@ -12,7 +12,7 @@ This is an open-source project using Bun, Vite 8, React 19, MUI 7, Tailwind CSS 
 - Clean separation between platform-agnostic UI and platform-specific adapters
 - Web version supports: drag-and-drop folders, waterfall masonry grid, lightbox image viewing, settings persistence
 - Desktop version retains ALL current features and remains extensible
-- npm CLI package for local web server (`npx @wviewer/cli`)
+- npm CLI package for local web server (`npx @mason-gallery/cli`)
 - Shared code changes propagate to both targets automatically
 - Minimal disruption — refactor by extraction, not rewrite
 
@@ -136,7 +136,7 @@ packages/
 │   │   ├── i18n/           ← typesafe-i18n translations
 │   │   ├── context/        ← PlatformContext (React Context for PlatformService)
 │   │   └── index.ts        ← Public API barrel export
-│   ├── package.json        ← name: "@wviewer/core"
+│   ├── package.json        ← name: "@mason-gallery/core"
 │   └── tsconfig.json
 │
 ├── desktop/        ← Tauri desktop app
@@ -149,7 +149,7 @@ packages/
 │   ├── src-tauri/          ← Rust backend (moved from root)
 │   ├── index.html
 │   ├── vite.config.ts
-│   └── package.json        ← name: "@wviewer/desktop"
+│   └── package.json        ← name: "@mason-gallery/desktop"
 │
 ├── web/            ← Static web SPA
 │   ├── src/
@@ -159,12 +159,12 @@ packages/
 │   │   └── main.tsx
 │   ├── index.html
 │   ├── vite.config.ts
-│   └── package.json        ← name: "@wviewer/web"
+│   └── package.json        ← name: "@mason-gallery/web"
 │
 └── cli/            ← npm-installable local web server
     ├── src/
     │   └── index.ts         ← CLI entry: serve web dist via sirv/polka
-    ├── package.json         ← name: "@wviewer/cli", bin: { "wviewer": "..." }
+    ├── package.json         ← name: "@mason-gallery/cli", bin: { "mason-gallery": "..." }
     └── tsconfig.json
 ```
 
@@ -220,22 +220,22 @@ The `getPlatform()` accessor is set once at app startup before any store hydrati
 
 ### D7: CLI package — simple static server wrapper
 
-**Decision:** `@wviewer/cli` is a thin Node.js script that:
+**Decision:** `@mason-gallery/cli` is a thin Node.js script that:
 1. Bundles the pre-built `packages/web/dist/` output at publish time
-2. On `npx @wviewer/cli` or `wviewer` (global install), starts a local HTTP server on a free port
+2. On `npx @mason-gallery/cli` or `mason-gallery` (global install), starts a local HTTP server on a free port
 3. Opens the user's default browser
 
 **Rationale:** This gives users a zero-config way to use the web version locally without cloning the repo or setting up a dev server. The implementation is ~30 lines using `sirv-cli` or a minimal `node:http` + `node:fs` static file server.
 
 **Build pipeline:**
 ```
-bun run --filter @wviewer/web build
+bun run --filter @mason-gallery/web build
     ↓
 packages/web/dist/  (static assets)
     ↓ (copied into cli package at publish time)
 packages/cli/dist/web/
     ↓
-npm publish @wviewer/cli
+npm publish @mason-gallery/cli
 ```
 
 ### D8: Conditional rendering via capabilities

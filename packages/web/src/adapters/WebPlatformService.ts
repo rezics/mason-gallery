@@ -3,9 +3,9 @@ import type {
   PlatformService,
   ScanParams,
   Settings,
-} from "@wviewer/core";
+} from "@mason-gallery/core";
 
-const SETTINGS_KEY = "wviewer-settings";
+const SETTINGS_KEY = "mason-gallery-settings";
 
 interface FileEntry {
   handle: FileSystemFileHandle;
@@ -43,19 +43,6 @@ class FileHandleRegistry {
     this.entries.clear();
   }
 }
-
-const IMAGE_EXTENSIONS = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".webp",
-  ".bmp",
-  ".jfif",
-  ".jxl",
-  ".avif",
-  ".heic",
-]);
 
 function getExtension(name: string): string {
   const dot = name.lastIndexOf(".");

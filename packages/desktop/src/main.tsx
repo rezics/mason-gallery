@@ -1,9 +1,9 @@
+import { setPlatform } from "@mason-gallery/core";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { setPlatform } from "@wviewer/core";
-import { tauriPlatformService } from "./adapters/TauriPlatformService";
 import App from "./App";
-import "@wviewer/core/src/index.css";
+import { tauriPlatformService } from "./adapters/TauriPlatformService";
+import "@mason-gallery/core/src/index.css";
 
 setPlatform(tauriPlatformService);
 
