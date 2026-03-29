@@ -1,26 +1,66 @@
-import { Masonry, type RenderComponentProps } from "masonic";
+import {
+  useMasonry,
+  usePositioner,
+  useResizeObserver,
+  type RenderComponentProps,
+} from "masonic";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useSettingsStore } from "@/stores/settingsStore";
+import { useEffect, useRef, useState } from "react";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { WImage } from "@/types";
 
-function getColumnCount(
-  width: number,
-  breakpoints: Record<number, number>,
-): number {
-  const sorted = Object.entries(breakpoints)
-    .map(([bp, cols]) => [Number(bp), cols] as [number, number])
-    .sort((a, b) => a[0] - b[0]);
+function useContainerScroll(ref: React.RefObject<HTMLElement | null>) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const rafRef = useRef(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  for (const [bp, cols] of sorted) {
-    if (width <= bp) return cols;
-  }
-  return sorted.at(-1)?.[1] ?? 4;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        setScrollTop(el.scrollTop);
+        setIsScrolling(true);
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => setIsScrolling(false), 150);
+        rafRef.current = 0;
+      });
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafRef.current);
+      clearTimeout(timeoutRef.current);
+    };
+  }, [ref]);
+
+  return { scrollTop, isScrolling };
 }
 
-interface ImageCellProps {
-  data: WImage;
-  index: number;
+function useContainerSize(ref: React.RefObject<HTMLElement | null>) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setSize({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+
+  return size;
 }
 
 function ImageCell({ data, index }: RenderComponentProps<WImage>) {
@@ -48,25 +88,41 @@ function ImageCell({ data, index }: RenderComponentProps<WImage>) {
   );
 }
 
-export default function WaterfallGrid() {
+interface WaterfallGridProps {
+  scrollContainerRef: React.RefObject<HTMLElement | null>;
+}
+
+export default function WaterfallGrid({
+  scrollContainerRef,
+}: WaterfallGridProps) {
   const images = useViewerStore((s) => s.images);
   const scanId = useViewerStore((s) => s.scanId);
-  const breakpoints = useSettingsStore((s) => s.breakpoints);
 
-  const columnGutter = 8;
+  const { scrollTop, isScrolling } = useContainerScroll(scrollContainerRef);
+  const { width, height } = useContainerSize(scrollContainerRef);
 
-  if (images.length === 0) return <div className="p-2" />;
+  const containerRef = useRef<HTMLElement>(null);
 
-  return (
-    <div className="p-2">
-      <Masonry
-        key={scanId}
-        items={images}
-        columnGutter={columnGutter}
-        columnWidth={200}
-        overscanBy={5}
-        render={ImageCell}
-      />
-    </div>
+  const safeWidth = Math.max(width, 1);
+  const positioner = usePositioner(
+    { width: safeWidth, columnWidth: 200, columnGutter: 8 },
+    [scanId],
   );
+  const resizeObserver = useResizeObserver(positioner);
+
+  const grid = useMasonry({
+    positioner,
+    resizeObserver,
+    items: images,
+    scrollTop,
+    isScrolling,
+    height,
+    overscanBy: 5,
+    render: ImageCell,
+    containerRef,
+  });
+
+  if (images.length === 0 || width === 0) return <div className="p-2" />;
+
+  return <div className="p-2">{grid}</div>;
 }

@@ -1,6 +1,6 @@
 import { Box, LinearProgress, Typography } from "@mui/material";
 import { listen } from "@tauri-apps/api/event";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import DropZone from "@/components/DropZone";
 import FabActions from "@/components/FabActions";
 import ImageViewer from "@/components/ImageViewer";
@@ -18,6 +18,7 @@ export default function HomePage() {
   const appendImages = useViewerStore((s) => s.appendImages);
   const setScanning = useViewerStore((s) => s.setScanning);
   const folders = useAppStore((s) => s.folders);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unlisten = listen<ImageBatch>("images:batch", (event) => {
@@ -55,8 +56,8 @@ export default function HomePage() {
                 : t.home.imageCount.replace("{count}", String(images.length))}
             </Typography>
           </Box>
-          <Box sx={{ flex: 1, overflow: "auto" }}>
-            <WaterfallGrid />
+          <Box ref={scrollContainerRef} sx={{ flex: 1, overflow: "auto" }}>
+            <WaterfallGrid scrollContainerRef={scrollContainerRef} />
           </Box>
         </>
       )}
