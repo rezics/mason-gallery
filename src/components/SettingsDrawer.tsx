@@ -16,7 +16,7 @@ import { useState } from "react";
 import { useI18n } from "@/i18n";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import type { Locale, SortMethod } from "@/types";
+import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
 
 export default function SettingsDrawer() {
   const t = useI18n();
@@ -31,6 +31,8 @@ export default function SettingsDrawer() {
   const setPageSize = useSettingsStore((s) => s.setPageSize);
   const language = useSettingsStore((s) => s.language);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const breakpoints = useSettingsStore((s) => s.breakpoints);
+  const setBreakpoints = useSettingsStore((s) => s.setBreakpoints);
 
   const [newFormat, setNewFormat] = useState("");
 
@@ -145,6 +147,42 @@ export default function SettingsDrawer() {
             <AddIcon />
           </IconButton>
         </Box>
+
+        {/* Waterfall Column Breakpoints */}
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          {t.settings.columns}
+        </Typography>
+        {(
+          [500, 800, 1200, 1400] as const
+        ).map((bp) => (
+          <Box
+            key={bp}
+            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+          >
+            <Typography variant="body2" sx={{ minWidth: 60 }}>
+              {bp}px
+            </Typography>
+            <TextField
+              size="small"
+              type="number"
+              value={breakpoints[bp]}
+              onChange={(e) => {
+                const val = Number.parseInt(e.target.value, 10);
+                if (val >= 1 && val <= 10) {
+                  setBreakpoints({
+                    ...breakpoints,
+                    [bp]: val,
+                  } as ColumnBreakpoints);
+                }
+              }}
+              slotProps={{ htmlInput: { min: 1, max: 10 } }}
+              sx={{ width: 80 }}
+            />
+            <Typography variant="body2" color="text.secondary">
+              cols
+            </Typography>
+          </Box>
+        ))}
       </Box>
     </Drawer>
   );
