@@ -9,7 +9,8 @@
         "~/.gnupg/**",
         "~/.config/**",
         "~/.bashrc",
-        "~/.zshrc"
+        "~/.zshrc",
+        ".git/**"
       ],
       "denyRead": ["~/.ssh/**", "~/.gnupg/**"]
     }
@@ -37,6 +38,6 @@
       "Bash(bun run:*)",
       "Bash(ls:*)"
     ],
-    "deny": ["Bash(sudo:*)", "Bash(rm -rf /*)"]
+    "deny": ["Bash(sudo:*)", "Bash(rm -rf /*)", "Bash(git:*)"]
   }
 }
