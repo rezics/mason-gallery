@@ -47,6 +47,13 @@ const en: TranslationKeys = {
     settings: "Settings",
     close: "Close",
   },
+  update: {
+    available: "A new version is available!",
+    installing: "Installing update...",
+    install: "Install & Restart",
+    dismiss: "Later",
+    error: "Update failed",
+  },
 };
 
 export default en;

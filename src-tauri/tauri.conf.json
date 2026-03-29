@@ -41,9 +41,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "UPDATER_PUBKEY",
       "endpoints": [
-        "https://api.github.com/repos/wviewer/wviewer/releases/latest"
+        "https://github.com/nicepkg/wviewer/releases/latest/download/latest.json"
       ]
     }
   }

@@ -47,6 +47,13 @@ export type TranslationKeys = {
     settings: string;
     close: string;
   };
+  update: {
+    available: string;
+    installing: string;
+    install: string;
+    dismiss: string;
+    error: string;
+  };
 };
 
 export type Translations = Record<Locales, TranslationKeys>;

@@ -4,6 +4,7 @@ import { Route, Router, Switch } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import SettingsDrawer from "@/components/SettingsDrawer";
 import Titlebar from "@/components/Titlebar";
+import UpdateChecker from "@/components/UpdateChecker";
 import { getTranslations, I18nContext } from "@/i18n";
 import AboutPage from "@/pages/AboutPage";
 import HomePage from "@/pages/HomePage";
@@ -44,6 +45,7 @@ function App() {
             </Switch>
           </Box>
           <SettingsDrawer />
+          <UpdateChecker />
         </Router>
       </I18nContext.Provider>
     </ThemeProvider>

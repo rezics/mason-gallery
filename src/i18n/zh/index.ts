@@ -47,6 +47,13 @@ const zh: TranslationKeys = {
     settings: "设置",
     close: "关闭",
   },
+  update: {
+    available: "发现新版本！",
+    installing: "正在安装更新...",
+    install: "安装并重启",
+    dismiss: "稍后",
+    error: "更新失败",
+  },
 };
 
 export default zh;
