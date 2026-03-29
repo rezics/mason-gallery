@@ -1,0 +1,22 @@
+{
+  "name": "@wviewer/cli",
+  "version": "2.0.0",
+  "type": "module",
+  "bin": {
+    "wviewer": "./dist/index.js"
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node && cp -r ../web/dist dist/web",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "sirv": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^6.0.2"
+  }
+}

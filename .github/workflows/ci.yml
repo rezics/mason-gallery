@@ -23,7 +23,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: "./packages/desktop/src-tauri -> target"
 
       - name: Install system dependencies
         run: |
@@ -37,10 +37,10 @@ jobs:
         run: bunx biome ci .
 
       - name: TypeScript check
-        run: bunx tsc --noEmit
+        run: bunx tsc --build
 
       - name: Rust format check
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+        run: cargo fmt --manifest-path packages/desktop/src-tauri/Cargo.toml --check
 
       - name: Rust clippy
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+        run: cargo clippy --manifest-path packages/desktop/src-tauri/Cargo.toml -- -D warnings

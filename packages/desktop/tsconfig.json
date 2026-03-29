@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@wviewer/core": ["../core/src/index.ts"],
+      "@wviewer/core/*": ["../core/src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "../core" }]
+}

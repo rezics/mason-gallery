@@ -15,6 +15,11 @@
       "matchManagers": ["npm"],
       "matchPackagePatterns": ["@mui/*"],
       "groupName": "MUI packages"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPackagePatterns": ["@wviewer/*"],
+      "enabled": false
     }
   ]
 }

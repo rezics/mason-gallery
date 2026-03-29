@@ -1,0 +1,100 @@
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { open } from "@tauri-apps/plugin-dialog";
+import { load } from "@tauri-apps/plugin-store";
+import type {
+  ImageBatch,
+  PlatformService,
+  ScanParams,
+  Settings,
+} from "@wviewer/core";
+
+const STORE_FILE = "settings.json";
+
+export const tauriPlatformService: PlatformService = {
+  capabilities: {
+    canDeleteFiles: true,
+    canSelectFolder: true,
+    hasCustomTitlebar: true,
+    canAutoUpdate: true,
+    canDragDropFolders: true,
+  },
+
+  async scanImages(
+    params: ScanParams,
+    onBatch: (batch: ImageBatch) => void,
+    onComplete: () => void,
+  ): Promise<void> {
+    const unlisten = await listen<ImageBatch>("images:batch", (event) => {
+      const batch = event.payload;
+      if (batch.images.length > 0) {
+        onBatch(batch);
+      }
+      if (batch.done) {
+        onComplete();
+        unlisten();
+      }
+    });
+
+    await invoke("scan_directory", { params });
+  },
+
+  getImageUrl(source: string): string {
+    return convertFileSrc(source);
+  },
+
+  async deleteFile(path: string): Promise<void> {
+    await invoke("delete_to_trash", { path });
+  },
+
+  async pickFolders(): Promise<string[] | null> {
+    const selected = await open({ directory: true, multiple: true });
+    if (!selected) return null;
+    return Array.isArray(selected) ? selected : [selected];
+  },
+
+  onDragDrop(callback: (paths: string[]) => void): () => void {
+    let unlistenFn: (() => void) | null = null;
+
+    getCurrentWebviewWindow()
+      .onDragDropEvent((event) => {
+        if (event.payload.type === "drop") {
+          const paths = event.payload.paths;
+          if (paths.length > 0) {
+            callback(paths);
+          }
+        }
+      })
+      .then((fn) => {
+        unlistenFn = fn;
+      });
+
+    return () => {
+      unlistenFn?.();
+    };
+  },
+
+  async loadSettings(): Promise<Partial<Settings>> {
+    const store = await load(STORE_FILE, { defaults: {}, autoSave: true });
+    const formats = await store.get<string[]>("formats");
+    const sortMethod = await store.get<Settings["sortMethod"]>("sortMethod");
+    const pageSize = await store.get<number>("pageSize");
+    const language = await store.get<Settings["language"]>("language");
+    const breakpoints =
+      await store.get<Settings["breakpoints"]>("breakpoints");
+
+    return {
+      ...(formats != null && { formats }),
+      ...(sortMethod != null && { sortMethod }),
+      ...(pageSize != null && { pageSize }),
+      ...(language != null && { language }),
+      ...(breakpoints != null && { breakpoints }),
+    };
+  },
+
+  async saveSettings(key: string, value: unknown): Promise<void> {
+    const store = await load(STORE_FILE, { defaults: {}, autoSave: true });
+    await store.set(key, value);
+  },
+};

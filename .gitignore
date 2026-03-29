@@ -8,6 +8,7 @@ git-staged.txt
 # output
 out
 dist
+packages/*/dist
 *.tgz
 
 # code coverage
@@ -38,5 +39,5 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 # Rust / Tauri
-src-tauri/target
-src-tauri/gen
+packages/desktop/src-tauri/target
+packages/desktop/src-tauri/gen
