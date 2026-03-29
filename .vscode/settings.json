@@ -1,6 +1,10 @@
 {
     "cSpell.words": [
+        "dotenv",
+        "eslintcache",
         "openspec",
+        "reflog",
+        "shortlog",
         "Tauri",
         "wviewer"
     ]
