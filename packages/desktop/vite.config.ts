@@ -6,6 +6,7 @@ import { defineConfig } from "vite";
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig(async () => ({
+  publicDir: path.resolve(__dirname, "../../public"),
   plugins: [react(), tailwindcss()],
   resolve: {
     dedupe: ["react", "react-dom", "@emotion/react", "@emotion/styled"],

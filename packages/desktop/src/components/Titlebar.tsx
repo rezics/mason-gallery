@@ -62,6 +62,14 @@ export default function Titlebar() {
         data-tauri-drag-region
         sx={{ minHeight: 36, px: 1, gap: 0 }}
       >
+        {/* App Logo */}
+        <Box
+          component="img"
+          src="/logo/logo.svg"
+          alt="MasonGallery"
+          sx={{ width: 20, height: 20, mr: 0.5, flexShrink: 0 }}
+        />
+
         {/* File Menu */}
         <Button
           size="small"

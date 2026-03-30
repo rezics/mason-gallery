@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  publicDir: path.resolve(__dirname, "../../public"),
   plugins: [react(), tailwindcss()],
   resolve: {
     dedupe: ["react", "react-dom", "@emotion/react", "@emotion/styled"],
