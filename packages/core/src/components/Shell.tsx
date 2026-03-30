@@ -12,6 +12,9 @@ import { useSettingsStore } from "@/stores/settingsStore";
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
+    primary: {
+      main: "#f4606c",
+    },
   },
 });
 
