@@ -8,9 +8,8 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   resolve: {
+    dedupe: ["react", "react-dom", "@emotion/react", "@emotion/styled"],
     alias: {
-      "@mason-gallery/core/src": path.resolve(__dirname, "../core/src"),
-      "@mason-gallery/core": path.resolve(__dirname, "../core/src/index.ts"),
       "@/": path.resolve(__dirname, "../core/src") + "/",
     },
   },

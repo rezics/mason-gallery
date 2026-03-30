@@ -61,9 +61,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
 
   hydrate: async () => {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Settings hydration timed out")), 3000),
+    );
+
     try {
       const platform = getPlatform();
-      const settings = await platform.loadSettings();
+      const settings = await Promise.race([
+        platform.loadSettings(),
+        timeout,
+      ]);
 
       set({
         formats: settings.formats ?? DEFAULTS.formats,

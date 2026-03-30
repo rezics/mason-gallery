@@ -1,0 +1,3 @@
+- [ ] Show image information when the mouse hovers over an item
+- [ ] Identifying and Fixing Waterfall Layout Issues
+- [ ] Web performance issues

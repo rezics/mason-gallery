@@ -18,12 +18,19 @@ import {
   Toolbar,
 } from "@mui/material";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 
-const appWindow = getCurrentWindow();
+function useAppWindow() {
+  const ref = useRef<ReturnType<typeof getCurrentWindow> | null>(null);
+  if (!ref.current) {
+    ref.current = getCurrentWindow();
+  }
+  return ref.current;
+}
 
 export default function Titlebar() {
+  const appWindow = useAppWindow();
   const t = useI18n();
   const [, navigate] = useLocation();
 
