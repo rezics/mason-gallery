@@ -20,12 +20,11 @@ export type SortMethod = "name-asc" | "name-desc" | "time-asc" | "time-desc";
 
 export type Locale = "en" | "zh";
 
-export interface ColumnBreakpoints {
-  500: number;
-  800: number;
-  1200: number;
-  1400: number;
-}
+// Maps minimum screen widths (px) to column counts.
+// Each entry means: "from this width up to the next entry, use N columns."
+// Example: { 0: 1, 500: 2, 800: 3, 1200: 4, 1600: 5, 1920: 6, 2560: 7 }
+//   0–499 px → 1 col, 500–799 px → 2 cols, …, ≥ 2560 px → 7 cols
+export type ColumnBreakpoints = Record<number, number>;
 
 export interface Settings {
   formats: string[];

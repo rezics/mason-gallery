@@ -23,7 +23,15 @@ const DEFAULTS = {
   sortMethod: "name-asc" as SortMethod,
   pageSize: 50,
   language: "en" as Locale,
-  breakpoints: { 500: 2, 800: 3, 1200: 4, 1400: 5 } as ColumnBreakpoints,
+  breakpoints: {
+    0: 1,
+    500: 2,
+    800: 3,
+    1200: 4,
+    1600: 5,
+    1920: 6,
+    2560: 7,
+  } as ColumnBreakpoints,
 };
 
 async function persist(key: string, value: unknown) {
@@ -67,10 +75,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
     try {
       const platform = getPlatform();
-      const settings = await Promise.race([
-        platform.loadSettings(),
-        timeout,
-      ]);
+      const settings = await Promise.race([platform.loadSettings(), timeout]);
 
       set({
         formats: settings.formats ?? DEFAULTS.formats,

@@ -1,5 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
 import {
   Box,
   Chip,
@@ -16,7 +17,7 @@ import { useState } from "react";
 import { useI18n } from "@/i18n";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
+import type { Locale, SortMethod } from "@/types";
 
 export default function SettingsDrawer() {
   const t = useI18n();
@@ -35,6 +36,7 @@ export default function SettingsDrawer() {
   const setBreakpoints = useSettingsStore((s) => s.setBreakpoints);
 
   const [newFormat, setNewFormat] = useState("");
+  const [newBpWidth, setNewBpWidth] = useState("");
 
   const handleAddFormat = () => {
     const fmt = newFormat.trim().toLowerCase();
@@ -152,35 +154,81 @@ export default function SettingsDrawer() {
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
           {t.settings.columns}
         </Typography>
-        {([500, 800, 1200, 1400] as const).map((bp) => (
-          <Box
-            key={bp}
-            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+        {(() => {
+          const sortedKeys = Object.keys(breakpoints)
+            .map(Number)
+            .sort((a, b) => a - b);
+          return sortedKeys.map((bp, i) => {
+            const nextBp = sortedKeys[i + 1];
+            const rangeLabel =
+              nextBp !== undefined ? `${bp}–${nextBp - 1} px` : `≥ ${bp} px`;
+            return (
+              <Box
+                key={bp}
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{ minWidth: 100 }}
+                  title={rangeLabel}
+                >
+                  {rangeLabel}
+                </Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  value={breakpoints[bp]}
+                  onChange={(e) => {
+                    const val = Number.parseInt(e.target.value, 10);
+                    if (val >= 1 && val <= 10) {
+                      setBreakpoints({ ...breakpoints, [bp]: val });
+                    }
+                  }}
+                  slotProps={{ htmlInput: { min: 1, max: 10 } }}
+                  sx={{ width: 80 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  cols
+                </Typography>
+                {sortedKeys.length > 1 && (
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      const next = { ...breakpoints };
+                      delete next[bp];
+                      setBreakpoints(next);
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            );
+          });
+        })()}
+        <Box sx={{ display: "flex", gap: 1, mb: 2, alignItems: "center" }}>
+          <TextField
+            size="small"
+            type="number"
+            placeholder="Width (px)"
+            value={newBpWidth}
+            onChange={(e) => setNewBpWidth(e.target.value)}
+            slotProps={{ htmlInput: { min: 0 } }}
+            sx={{ width: 100 }}
+          />
+          <IconButton
+            size="small"
+            onClick={() => {
+              const w = Number.parseInt(newBpWidth, 10);
+              if (!Number.isNaN(w) && w >= 0 && !(w in breakpoints)) {
+                setBreakpoints({ ...breakpoints, [w]: 1 });
+                setNewBpWidth("");
+              }
+            }}
           >
-            <Typography variant="body2" sx={{ minWidth: 60 }}>
-              {bp}px
-            </Typography>
-            <TextField
-              size="small"
-              type="number"
-              value={breakpoints[bp]}
-              onChange={(e) => {
-                const val = Number.parseInt(e.target.value, 10);
-                if (val >= 1 && val <= 10) {
-                  setBreakpoints({
-                    ...breakpoints,
-                    [bp]: val,
-                  } as ColumnBreakpoints);
-                }
-              }}
-              slotProps={{ htmlInput: { min: 1, max: 10 } }}
-              sx={{ width: 80 }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              cols
-            </Typography>
-          </Box>
-        ))}
+            <AddIcon />
+          </IconButton>
+        </Box>
       </Box>
     </Drawer>
   );

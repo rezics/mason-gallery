@@ -6,8 +6,22 @@ import {
 } from "masonic";
 import { useEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
-import type { WImage } from "@/types";
+import type { ColumnBreakpoints, WImage } from "@/types";
+
+function getColumnCount(width: number, breakpoints: ColumnBreakpoints): number {
+  const keys = Object.keys(breakpoints)
+    .map(Number)
+    .sort((a, b) => b - a);
+  const maxColumns = Math.max(...Object.values(breakpoints), 1);
+  for (const key of keys) {
+    if (width >= key) {
+      return Math.min(breakpoints[key] ?? 1, maxColumns);
+    }
+  }
+  return 1;
+}
 
 function useContainerScroll(ref: React.RefObject<HTMLElement | null>) {
   const [scrollTop, setScrollTop] = useState(0);
@@ -98,6 +112,7 @@ export default function WaterfallGrid({
 }: WaterfallGridProps) {
   const images = useViewerStore((s) => s.images);
   const scanId = useViewerStore((s) => s.scanId);
+  const breakpoints = useSettingsStore((s) => s.breakpoints);
 
   const { scrollTop, isScrolling } = useContainerScroll(scrollContainerRef);
   const { width, height } = useContainerSize(scrollContainerRef);
@@ -105,9 +120,10 @@ export default function WaterfallGrid({
   const containerRef = useRef<HTMLElement>(null);
 
   const safeWidth = Math.max(width, 1);
+  const columnCount = getColumnCount(safeWidth, breakpoints);
   const positioner = usePositioner(
-    { width: safeWidth, columnWidth: 200, columnGutter: 8 },
-    [scanId],
+    { width: safeWidth, columnCount, columnGutter: 8 },
+    [scanId, columnCount],
   );
   const resizeObserver = useResizeObserver(positioner);
 
