@@ -17,6 +17,7 @@ import {
   MenuItem,
   Toolbar,
 } from "@mui/material";
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -150,7 +151,7 @@ export default function Titlebar() {
           <MenuItem
             onClick={() => {
               setWindowAnchor(null);
-              appWindow.emit("tauri://devtools").catch(console.error);
+              invoke("open_devtools").catch(console.error);
             }}
           >
             {t.menu.devTools}

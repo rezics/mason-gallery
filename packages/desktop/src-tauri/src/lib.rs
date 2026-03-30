@@ -21,6 +21,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::scan_directory,
             commands::delete_to_trash,
+            commands::open_devtools,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

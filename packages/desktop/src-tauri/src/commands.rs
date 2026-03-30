@@ -127,3 +127,8 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
 pub async fn delete_to_trash(path: String) -> Result<(), String> {
     trash::delete(&path).map_err(|e| format!("Failed to delete to trash: {}", e))
 }
+
+#[tauri::command]
+pub async fn open_devtools(window: tauri::WebviewWindow) {
+    window.open_devtools();
+}
