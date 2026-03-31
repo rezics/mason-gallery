@@ -34,11 +34,12 @@ The backend SHALL support four sort methods: `name-asc`, `name-desc`, `time-asc`
 - **THEN** results SHALL be ordered by file modification time, newest first
 
 ### Requirement: Streaming batch emission
-The backend SHALL emit image batches to the frontend via Tauri events as they are discovered, rather than waiting for the full scan to complete. Each batch SHALL contain up to `page_size` images.
+The backend SHALL emit image data to the frontend in two phases via Tauri events. First, an `images:count` event SHALL be emitted after directory traversal and sorting complete, containing the total number of matched files. Then, `images:batch` events SHALL be emitted as dimension extraction proceeds, each containing up to `page_size` images. This ensures the frontend knows the total count before any image metadata arrives.
 
-#### Scenario: Progressive loading
+#### Scenario: Two-phase emission
 - **WHEN** a directory with 500 images is scanned with `page_size: 50`
-- **THEN** the backend SHALL emit approximately 10 `images:batch` events, each containing up to 50 images, as traversal progresses
+- **THEN** the backend SHALL first emit one `images:count` event with `{ total: 500 }`
+- **AND** then emit approximately 10 `images:batch` events, each containing up to 50 images
 
 #### Scenario: Scan completion signal
 - **WHEN** directory traversal is complete
