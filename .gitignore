@@ -1,3 +1,5 @@
+tmp-gitignore
+
 # dependencies (bun install)
 node_modules
 git-staged.txt
