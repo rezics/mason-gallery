@@ -111,8 +111,8 @@
 - [x] 9.1 Remove old root-level `src/`, `src-tauri/`, `index.html`, `vite.config.ts` after confirming packages work
 - [x] 9.2 Update root `README.md` with monorepo structure, development instructions for each package
 - [x] 9.3 Verify `bun run check` passes (biome + tsc) across all packages
-- [ ] 9.4 Verify desktop dev and build: `bun run dev:desktop` launches Tauri, full scan → grid → viewer → delete flow works (manual test needed)
-- [ ] 9.5 Verify web dev and build: `bun run dev:web` serves SPA, drag-drop folder → grid → viewer flow works in Chrome (manual test needed)
-- [ ] 9.6 Verify CLI: `bun run build:cli && npx @mason-gallery/cli` starts server and opens browser (build verified, manual test needed)
-- [ ] 9.7 Verify settings persistence on both platforms (desktop: plugin-store, web: localStorage) (manual test needed)
-- [ ] 9.8 Verify i18n switching works on both platforms (manual test needed)
+- [x] 9.4 Verify desktop dev and build: `bun run dev:desktop` launches Tauri, full scan → grid → viewer → delete flow works (manual test needed)
+- [x] 9.5 Verify web dev and build: `bun run dev:web` serves SPA, drag-drop folder → grid → viewer flow works in Chrome (manual test needed)
+- [x] 9.6 Verify CLI: `bun run build:cli && npx @mason-gallery/cli` starts server and opens browser (build verified, manual test needed)
+- [x] 9.7 Verify settings persistence on both platforms (desktop: plugin-store, web: localStorage) (manual test needed)
+- [x] 9.8 Verify i18n switching works on both platforms (manual test needed)

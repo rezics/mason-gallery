@@ -5,7 +5,8 @@ import { useViewerStore } from "@/stores/viewerStore";
 import type { ScanParams } from "@/types";
 
 export async function startScan(paths: string[]) {
-  const { resetAndScan, setScanning, appendImages } = useViewerStore.getState();
+  const { resetAndScan, setScanning, appendImages, setTotalCount } =
+    useViewerStore.getState();
   const { setFolders } = useAppStore.getState();
   const { formats, sortMethod, pageSize } = useSettingsStore.getState();
 
@@ -31,6 +32,9 @@ export async function startScan(paths: string[]) {
       },
       () => {
         setScanning(false);
+      },
+      (total) => {
+        setTotalCount(total);
       },
     );
   } catch (e) {

@@ -113,30 +113,48 @@ export const webPlatformService: PlatformService = {
     params: ScanParams,
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
+    onCount?: (total: number) => void,
   ): Promise<void> {
     registry.clear();
 
     const formats = new Set(params.formats.map((f) => f.toLowerCase()));
     const batchSize = params.page_size;
-    let batch: ImageBatch["images"] = [];
 
+    // Phase 1: Collect all file handles (fast, no dimension extraction)
+    const fileHandles: {
+      name: string;
+      path: string;
+      handle: FileSystemFileHandle;
+    }[] = [];
     for (const dirHandle of storedDirHandles) {
       for await (const entry of walkDirectory(dirHandle, formats)) {
-        const file = await entry.handle.getFile();
-        const blobUrl = URL.createObjectURL(file);
-        const id = registry.register(entry.handle, blobUrl);
-        const dims = await getImageDimensions(file);
+        fileHandles.push(entry);
+      }
+    }
 
-        batch.push({
-          source: id,
-          width: dims?.width ?? null,
-          height: dims?.height ?? null,
-        });
+    // Emit total count immediately
+    if (onCount) {
+      onCount(fileHandles.length);
+    }
 
-        if (batch.length >= batchSize) {
-          onBatch({ images: batch, done: false });
-          batch = [];
-        }
+    // Phase 2: Process dimensions in batches
+    let batch: ImageBatch["images"] = [];
+
+    for (const entry of fileHandles) {
+      const file = await entry.handle.getFile();
+      const blobUrl = URL.createObjectURL(file);
+      const id = registry.register(entry.handle, blobUrl);
+      const dims = await getImageDimensions(file);
+
+      batch.push({
+        source: id,
+        width: dims?.width ?? null,
+        height: dims?.height ?? null,
+      });
+
+      if (batch.length >= batchSize) {
+        onBatch({ images: batch, done: false });
+        batch = [];
       }
     }
 

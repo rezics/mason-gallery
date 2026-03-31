@@ -7,12 +7,14 @@ interface ViewerState {
   isViewerOpen: boolean;
   isScanning: boolean;
   scanId: number;
+  totalCount: number;
 
   appendImages: (newImages: WImage[]) => void;
   setCurrentIndex: (index: number) => void;
   openViewer: (index: number) => void;
   closeViewer: () => void;
   setScanning: (scanning: boolean) => void;
+  setTotalCount: (count: number) => void;
   removeImage: (index: number) => void;
   resetAndScan: () => void;
   reset: () => void;
@@ -24,6 +26,7 @@ export const useViewerStore = create<ViewerState>((set) => ({
   isViewerOpen: false,
   isScanning: false,
   scanId: 0,
+  totalCount: 0,
 
   appendImages: (newImages) =>
     set((state) => ({ images: [...state.images, ...newImages] })),
@@ -35,6 +38,8 @@ export const useViewerStore = create<ViewerState>((set) => ({
   closeViewer: () => set({ isViewerOpen: false }),
 
   setScanning: (isScanning) => set({ isScanning }),
+
+  setTotalCount: (totalCount) => set({ totalCount }),
 
   removeImage: (index) =>
     set((state) => {
@@ -50,6 +55,7 @@ export const useViewerStore = create<ViewerState>((set) => ({
       isViewerOpen: false,
       isScanning: true,
       scanId: state.scanId + 1,
+      totalCount: 0,
     })),
 
   reset: () =>
@@ -58,5 +64,6 @@ export const useViewerStore = create<ViewerState>((set) => ({
       currentIndex: 0,
       isViewerOpen: false,
       isScanning: false,
+      totalCount: 0,
     }),
 }));

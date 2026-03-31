@@ -19,6 +19,7 @@ const zh: TranslationKeys = {
     dropZoneHint: "或点击选择文件夹",
     selectFolder: "选择文件夹",
     scanning: "扫描中...",
+    scanProgress: "{loaded} / {total} 张图片",
     imageCount: "{count} 张图片",
   },
   settings: {

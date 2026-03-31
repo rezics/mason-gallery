@@ -19,6 +19,7 @@ export type TranslationKeys = {
     dropZoneHint: string;
     selectFolder: string;
     scanning: string;
+    scanProgress: string;
     imageCount: string;
   };
   settings: {

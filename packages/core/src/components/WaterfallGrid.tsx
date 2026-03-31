@@ -125,6 +125,21 @@ export default function WaterfallGrid({
     { width: safeWidth, columnCount, columnGutter: 8 },
     [scanId, columnCount],
   );
+
+  // Pre-fill positioner with calculated heights from known dimensions.
+  // This eliminates the "batch catch-up" freeze when scrolling to unmeasured regions,
+  // because masonic's needsFreshBatch check sees measuredCount === itemCount.
+  const measuredCount = positioner.size();
+  if (measuredCount < images.length) {
+    for (let i = measuredCount; i < images.length; i++) {
+      const img = images[i] as WImage | undefined;
+      if (img?.width && img.height && positioner.get(i) === undefined) {
+        const displayHeight = positioner.columnWidth * (img.height / img.width);
+        positioner.set(i, displayHeight);
+      }
+    }
+  }
+
   const resizeObserver = useResizeObserver(positioner);
 
   const grid = useMasonry({

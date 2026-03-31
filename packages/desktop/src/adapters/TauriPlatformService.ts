@@ -25,7 +25,19 @@ export const tauriPlatformService: PlatformService = {
     params: ScanParams,
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
+    onCount?: (total: number) => void,
   ): Promise<void> {
+    let unlistenCount: (() => void) | undefined;
+    if (onCount) {
+      unlistenCount = await listen<{ total: number }>(
+        "images:count",
+        (event) => {
+          onCount(event.payload.total);
+          unlistenCount?.();
+        },
+      );
+    }
+
     const unlisten = await listen<ImageBatch>("images:batch", (event) => {
       const batch = event.payload;
       if (batch.images.length > 0) {

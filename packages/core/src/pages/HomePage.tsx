@@ -13,15 +13,27 @@ export default function HomePage() {
   const t = useI18n();
   const images = useViewerStore((s) => s.images);
   const isScanning = useViewerStore((s) => s.isScanning);
+  const totalCount = useViewerStore((s) => s.totalCount);
   const folders = useAppStore((s) => s.folders);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const hasImages = images.length > 0;
   const showDropZone = !hasImages && !isScanning;
+  const progressValue =
+    isScanning && totalCount > 0
+      ? (images.length / totalCount) * 100
+      : undefined;
 
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {isScanning && <LinearProgress />}
+      {isScanning && (
+        <LinearProgress
+          variant={
+            progressValue !== undefined ? "determinate" : "indeterminate"
+          }
+          value={progressValue}
+        />
+      )}
 
       {showDropZone ? (
         <DropZone onFoldersSelected={startScan} />
@@ -32,7 +44,11 @@ export default function HomePage() {
           >
             <Typography variant="body2" color="text.secondary">
               {isScanning
-                ? t.home.scanning
+                ? totalCount > 0
+                  ? t.home.scanProgress
+                      .replace("{loaded}", String(images.length))
+                      .replace("{total}", String(totalCount))
+                  : t.home.scanning
                 : t.home.imageCount.replace("{count}", String(images.length))}
             </Typography>
           </Box>

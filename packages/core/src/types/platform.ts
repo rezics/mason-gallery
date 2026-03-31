@@ -39,6 +39,7 @@ export interface PlatformService {
     params: ScanParams,
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
+    onCount?: (total: number) => void,
   ): Promise<void>;
 
   getImageUrl(source: string): string;

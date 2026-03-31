@@ -19,6 +19,11 @@ pub struct ImageBatch {
     pub done: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ImageCount {
+    pub total: usize,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ScanParams {
     pub paths: Vec<String>,
@@ -87,6 +92,9 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
         "time-desc" => entries.sort_by(|a, b| b.modified.cmp(&a.modified)),
         _ => entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
     }
+
+    // Emit total count before dimension extraction
+    let _ = app.emit("images:count", ImageCount { total: entries.len() });
 
     // Process in batches with parallel image dimension extraction
     for chunk in entries.chunks(params.page_size) {

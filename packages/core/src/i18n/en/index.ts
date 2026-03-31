@@ -19,6 +19,7 @@ const en: TranslationKeys = {
     dropZoneHint: "or click to select folders",
     selectFolder: "Select Folder",
     scanning: "Scanning...",
+    scanProgress: "{loaded} / {total} images",
     imageCount: "{count} images",
   },
   settings: {
