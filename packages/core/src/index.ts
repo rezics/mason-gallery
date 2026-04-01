@@ -1,8 +1,8 @@
 // Context
 
 export { default as DropZone } from "./components/DropZone";
-export { default as FabActions } from "./components/FabActions";
 export { default as ImageViewer } from "./components/ImageViewer";
+export { default as MenuBar } from "./components/MenuBar";
 export { default as SettingsDrawer } from "./components/SettingsDrawer";
 // Components
 export { default as Shell } from "./components/Shell";
