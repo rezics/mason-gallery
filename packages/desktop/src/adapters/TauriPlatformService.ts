@@ -4,13 +4,21 @@ import type {
   ScanParams,
   Settings,
 } from "@mason-gallery/core";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { open } from "@tauri-apps/plugin-dialog";
 import { load } from "@tauri-apps/plugin-store";
 
 const STORE_FILE = "settings.json";
+
+let cachedServerPort: number | null = null;
+
+async function getServerPort(): Promise<number> {
+  if (cachedServerPort !== null) return cachedServerPort;
+  cachedServerPort = await invoke<number>("get_image_server_port");
+  return cachedServerPort;
+}
 
 export const tauriPlatformService: PlatformService = {
   capabilities: {
@@ -27,6 +35,9 @@ export const tauriPlatformService: PlatformService = {
     onComplete: () => void,
     onCount?: (total: number) => void,
   ): Promise<void> {
+    // Ensure server port is cached before images start rendering
+    await getServerPort();
+
     let unlistenCount: (() => void) | undefined;
     if (onCount) {
       unlistenCount = await listen<{ total: number }>(
@@ -53,7 +64,10 @@ export const tauriPlatformService: PlatformService = {
   },
 
   getImageUrl(source: string): string {
-    return convertFileSrc(source);
+    if (cachedServerPort === null) {
+      throw new Error("Image server port not initialized. Call scanImages first.");
+    }
+    return `http://localhost:${cachedServerPort}/image?path=${encodeURIComponent(source)}`;
   },
 
   async deleteFile(path: string): Promise<void> {

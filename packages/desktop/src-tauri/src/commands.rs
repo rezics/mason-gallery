@@ -1,9 +1,10 @@
+use crate::server::ServerState;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +47,19 @@ struct FileEntry {
 
 #[tauri::command]
 pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), String> {
+    // Register scanned directories with the image server's allowed roots
+    let server_state = app.state::<ServerState>();
+    {
+        let mut roots = server_state.allowed_roots.write().unwrap();
+        for dir_path in &params.paths {
+            if let Ok(canonical) = fs::canonicalize(dir_path) {
+                roots.insert(canonical);
+            } else {
+                roots.insert(PathBuf::from(dir_path));
+            }
+        }
+    }
+
     let formats: Vec<String> = params
         .formats
         .iter()
@@ -134,6 +148,12 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
 #[tauri::command]
 pub async fn delete_to_trash(path: String) -> Result<(), String> {
     trash::delete(&path).map_err(|e| format!("Failed to delete to trash: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_image_server_port(app: AppHandle) -> Result<u16, String> {
+    let state = app.state::<ServerState>();
+    Ok(state.port)
 }
 
 #[tauri::command]
