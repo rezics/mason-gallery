@@ -15,7 +15,11 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useI18n } from "@/i18n";
-import { openFolderAndScan, refresh, resetToDropZone } from "@/lib/scanActions";
+import {
+  incrementalRefresh,
+  openFolderAndScan,
+  resetToDropZone,
+} from "@/lib/scanActions";
 import { useAppStore } from "@/stores/appStore";
 
 interface MenuBarProps {
@@ -170,7 +174,11 @@ export default function MenuBar({
 
         {/* Top-level action buttons */}
         <Tooltip title={t.actions.refresh}>
-          <IconButton size="small" onClick={() => refresh()} sx={{ mx: 0.25 }}>
+          <IconButton
+            size="small"
+            onClick={() => incrementalRefresh()}
+            sx={{ mx: 0.25 }}
+          >
             <RefreshIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Tooltip>

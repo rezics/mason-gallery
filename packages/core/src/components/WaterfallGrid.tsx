@@ -4,7 +4,7 @@ import {
   usePositioner,
   useResizeObserver,
 } from "masonic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
@@ -112,12 +112,35 @@ export default function WaterfallGrid({
 }: WaterfallGridProps) {
   const images = useViewerStore((s) => s.images);
   const scanId = useViewerStore((s) => s.scanId);
+  const isRelayout = useViewerStore((s) => s.isRelayout);
   const breakpoints = useSettingsStore((s) => s.breakpoints);
 
   const { scrollTop, isScrolling } = useContainerScroll(scrollContainerRef);
   const { width, height } = useContainerSize(scrollContainerRef);
 
   const containerRef = useRef<HTMLElement>(null);
+  const savedScrollRef = useRef<number | null>(null);
+  const prevScanIdRef = useRef(scanId);
+
+  // Capture scroll position before positioner resets on relayout
+  if (scanId !== prevScanIdRef.current) {
+    if (isRelayout && scrollContainerRef.current) {
+      savedScrollRef.current = scrollContainerRef.current.scrollTop;
+    } else {
+      savedScrollRef.current = null;
+    }
+    prevScanIdRef.current = scanId;
+  }
+
+  // Restore scroll position synchronously after DOM update.
+  // scanId is intentionally in deps to trigger after positioner reset.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scanId triggers the restore
+  useLayoutEffect(() => {
+    if (savedScrollRef.current !== null && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = savedScrollRef.current;
+      savedScrollRef.current = null;
+    }
+  }, [scanId, scrollContainerRef]);
 
   const safeWidth = Math.max(width, 1);
   const columnCount = getColumnCount(safeWidth, breakpoints);

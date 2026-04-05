@@ -8,6 +8,7 @@ interface ViewerState {
   isScanning: boolean;
   scanId: number;
   totalCount: number;
+  isRelayout: boolean;
 
   appendImages: (newImages: WImage[]) => void;
   setCurrentIndex: (index: number) => void;
@@ -18,6 +19,9 @@ interface ViewerState {
   removeImage: (index: number) => void;
   resetAndScan: () => void;
   reset: () => void;
+  relayout: () => void;
+  mergeImages: (added: WImage[], removedPaths: Set<string>) => void;
+  getCurrentPaths: () => Set<string>;
 }
 
 export const useViewerStore = create<ViewerState>((set) => ({
@@ -27,6 +31,7 @@ export const useViewerStore = create<ViewerState>((set) => ({
   isScanning: false,
   scanId: 0,
   totalCount: 0,
+  isRelayout: false,
 
   appendImages: (newImages) =>
     set((state) => ({ images: [...state.images, ...newImages] })),
@@ -56,6 +61,7 @@ export const useViewerStore = create<ViewerState>((set) => ({
       isScanning: true,
       scanId: state.scanId + 1,
       totalCount: 0,
+      isRelayout: false,
     })),
 
   reset: () =>
@@ -66,4 +72,29 @@ export const useViewerStore = create<ViewerState>((set) => ({
       isScanning: false,
       totalCount: 0,
     }),
+
+  relayout: () =>
+    set((state) => ({
+      scanId: state.scanId + 1,
+      isRelayout: true,
+    })),
+
+  mergeImages: (added, removedPaths) =>
+    set((state) => {
+      const filtered =
+        removedPaths.size > 0
+          ? state.images.filter((img) => !removedPaths.has(img.source))
+          : state.images;
+      const images = added.length > 0 ? [...filtered, ...added] : filtered;
+      const currentIndex = Math.min(
+        state.currentIndex,
+        Math.max(0, images.length - 1),
+      );
+      return { images, currentIndex };
+    }),
+
+  getCurrentPaths: () => {
+    const { images } = useViewerStore.getState();
+    return new Set(images.map((img) => img.source));
+  },
 }));

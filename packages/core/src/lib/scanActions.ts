@@ -2,7 +2,7 @@ import { getPlatform } from "@/context/PlatformContext";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
-import type { ScanParams } from "@/types";
+import type { ScanParams, WImage } from "@/types";
 
 export async function startScan(paths: string[]) {
   const { resetAndScan, setScanning, appendImages, setTotalCount } =
@@ -55,6 +55,75 @@ export function refresh() {
   const { folders } = useAppStore.getState();
   if (folders.length > 0) {
     startScan(folders);
+  }
+}
+
+export async function incrementalRefresh() {
+  const { folders } = useAppStore.getState();
+  if (folders.length === 0) return;
+
+  const { relayout, getCurrentPaths, mergeImages, setScanning } =
+    useViewerStore.getState();
+  const { formats, sortMethod, pageSize } = useSettingsStore.getState();
+
+  // Phase 1: Instant re-layout (re-sort existing images, preserve scroll)
+  relayout();
+
+  // Capture scanId to detect stale results
+  const startScanId = useViewerStore.getState().scanId;
+
+  // Phase 2: Background incremental scan
+  const currentPaths = getCurrentPaths();
+  const scannedImages: WImage[] = [];
+
+  const params: ScanParams = {
+    paths: folders,
+    formats,
+    page_size: pageSize,
+    sort_method: sortMethod,
+  };
+
+  const platform = getPlatform();
+
+  try {
+    setScanning(true);
+    await platform.scanImages(
+      params,
+      (batch) => {
+        scannedImages.push(...batch.images);
+      },
+      () => {
+        // Stale scan guard: discard if scanId changed
+        if (useViewerStore.getState().scanId !== startScanId) {
+          setScanning(false);
+          return;
+        }
+
+        // Diff: compute added and removed
+        const scannedPaths = new Set(scannedImages.map((img) => img.source));
+        const added = scannedImages.filter(
+          (img) => !currentPaths.has(img.source),
+        );
+        const removedPaths = new Set<string>();
+        for (const path of currentPaths) {
+          if (!scannedPaths.has(path)) {
+            removedPaths.add(path);
+          }
+        }
+
+        // Only merge and re-layout if there are changes
+        if (added.length > 0 || removedPaths.size > 0) {
+          mergeImages(added, removedPaths);
+          relayout();
+        }
+
+        setScanning(false);
+      },
+      () => {},
+    );
+  } catch (e) {
+    console.error("Incremental refresh failed:", e);
+    setScanning(false);
   }
 }
 

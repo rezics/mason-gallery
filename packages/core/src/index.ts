@@ -18,6 +18,7 @@ export type { Locales, TranslationKeys } from "./i18n/index";
 export { getTranslations, I18nContext, useI18n } from "./i18n/index";
 // Lib
 export {
+  incrementalRefresh,
   openFolderAndScan,
   refresh,
   resetToDropZone,
