@@ -105,10 +105,15 @@ function ImageCell({ data, index }: RenderComponentProps<WImage>) {
 
 interface WaterfallGridProps {
   scrollContainerRef: React.RefObject<HTMLElement | null>;
+  onPositionerReady?: (
+    positioner: ReturnType<typeof usePositioner>,
+    columnCount: number,
+  ) => void;
 }
 
 export default function WaterfallGrid({
   scrollContainerRef,
+  onPositionerReady,
 }: WaterfallGridProps) {
   const images = useViewerStore((s) => s.images);
   const scanId = useViewerStore((s) => s.scanId);
@@ -148,6 +153,11 @@ export default function WaterfallGrid({
     { width: safeWidth, columnCount, columnGutter: 8 },
     [scanId, columnCount],
   );
+
+  // Notify parent when positioner changes
+  useEffect(() => {
+    onPositionerReady?.(positioner, columnCount);
+  }, [positioner, columnCount, onPositionerReady]);
 
   // Pre-fill positioner with calculated heights from known dimensions.
   // This eliminates the "batch catch-up" freeze when scrolling to unmeasured regions,

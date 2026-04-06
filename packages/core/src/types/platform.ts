@@ -6,6 +6,7 @@ export interface Settings {
   pageSize: number;
   language: Locale;
   breakpoints: ColumnBreakpoints;
+  showGridPosition: boolean;
 }
 
 export interface ScanParams {

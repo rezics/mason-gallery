@@ -21,6 +21,7 @@ const en: TranslationKeys = {
     scanning: "Scanning...",
     scanProgress: "{loaded} / {total} images",
     imageCount: "{count} images",
+    goToImage: "Go to image (Ctrl+G)",
   },
   settings: {
     title: "Settings",
@@ -35,6 +36,7 @@ const en: TranslationKeys = {
     pageSize: "Images per batch",
     language: "Language",
     columns: "Column Breakpoints",
+    showGridPosition: "Show Grid Position",
   },
   viewer: {
     deleteConfirm: "Move this image to trash?",

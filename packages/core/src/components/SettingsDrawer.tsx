@@ -6,10 +6,12 @@ import {
   Chip,
   Divider,
   Drawer,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Select,
   Slider,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -34,6 +36,8 @@ export default function SettingsDrawer() {
   const setLanguage = useSettingsStore((s) => s.setLanguage);
   const breakpoints = useSettingsStore((s) => s.breakpoints);
   const setBreakpoints = useSettingsStore((s) => s.setBreakpoints);
+  const showGridPosition = useSettingsStore((s) => s.showGridPosition);
+  const setShowGridPosition = useSettingsStore((s) => s.setShowGridPosition);
 
   const [newFormat, setNewFormat] = useState("");
   const [newBpWidth, setNewBpWidth] = useState("");
@@ -149,6 +153,18 @@ export default function SettingsDrawer() {
             <AddIcon />
           </IconButton>
         </Box>
+
+        {/* Show Grid Position */}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showGridPosition}
+              onChange={(e) => setShowGridPosition(e.target.checked)}
+            />
+          }
+          label={t.settings.showGridPosition}
+          sx={{ mb: 2 }}
+        />
 
         {/* Waterfall Column Breakpoints */}
         <Typography variant="subtitle2" sx={{ mb: 1 }}>

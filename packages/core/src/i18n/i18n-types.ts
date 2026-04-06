@@ -21,6 +21,7 @@ export type TranslationKeys = {
     scanning: string;
     scanProgress: string;
     imageCount: string;
+    goToImage: string;
   };
   settings: {
     title: string;
@@ -35,6 +36,7 @@ export type TranslationKeys = {
     pageSize: string;
     language: string;
     columns: string;
+    showGridPosition: string;
   };
   viewer: {
     deleteConfirm: string;

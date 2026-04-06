@@ -1,5 +1,7 @@
 import { useCallback, useEffect } from "react";
 import Lightbox from "yet-another-react-lightbox";
+import Counter from "yet-another-react-lightbox/plugins/counter";
+import "yet-another-react-lightbox/plugins/counter.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
 import { usePlatform } from "@/context/PlatformContext";
@@ -61,7 +63,7 @@ export default function ImageViewer() {
       on={{
         view: ({ index }) => setCurrentIndex(index),
       }}
-      plugins={[Zoom]}
+      plugins={[Counter, Zoom]}
       zoom={{
         scrollToZoom: true,
       }}

@@ -8,6 +8,7 @@ interface SettingsState {
   pageSize: number;
   language: Locale;
   breakpoints: ColumnBreakpoints;
+  showGridPosition: boolean;
   _hydrated: boolean;
 
   setFormats: (formats: string[]) => void;
@@ -15,6 +16,7 @@ interface SettingsState {
   setPageSize: (size: number) => void;
   setLanguage: (lang: Locale) => void;
   setBreakpoints: (bp: ColumnBreakpoints) => void;
+  setShowGridPosition: (show: boolean) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -32,6 +34,7 @@ const DEFAULTS = {
     1920: 6,
     2560: 7,
   } as ColumnBreakpoints,
+  showGridPosition: true,
 };
 
 async function persist(key: string, value: unknown) {
@@ -67,6 +70,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ breakpoints });
     persist("breakpoints", breakpoints);
   },
+  setShowGridPosition: (showGridPosition) => {
+    set({ showGridPosition });
+    persist("showGridPosition", showGridPosition);
+  },
 
   hydrate: async () => {
     const timeout = new Promise<never>((_, reject) =>
@@ -83,6 +90,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         pageSize: settings.pageSize ?? DEFAULTS.pageSize,
         language: settings.language ?? DEFAULTS.language,
         breakpoints: settings.breakpoints ?? DEFAULTS.breakpoints,
+        showGridPosition:
+          settings.showGridPosition ?? DEFAULTS.showGridPosition,
         _hydrated: true,
       });
     } catch (e) {

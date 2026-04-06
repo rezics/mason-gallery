@@ -65,7 +65,9 @@ export const tauriPlatformService: PlatformService = {
 
   getImageUrl(source: string): string {
     if (cachedServerPort === null) {
-      throw new Error("Image server port not initialized. Call scanImages first.");
+      throw new Error(
+        "Image server port not initialized. Call scanImages first.",
+      );
     }
     return `http://localhost:${cachedServerPort}/image?path=${encodeURIComponent(source)}`;
   },

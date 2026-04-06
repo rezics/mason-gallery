@@ -21,6 +21,7 @@ const zh: TranslationKeys = {
     scanning: "扫描中...",
     scanProgress: "{loaded} / {total} 张图片",
     imageCount: "{count} 张图片",
+    goToImage: "跳转到图片 (Ctrl+G)",
   },
   settings: {
     title: "设置",
@@ -35,6 +36,7 @@ const zh: TranslationKeys = {
     pageSize: "每批图片数",
     language: "语言",
     columns: "列断点",
+    showGridPosition: "显示网格位置",
   },
   viewer: {
     deleteConfirm: "将此图片移至回收站？",
