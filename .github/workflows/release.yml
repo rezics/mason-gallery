@@ -38,9 +38,16 @@ jobs:
 
       - name: Install system dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          version: 1.0
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
@@ -51,6 +58,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          tauriScript: bunx tauri
           projectPath: packages/desktop
           tagName: ${{ github.ref_name }}
           releaseName: "MasonGallery ${{ github.ref_name }}"
@@ -69,6 +77,12 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -80,3 +94,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: packages/web/dist
+          cname: ${{ vars.CUSTOM_DOMAIN }}

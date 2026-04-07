@@ -6,3 +6,4 @@
 - [ ] clean commands.rs file move out command function logic
 - [ ] release: web version need release a github pages version
 - [ ] support change the sorting strategy
+- [ ] optimize CI system dependency installation process
