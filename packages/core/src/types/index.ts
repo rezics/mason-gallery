@@ -1,5 +1,6 @@
 export interface WImage {
   source: string;
+  relativePath: string;
   width: number | null;
   height: number | null;
 }

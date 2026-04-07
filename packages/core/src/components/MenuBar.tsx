@@ -1,3 +1,4 @@
+import FolderIcon from "@mui/icons-material/Folder";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
@@ -37,6 +38,7 @@ export default function MenuBar({
 }: MenuBarProps) {
   const t = useI18n();
   const toggleSettings = useAppStore((s) => s.toggleSettings);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const [, navigate] = useLocation();
 
   const [fileAnchor, setFileAnchor] = useState<null | HTMLElement>(null);
@@ -173,6 +175,11 @@ export default function MenuBar({
         />
 
         {/* Top-level action buttons */}
+        <Tooltip title={t.sidebar.folders}>
+          <IconButton size="small" onClick={toggleSidebar} sx={{ mx: 0.25 }}>
+            <FolderIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title={t.actions.refresh}>
           <IconButton
             size="small"

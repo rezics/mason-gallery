@@ -1,11 +1,13 @@
 import { Box, LinearProgress, TextField, Typography } from "@mui/material";
 import type { Positioner } from "masonic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DropZone from "@/components/DropZone";
+import FolderSidebar from "@/components/FolderSidebar";
 import ImageViewer from "@/components/ImageViewer";
 import WaterfallGrid from "@/components/WaterfallGrid";
 import { useI18n } from "@/i18n";
 import { startScan } from "@/lib/scanActions";
+import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 
@@ -63,10 +65,21 @@ function useApproxScrollIndex(
 
 export default function HomePage() {
   const t = useI18n();
-  const images = useViewerStore((s) => s.images);
+  const allImages = useViewerStore((s) => s.images);
   const isScanning = useViewerStore((s) => s.isScanning);
   const totalCount = useViewerStore((s) => s.totalCount);
   const showGridPosition = useSettingsStore((s) => s.showGridPosition);
+  const selectedFolder = useAppStore((s) => s.selectedFolder);
+
+  const images = useMemo(() => {
+    if (!selectedFolder) {
+      return allImages.map((img, i) => ({ ...img, globalIndex: i }));
+    }
+    const prefix = `${selectedFolder}/`;
+    return allImages
+      .map((img, i) => ({ ...img, globalIndex: i }))
+      .filter((img) => img.relativePath.startsWith(prefix));
+  }, [allImages, selectedFolder]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const positionerRef = useRef<{
     positioner: Positioner;
@@ -132,11 +145,11 @@ export default function HomePage() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [images.length, showGridPosition]);
 
-  const hasImages = images.length > 0;
+  const hasImages = allImages.length > 0;
   const showDropZone = !hasImages && !isScanning;
   const progressValue =
     isScanning && totalCount > 0
-      ? (images.length / totalCount) * 100
+      ? (allImages.length / totalCount) * 100
       : undefined;
 
   return (
@@ -161,7 +174,7 @@ export default function HomePage() {
               <Typography variant="body2" color="text.secondary">
                 {totalCount > 0
                   ? t.home.scanProgress
-                      .replace("{loaded}", String(images.length))
+                      .replace("{loaded}", String(allImages.length))
                       .replace("{total}", String(totalCount))
                   : t.home.scanning}
               </Typography>
@@ -220,11 +233,15 @@ export default function HomePage() {
               </Typography>
             )}
           </Box>
-          <Box ref={scrollContainerRef} sx={{ flex: 1, overflow: "auto" }}>
-            <WaterfallGrid
-              scrollContainerRef={scrollContainerRef}
-              onPositionerReady={handlePositionerReady}
-            />
+          <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
+            <FolderSidebar />
+            <Box ref={scrollContainerRef} sx={{ flex: 1, overflow: "auto" }}>
+              <WaterfallGrid
+                scrollContainerRef={scrollContainerRef}
+                images={images}
+                onPositionerReady={handlePositionerReady}
+              />
+            </Box>
           </Box>
         </>
       )}

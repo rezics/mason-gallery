@@ -52,6 +52,11 @@ const en: TranslationKeys = {
     settings: "Settings",
     close: "Close",
   },
+  sidebar: {
+    folders: "Folders",
+    showAll: "Show All",
+    noSubfolders: "No subfolders",
+  },
   update: {
     available: "A new version is available!",
     installing: "Installing update...",

@@ -38,6 +38,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::scan_directory,
+            commands::list_directory_tree,
             commands::delete_to_trash,
             commands::open_devtools,
             commands::get_image_server_port,

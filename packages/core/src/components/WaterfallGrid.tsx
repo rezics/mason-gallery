@@ -6,6 +6,7 @@ import {
 } from "masonic";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";
+import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ColumnBreakpoints, WImage } from "@/types";
@@ -77,7 +78,11 @@ function useContainerSize(ref: React.RefObject<HTMLElement | null>) {
   return size;
 }
 
-function ImageCell({ data, index }: RenderComponentProps<WImage>) {
+interface ImageCellData extends WImage {
+  globalIndex: number;
+}
+
+function ImageCell({ data }: RenderComponentProps<ImageCellData>) {
   const openViewer = useViewerStore((s) => s.openViewer);
   const platform = usePlatform();
 
@@ -85,7 +90,7 @@ function ImageCell({ data, index }: RenderComponentProps<WImage>) {
     <button
       type="button"
       className="cursor-pointer overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800 transition-shadow hover:shadow-lg w-full border-none p-0 block"
-      onClick={() => openViewer(index)}
+      onClick={() => openViewer(data.globalIndex)}
     >
       <img
         src={platform.getImageUrl(data.source)}
@@ -105,6 +110,7 @@ function ImageCell({ data, index }: RenderComponentProps<WImage>) {
 
 interface WaterfallGridProps {
   scrollContainerRef: React.RefObject<HTMLElement | null>;
+  images: ImageCellData[];
   onPositionerReady?: (
     positioner: ReturnType<typeof usePositioner>,
     columnCount: number,
@@ -113,12 +119,13 @@ interface WaterfallGridProps {
 
 export default function WaterfallGrid({
   scrollContainerRef,
+  images,
   onPositionerReady,
 }: WaterfallGridProps) {
-  const images = useViewerStore((s) => s.images);
   const scanId = useViewerStore((s) => s.scanId);
   const isRelayout = useViewerStore((s) => s.isRelayout);
   const breakpoints = useSettingsStore((s) => s.breakpoints);
+  const selectedFolder = useAppStore((s) => s.selectedFolder);
 
   const { scrollTop, isScrolling } = useContainerScroll(scrollContainerRef);
   const { width, height } = useContainerSize(scrollContainerRef);
@@ -147,11 +154,20 @@ export default function WaterfallGrid({
     }
   }, [scanId, scrollContainerRef]);
 
+  // Reset scroll to top when folder filter changes
+  const prevFolderRef = useRef(selectedFolder);
+  if (selectedFolder !== prevFolderRef.current) {
+    prevFolderRef.current = selectedFolder;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }
+
   const safeWidth = Math.max(width, 1);
   const columnCount = getColumnCount(safeWidth, breakpoints);
   const positioner = usePositioner(
     { width: safeWidth, columnCount, columnGutter: 8 },
-    [scanId, columnCount],
+    [scanId, columnCount, selectedFolder],
   );
 
   // Notify parent when positioner changes

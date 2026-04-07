@@ -124,4 +124,12 @@ export const tauriPlatformService: PlatformService = {
     const store = await load(STORE_FILE, { defaults: {}, autoSave: true });
     await store.set(key, value);
   },
+
+  async listDirectoryTree(paths: string[]): Promise<string[]> {
+    const result = await invoke<{ directories: string[] }>(
+      "list_directory_tree",
+      { paths },
+    );
+    return result.directories;
+  },
 };

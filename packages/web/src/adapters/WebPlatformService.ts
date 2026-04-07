@@ -148,6 +148,7 @@ export const webPlatformService: PlatformService = {
 
       batch.push({
         source: id,
+        relativePath: entry.path,
         width: dims?.width ?? null,
         height: dims?.height ?? null,
       });
@@ -241,5 +242,29 @@ export const webPlatformService: PlatformService = {
     } catch {
       // ignore
     }
+  },
+
+  async listDirectoryTree(): Promise<string[]> {
+    const directories: string[] = [];
+
+    async function walkDirs(
+      dirHandle: FileSystemDirectoryHandle,
+      prefix: string,
+    ) {
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === "directory") {
+          const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+          directories.push(path);
+          await walkDirs(entry, path);
+        }
+      }
+    }
+
+    for (const dirHandle of storedDirHandles) {
+      await walkDirs(dirHandle, "");
+    }
+
+    directories.sort();
+    return directories;
   },
 };

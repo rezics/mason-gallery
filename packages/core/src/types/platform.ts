@@ -19,6 +19,7 @@ export interface ScanParams {
 export interface ImageBatch {
   images: Array<{
     source: string;
+    relativePath: string;
     width: number | null;
     height: number | null;
   }>;
@@ -54,4 +55,6 @@ export interface PlatformService {
   loadSettings(): Promise<Partial<Settings>>;
 
   saveSettings(key: string, value: unknown): Promise<void>;
+
+  listDirectoryTree(paths: string[]): Promise<string[]>;
 }

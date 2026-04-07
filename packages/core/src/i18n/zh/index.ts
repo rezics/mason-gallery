@@ -52,6 +52,11 @@ const zh: TranslationKeys = {
     settings: "设置",
     close: "关闭",
   },
+  sidebar: {
+    folders: "文件夹",
+    showAll: "显示全部",
+    noSubfolders: "没有子文件夹",
+  },
   update: {
     available: "发现新版本！",
     installing: "正在安装更新...",

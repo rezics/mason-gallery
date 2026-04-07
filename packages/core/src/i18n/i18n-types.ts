@@ -52,6 +52,11 @@ export type TranslationKeys = {
     settings: string;
     close: string;
   };
+  sidebar: {
+    folders: string;
+    showAll: string;
+    noSubfolders: string;
+  };
   update: {
     available: string;
     installing: string;

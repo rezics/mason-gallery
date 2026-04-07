@@ -8,8 +8,10 @@ use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WImage {
     pub source: String,
+    pub relative_path: String,
     pub width: Option<u32>,
     pub height: Option<u32>,
 }
@@ -42,6 +44,7 @@ fn get_image_dimensions(path: &Path) -> (Option<u32>, Option<u32>) {
 
 struct FileEntry {
     path: String,
+    relative_path: String,
     modified: Option<SystemTime>,
 }
 
@@ -70,12 +73,12 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
     let mut entries: Vec<FileEntry> = Vec::new();
 
     for dir_path in &params.paths {
-        let path = Path::new(dir_path);
-        if !path.exists() {
+        let root = Path::new(dir_path);
+        if !root.exists() {
             return Err(format!("Path does not exist: {}", dir_path));
         }
 
-        for entry in WalkDir::new(path).follow_links(true).into_iter().flatten() {
+        for entry in WalkDir::new(root).follow_links(true).into_iter().flatten() {
             if !entry.file_type().is_file() {
                 continue;
             }
@@ -90,8 +93,16 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
             if formats.contains(&ext) {
                 let modified = fs::metadata(entry.path()).and_then(|m| m.modified()).ok();
 
+                let relative_path = entry
+                    .path()
+                    .strip_prefix(root)
+                    .unwrap_or(entry.path())
+                    .to_string_lossy()
+                    .replace('\\', "/");
+
                 entries.push(FileEntry {
                     path: entry.path().to_string_lossy().to_string(),
+                    relative_path,
                     modified,
                 });
             }
@@ -118,6 +129,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                 let (width, height) = get_image_dimensions(Path::new(&entry.path));
                 WImage {
                     source: entry.path.clone(),
+                    relative_path: entry.relative_path.clone(),
                     width,
                     height,
                 }
@@ -143,6 +155,45 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
     );
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DirectoryTree {
+    pub directories: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn list_directory_tree(paths: Vec<String>) -> Result<DirectoryTree, String> {
+    let mut directories: Vec<String> = Vec::new();
+
+    for dir_path in &paths {
+        let root = Path::new(dir_path);
+        if !root.exists() {
+            return Err(format!("Path does not exist: {}", dir_path));
+        }
+
+        for entry in WalkDir::new(root).follow_links(true).into_iter().flatten() {
+            if !entry.file_type().is_dir() {
+                continue;
+            }
+            // Skip the root itself
+            if entry.path() == root {
+                continue;
+            }
+            let relative = entry
+                .path()
+                .strip_prefix(root)
+                .unwrap_or(entry.path())
+                .to_string_lossy()
+                .replace('\\', "/");
+            directories.push(relative);
+        }
+    }
+
+    directories.sort();
+    directories.dedup();
+
+    Ok(DirectoryTree { directories })
 }
 
 #[tauri::command]
