@@ -109,7 +109,7 @@ export async function incrementalRefresh() {
 
   const { relayout, getCurrentPaths, mergeImages, setScanning } =
     useViewerStore.getState();
-  const { setDirectoryTree, updateFolderCounts } = useAppStore.getState();
+  const { setDirectoryTree } = useAppStore.getState();
   const { formats, sortMethod, pageSize } = useSettingsStore.getState();
 
   // Phase 1: Instant re-layout (re-sort existing images, preserve scroll)
