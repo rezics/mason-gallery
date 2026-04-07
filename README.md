@@ -71,3 +71,18 @@ This creates:
 2. Add the following GitHub repository secrets for the release workflow:
    - `TAURI_SIGNING_PRIVATE_KEY` — contents of the private key file
    - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — password entered during generation (if any)
+
+## Publish
+
+```bash
+git checkout master
+
+git pull origin master
+
+# compress `dev` into a single commit merge.
+git merge --squash dev
+
+git commit -m "release: vX.X.X"
+
+git push origin master
+```
