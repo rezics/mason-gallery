@@ -178,8 +178,13 @@ export default function WaterfallGrid({
   // Pre-fill positioner with calculated heights from known dimensions.
   // This eliminates the "batch catch-up" freeze when scrolling to unmeasured regions,
   // because masonic's needsFreshBatch check sees measuredCount === itemCount.
+  // Guard: skip when container hasn't been measured yet (width===0), otherwise
+  // pre-fill runs with columnWidth≈1px producing tiny heights. When the real width
+  // arrives, masonic's optsChanged branch copies those wrong heights into the new
+  // positioner and the pre-fill loop is skipped (measuredCount===itemCount), causing
+  // images to stack on top of each other.
   const measuredCount = positioner.size();
-  if (measuredCount < images.length) {
+  if (width > 0 && measuredCount < images.length) {
     for (let i = measuredCount; i < images.length; i++) {
       const img = images[i] as WImage | undefined;
       if (img?.width && img.height && positioner.get(i) === undefined) {
