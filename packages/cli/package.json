@@ -1,5 +1,5 @@
 {
-  "name": "@mason-gallery/cli",
+  "name": "mason-gallery",
   "version": "2.0.0",
   "type": "module",
   "bin": {
@@ -9,7 +9,7 @@
     "dist/"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target node && cp -r ../web/dist dist/web",
+    "build": "bun build src/index.ts --outdir dist --target node && node -e \"require('fs').cpSync('../web/dist','dist/web',{recursive:true})\"",
     "start": "node dist/index.js"
   },
   "dependencies": {

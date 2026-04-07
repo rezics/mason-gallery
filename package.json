@@ -1,5 +1,5 @@
 {
-  "name": "mason-gallery",
+  "name": "@mason-gallery/monorepo",
   "version": "2.0.0",
   "description": "A multi-platform image viewer with masonry layout",
   "type": "module",
@@ -12,7 +12,8 @@
     "dev:web": "bun run --filter @mason-gallery/web dev",
     "build:desktop": "bun run --filter @mason-gallery/desktop build",
     "build:web": "bun run --filter @mason-gallery/web build",
-    "build:cli": "bun run --filter @mason-gallery/web build && bun run --filter @mason-gallery/cli build",
+    "build:cli": "bun run --filter @mason-gallery/web build && bun run --filter mason-gallery build",
+    "publish:npm": "bun run build:cli && cd packages/cli && npm publish",
     "check": "biome ci . && tsc --build",
     "format": "biome format --write ."
   },
