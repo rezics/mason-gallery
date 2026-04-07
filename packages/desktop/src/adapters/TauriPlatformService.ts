@@ -23,6 +23,7 @@ async function getServerPort(): Promise<number> {
 export const tauriPlatformService: PlatformService = {
   capabilities: {
     canDeleteFiles: true,
+    canRevealFile: true,
     canSelectFolder: true,
     hasCustomTitlebar: true,
     canAutoUpdate: true,
@@ -76,6 +77,11 @@ export const tauriPlatformService: PlatformService = {
     await invoke("delete_to_trash", { path });
   },
 
+  async revealFile(path: string): Promise<void> {
+    const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+    await revealItemInDir(path);
+  },
+
   async pickFolders(): Promise<string[] | null> {
     const selected = await open({ directory: true, multiple: true });
     if (!selected) return null;
@@ -110,6 +116,9 @@ export const tauriPlatformService: PlatformService = {
     const pageSize = await store.get<number>("pageSize");
     const language = await store.get<Settings["language"]>("language");
     const breakpoints = await store.get<Settings["breakpoints"]>("breakpoints");
+    const showGridPosition = await store.get<boolean>("showGridPosition");
+    const confirmDelete = await store.get<boolean>("confirmDelete");
+    const showDeleteToast = await store.get<boolean>("showDeleteToast");
 
     return {
       ...(formats != null && { formats }),
@@ -117,6 +126,9 @@ export const tauriPlatformService: PlatformService = {
       ...(pageSize != null && { pageSize }),
       ...(language != null && { language }),
       ...(breakpoints != null && { breakpoints }),
+      ...(showGridPosition != null && { showGridPosition }),
+      ...(confirmDelete != null && { confirmDelete }),
+      ...(showDeleteToast != null && { showDeleteToast }),
     };
   },
 

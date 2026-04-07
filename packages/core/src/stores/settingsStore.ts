@@ -9,6 +9,8 @@ interface SettingsState {
   language: Locale;
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
+  confirmDelete: boolean;
+  showDeleteToast: boolean;
   _hydrated: boolean;
 
   setFormats: (formats: string[]) => void;
@@ -17,6 +19,8 @@ interface SettingsState {
   setLanguage: (lang: Locale) => void;
   setBreakpoints: (bp: ColumnBreakpoints) => void;
   setShowGridPosition: (show: boolean) => void;
+  setConfirmDelete: (v: boolean) => void;
+  setShowDeleteToast: (v: boolean) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -35,6 +39,8 @@ const DEFAULTS = {
     2560: 7,
   } as ColumnBreakpoints,
   showGridPosition: true,
+  confirmDelete: true,
+  showDeleteToast: true,
 };
 
 async function persist(key: string, value: unknown) {
@@ -74,6 +80,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ showGridPosition });
     persist("showGridPosition", showGridPosition);
   },
+  setConfirmDelete: (confirmDelete) => {
+    set({ confirmDelete });
+    persist("confirmDelete", confirmDelete);
+  },
+  setShowDeleteToast: (showDeleteToast) => {
+    set({ showDeleteToast });
+    persist("showDeleteToast", showDeleteToast);
+  },
 
   hydrate: async () => {
     const timeout = new Promise<never>((_, reject) =>
@@ -92,6 +106,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         breakpoints: settings.breakpoints ?? DEFAULTS.breakpoints,
         showGridPosition:
           settings.showGridPosition ?? DEFAULTS.showGridPosition,
+        confirmDelete: settings.confirmDelete ?? DEFAULTS.confirmDelete,
+        showDeleteToast: settings.showDeleteToast ?? DEFAULTS.showDeleteToast,
         _hydrated: true,
       });
     } catch (e) {

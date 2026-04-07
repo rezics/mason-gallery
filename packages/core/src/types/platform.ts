@@ -7,6 +7,8 @@ export interface Settings {
   language: Locale;
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
+  confirmDelete: boolean;
+  showDeleteToast: boolean;
 }
 
 export interface ScanParams {
@@ -28,6 +30,7 @@ export interface ImageBatch {
 
 export interface PlatformCapabilities {
   canDeleteFiles: boolean;
+  canRevealFile: boolean;
   canSelectFolder: boolean;
   hasCustomTitlebar: boolean;
   canAutoUpdate: boolean;
@@ -47,6 +50,8 @@ export interface PlatformService {
   getImageUrl(source: string): string;
 
   deleteFile(path: string): Promise<void>;
+
+  revealFile(path: string): Promise<void>;
 
   pickFolders(): Promise<string[] | null>;
 

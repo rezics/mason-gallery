@@ -37,9 +37,17 @@ const zh: TranslationKeys = {
     language: "语言",
     columns: "列断点",
     showGridPosition: "显示网格位置",
+    confirmDelete: "删除前确认",
+    showDeleteToast: "删除后显示通知",
   },
   viewer: {
     deleteConfirm: "将此图片移至回收站？",
+    deleteSuccess: "图片已移至回收站",
+    info: "图片信息",
+    revealInFolder: "在文件夹中显示",
+    fileName: "文件名",
+    dimensions: "尺寸",
+    filePath: "路径",
   },
   about: {
     title: "关于 MasonGallery",

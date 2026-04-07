@@ -37,9 +37,17 @@ export type TranslationKeys = {
     language: string;
     columns: string;
     showGridPosition: string;
+    confirmDelete: string;
+    showDeleteToast: string;
   };
   viewer: {
     deleteConfirm: string;
+    deleteSuccess: string;
+    info: string;
+    revealInFolder: string;
+    fileName: string;
+    dimensions: string;
+    filePath: string;
   };
   about: {
     title: string;

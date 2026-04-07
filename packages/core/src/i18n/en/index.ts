@@ -37,9 +37,17 @@ const en: TranslationKeys = {
     language: "Language",
     columns: "Column Breakpoints",
     showGridPosition: "Show Grid Position",
+    confirmDelete: "Confirm before delete",
+    showDeleteToast: "Show notification after delete",
   },
   viewer: {
     deleteConfirm: "Move this image to trash?",
+    deleteSuccess: "Image moved to trash",
+    info: "Image Info",
+    revealInFolder: "Reveal in folder",
+    fileName: "File name",
+    dimensions: "Dimensions",
+    filePath: "Path",
   },
   about: {
     title: "About MasonGallery",

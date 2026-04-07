@@ -103,6 +103,7 @@ let storedDirHandles: FileSystemDirectoryHandle[] = [];
 export const webPlatformService: PlatformService = {
   capabilities: {
     canDeleteFiles: false,
+    canRevealFile: false,
     canSelectFolder: true,
     hasCustomTitlebar: false,
     canAutoUpdate: false,
@@ -173,6 +174,10 @@ export const webPlatformService: PlatformService = {
 
   async deleteFile(): Promise<void> {
     throw new Error("Delete is not supported in the web version");
+  },
+
+  async revealFile(): Promise<void> {
+    throw new Error("Reveal in folder is not supported in the web version");
   },
 
   async pickFolders(): Promise<string[] | null> {

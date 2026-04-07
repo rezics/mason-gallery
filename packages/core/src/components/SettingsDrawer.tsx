@@ -38,6 +38,10 @@ export default function SettingsDrawer() {
   const setBreakpoints = useSettingsStore((s) => s.setBreakpoints);
   const showGridPosition = useSettingsStore((s) => s.showGridPosition);
   const setShowGridPosition = useSettingsStore((s) => s.setShowGridPosition);
+  const confirmDelete = useSettingsStore((s) => s.confirmDelete);
+  const setConfirmDelete = useSettingsStore((s) => s.setConfirmDelete);
+  const showDeleteToast = useSettingsStore((s) => s.showDeleteToast);
+  const setShowDeleteToast = useSettingsStore((s) => s.setShowDeleteToast);
 
   const [newFormat, setNewFormat] = useState("");
   const [newBpWidth, setNewBpWidth] = useState("");
@@ -163,6 +167,30 @@ export default function SettingsDrawer() {
             />
           }
           label={t.settings.showGridPosition}
+          sx={{ mb: 1 }}
+        />
+
+        {/* Confirm before delete */}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={confirmDelete}
+              onChange={(e) => setConfirmDelete(e.target.checked)}
+            />
+          }
+          label={t.settings.confirmDelete}
+          sx={{ mb: 1 }}
+        />
+
+        {/* Show delete toast */}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showDeleteToast}
+              onChange={(e) => setShowDeleteToast(e.target.checked)}
+            />
+          }
+          label={t.settings.showDeleteToast}
           sx={{ mb: 2 }}
         />
 
