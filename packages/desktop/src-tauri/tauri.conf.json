@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MasonGallery",
+  "version": "2.0.0",
+  "identifier": "com.mason-gallery.app",
+  "build": {
+    "beforeDevCommand": "bun run dev:vite",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build:vite",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "MasonGallery",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 600,
+        "minHeight": 400,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwRjQxMDUxMjc5RDhEREYKUldUZmpaMG5VUkQwVU1jT2NveC84U2VpbmJ2TzdiaEQ4clNudkxaUjVCa0QzWk5SREZYcVYwQ1QK",
+      "endpoints": [
+        "https://github.com/Edge-coordinates/mason-gallery/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

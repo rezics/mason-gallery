@@ -1,0 +1,72 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "allowWrite": ["."],
+      "denyWrite": [
+        "~/.ssh/**",
+        "~/.gnupg/**",
+        "~/.config/**",
+        "~/.bashrc",
+        "~/.zshrc",
+        ".git/**"
+      ],
+      "denyRead": ["~/.ssh/**", "~/.gnupg/**"]
+    }
+  },
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git remote:*)",
+      "Bash(git tag:*)",
+      "Bash(git reflog:*)",
+      "Bash(git stash list:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git shortlog:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:bun.com)",
+      "WebFetch(domain:dev.to)",
+      "Bash(openspec:*)",
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(bun add:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(bunx biome:*)",
+      "Bash(. \"$HOME/.cargo/env\")",
+      "Bash(bunx tauri:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(bun run:*)",
+      "Bash(ls:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git revert:*)",
+      "Bash(git stash drop:*)",
+      "Bash(git stash pop:*)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git clean:*)",
+      "Bash(git rm:*)"
+    ],
+    "deny": ["Bash(sudo:*)", "Bash(rm -rf /*)"]
+  }
+}

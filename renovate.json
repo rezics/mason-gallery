@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":automergeMinor", ":automergePatch"],
+  "packageRules": [
+    {
+      "matchManagers": ["cargo"],
+      "groupName": "Rust dependencies"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPackagePatterns": ["@tauri-apps/*"],
+      "groupName": "Tauri packages"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPackagePatterns": ["@mui/*"],
+      "groupName": "MUI packages"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPackagePatterns": ["@mason-gallery/*"],
+      "enabled": false
+    }
+  ]
+}

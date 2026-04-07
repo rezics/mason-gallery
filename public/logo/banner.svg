@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="100%"
+   viewBox="0 0 680 200"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="banner.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     id="namedview8"
+     pagecolor="#000000"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="3.6088235"
+     inkscape:cx="340"
+     inkscape:cy="98.508558"
+     inkscape:window-width="2560"
+     inkscape:window-height="1494"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg8" />
+  <!-- Column 1: x=195 -->
+  <rect
+     style="fill:#242424;fill-opacity:1;stroke-width:0.887492"
+     id="rect8"
+     width="358.56561"
+     height="142.1516"
+     x="152.12714"
+     y="21.059496"
+     rx="8.2507172"
+     ry="7.3787489" />
+  <rect
+     x="178.65118"
+     y="51.7229"
+     width="22"
+     height="46"
+     rx="3.3"
+     fill="var(--color-text-primary)"
+     opacity="0.88"
+     style="color:#ffffff;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.88;fill:#faf9f5;stroke:none;stroke-width:1.04881px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="rect1" />
+  <rect
+     x="178.65118"
+     y="102.7229"
+     width="22"
+     height="30"
+     rx="3.3"
+     fill="var(--color-text-primary)"
+     opacity="0.40"
+     style="color:#ffffff;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.4;fill:#faf9f5;stroke:none;stroke-width:1.04881px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="rect2" />
+  <!-- Column 2: x=222 -->
+  <rect
+     x="208.15118"
+     y="51.722897"
+     width="22"
+     height="25"
+     rx="3.3"
+     fill="var(--color-text-primary)"
+     opacity="0.55"
+     style="color:#ffffff;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.55;fill:#faf9f5;stroke:none;stroke-width:1.04881px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="rect3" />
+  <rect
+     x="208.15118"
+     y="82"
+     width="22"
+     height="29"
+     rx="3.3"
+     fill="var(--color-text-primary)"
+     opacity="0.26"
+     style="color:#ffffff;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.26;fill:#faf9f5;stroke:none;stroke-width:1.04881px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="rect4" />
+  <rect
+     x="208.15118"
+     y="115.72291"
+     width="22"
+     height="17"
+     rx="3.3"
+     fill="var(--color-text-primary)"
+     opacity="0.46"
+     style="color:#ffffff;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.46;fill:#faf9f5;stroke:none;stroke-width:1.04881px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="rect5" />
+  <!-- Column 3: x=249 — amber hero tile + dark tile -->
+  <rect
+     x="237.65118"
+     y="51.7229"
+     width="22"
+     height="38"
+     rx="3.3"
+     fill="#F59E0B"
+     style="color:#ffffff;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#f4606c;fill-opacity:1;stroke:none;stroke-width:1.04881px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="rect6" />
+  <rect
+     x="237.65118"
+     y="95"
+     width="22"
+     height="38"
+     rx="3.3"
+     fill="var(--color-text-primary)"
+     opacity="0.70"
+     style="color:#ffffff;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.7;fill:#faf9f5;stroke:none;stroke-width:1.04881px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="rect7" />
+  <!-- Thin vertical rule -->
+  <line
+     x1="290"
+     y1="64"
+     x2="290"
+     y2="126"
+     stroke="var(--color-border-secondary)"
+     stroke-width="1"
+     style="fill:rgb(0, 0, 0);stroke:rgba(222, 220, 209, 0.3);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+     id="line7" />
+  <!-- Primary wordmark -->
+  <text
+     x="319.36102"
+     y="92.638954"
+     font-family="var(--font-sans)"
+     font-size="38"
+     font-weight="500"
+     letter-spacing="6"
+     fill="var(--color-text-primary)"
+     style="color:#ffffff;font-weight:500;font-size:38px;font-family:'Anthropic Sans', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#faf9f5;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="text7">MASON</text>
+  <!-- Subtitle -->
+  <text
+     x="322.19232"
+     y="117.13284"
+     font-family="var(--font-sans)"
+     font-size="11"
+     font-weight="400"
+     letter-spacing="10"
+     fill="var(--color-text-secondary)"
+     style="color:#ffffff;font-weight:400;font-size:11px;font-family:'Anthropic Sans', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#c2c0b6;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+     id="text8">GALLERY</text>
+</svg>

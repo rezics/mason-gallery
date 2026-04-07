@@ -1,0 +1,21 @@
+{
+  "identifier": "default",
+  "description": "Main window capabilities for MasonGallery",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:event:default",
+    "core:webview:default",
+    "dialog:default",
+    "fs:default",
+    "store:default",
+    "opener:default",
+    "process:default",
+    "updater:default"
+  ]
+}

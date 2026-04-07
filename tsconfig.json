@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/desktop" },
+    { "path": "packages/web" },
+    { "path": "packages/cli" }
+  ]
+}

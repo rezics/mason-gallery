@@ -1,0 +1,22 @@
+{
+  "name": "mason-gallery",
+  "version": "2.0.0",
+  "type": "module",
+  "bin": {
+    "mason-gallery": "./dist/index.js"
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node && node -e \"require('fs').cpSync('../web/dist','dist/web',{recursive:true})\"",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "sirv": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^6.0.2"
+  }
+}
