@@ -86,3 +86,11 @@ git commit -m "release: vX.X.X"
 
 git push origin master
 ```
+
+```bash
+git checkout master
+git pull
+
+git tag v2.0.0
+git push origin v2.0.0
+```

@@ -7,3 +7,4 @@
 - [ ] release: web version need release a github pages version
 - [ ] support change the sorting strategy
 - [ ] optimize CI system dependency installation process
+- [ ] web-site need be logo/logo.svg or fix in other way
