@@ -47,7 +47,3 @@ bunx @tauri-apps/cli signer generate -w ~/.tauri/mason-gallery.key
 2. 在 GitHub 儲存庫新增以下 Secrets 供發佈工作流程使用：
    - `TAURI_SIGNING_PRIVATE_KEY` — 私鑰檔案內容
    - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — 產生金鑰時設定的密碼（若有）
-
-## 授權條款
-
-[MIT](../../LICENSE)

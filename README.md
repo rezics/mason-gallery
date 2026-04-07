@@ -4,7 +4,7 @@
 
 Masonry layout Image Viewer — desktop, web, and CLI.
 
-[繁體中文](./doc/readme/zh-Hant.md)
+[正體中文](./doc/readme/zh-Hant.md)
 
 ## Monorepo Structure
 
