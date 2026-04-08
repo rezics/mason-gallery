@@ -10,7 +10,11 @@
     "build": "tauri build"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@mason-gallery/core": "workspace:*",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/material": "^7.3.9",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
@@ -18,8 +22,13 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-store": "^2.4.2",
     "@tauri-apps/plugin-updater": "^2.10.0",
+    "masonic": "^4.1.0",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "typesafe-i18n": "^5.27.1",
+    "wouter": "^3.9.0",
+    "yet-another-react-lightbox": "^3.30.1",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
