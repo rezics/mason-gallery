@@ -4,7 +4,7 @@
 
 Masonry layout Image Viewer — desktop, web, and CLI.
 
-[正體中文](./doc/readme/zh-Hant.md)
+[繁体中文](./doc/readme/zh-Hant.md)
 
 ## Monorepo Structure
 
@@ -80,7 +80,9 @@ git checkout master
 git pull origin master
 
 # compress `dev` into a single commit merge.
-git merge --squash dev
+git merge --squash dev --allow-unrelated-histories
+
+git checkout --theirs .
 
 git commit -m "release: vX.X.X"
 
