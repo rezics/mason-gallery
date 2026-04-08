@@ -10,7 +10,8 @@
   "scripts": {
     "dev:desktop": "bun run --filter @mason-gallery/desktop dev",
     "dev:web": "bun run --filter @mason-gallery/web dev",
-    "build:desktop": "bun run --filter @mason-gallery/desktop build",
+    "gen:icons": "cd packages/desktop && bunx tauri icon ../../public/logo/logo.svg -o src-tauri/icons",
+    "build:desktop": "bun run gen:icons && bun run --filter @mason-gallery/desktop build",
     "build:web": "bun run --filter @mason-gallery/web build",
     "build:cli": "bun run --filter @mason-gallery/web build && bun run --filter mason-gallery build",
     "publish:npm": "bun run build:cli && cd packages/cli && npm publish",
