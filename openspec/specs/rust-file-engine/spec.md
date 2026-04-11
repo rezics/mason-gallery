@@ -45,6 +45,22 @@ The backend SHALL emit image data to the frontend in two phases via Tauri events
 - **WHEN** directory traversal is complete
 - **THEN** a final `images:batch` event SHALL be emitted with `done: true`
 
+### Requirement: List directory tree command
+The Rust backend SHALL provide a Tauri command `list_directory_tree` that accepts one or more root directory paths and returns a flat list of all subdirectory paths relative to each root, without scanning files.
+
+#### Scenario: Retrieve directory tree
+- **WHEN** `list_directory_tree` is invoked with root path `/Users/me/Photos`
+- **THEN** the command SHALL return all subdirectory paths relative to the root (e.g., `["2024", "2024/January", "2024/February"]`)
+- **AND** the command SHALL not read or process any files
+
+#### Scenario: Multiple roots
+- **WHEN** `list_directory_tree` is invoked with multiple root paths
+- **THEN** the command SHALL return directories from all roots, with each path prefixed by its root folder name to avoid collisions
+
+#### Scenario: Performance
+- **WHEN** a directory tree with 5,000 subdirectories is queried
+- **THEN** the command SHALL return results within 500ms
+
 ### Requirement: Delete file to trash
 The Rust backend SHALL provide a Tauri command `delete_to_trash` that moves a file to the system trash/recycle bin.
 
@@ -57,12 +73,16 @@ The Rust backend SHALL provide a Tauri command `delete_to_trash` that moves a fi
 - **THEN** the command SHALL return an error indicating the file was not found
 
 ### Requirement: Image data structure
-Each image record emitted by the backend SHALL include: `source` (the original absolute file path), `width` (pixels or null), `height` (pixels or null). The `source` field SHALL contain the raw filesystem path. The frontend adapter SHALL be responsible for constructing the display URL from the path using the image server port.
+Each image record emitted by the backend SHALL include: `source` (the original absolute file path), `src` (asset protocol URL), `width` (pixels or null), `height` (pixels or null), `relativePath` (path relative to the scanned root directory, using forward slashes). The `source` field SHALL contain the raw filesystem path. The frontend adapter SHALL be responsible for constructing the display URL from the path using the image server port.
 
 #### Scenario: Data structure format
-- **WHEN** an image file at `/photos/cat.jpg` with dimensions 1920x1080 is discovered
-- **THEN** the emitted record SHALL contain `source: "/photos/cat.jpg"`, `width: 1920`, `height: 1080`
+- **WHEN** an image file at `/Users/me/Photos/2024/January/cat.jpg` with dimensions 1920x1080 is discovered during a scan rooted at `/Users/me/Photos`
+- **THEN** the emitted record SHALL contain `source: "/Users/me/Photos/2024/January/cat.jpg"`, `src: "asset://localhost/..."`, `width: 1920`, `height: 1080`, `relativePath: "2024/January/cat.jpg"`
 - **AND** the frontend adapter SHALL construct the display URL as `http://localhost:<port>/image?path=%2Fphotos%2Fcat.jpg`
+
+#### Scenario: Root-level image
+- **WHEN** an image file is directly in the scanned root directory (not in a subdirectory)
+- **THEN** `relativePath` SHALL be just the filename (e.g., `"photo.jpg"`)
 
 ### Requirement: Allowed directories registration
 The `scan_directory` command SHALL register its input directory paths with the image HTTP server's allowed-roots set before beginning file traversal, so that images are servable as soon as batches are emitted to the frontend.
