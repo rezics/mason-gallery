@@ -41,6 +41,8 @@ Users frequently have image collections stored in large compressed archives (ZIP
 archives (
   id            INTEGER PRIMARY KEY,
   archive_path  TEXT UNIQUE NOT NULL,
+  filename      TEXT NOT NULL,       -- basename, indexed for migration candidate lookup
+  file_size     INTEGER NOT NULL,    -- bytes, indexed for migration candidate lookup
   archive_hash  TEXT NOT NULL,       -- hash of path + size + mtime for invalidation
   is_solid      BOOLEAN DEFAULT FALSE,
   is_pinned     BOOLEAN DEFAULT FALSE,
@@ -49,6 +51,8 @@ archives (
   last_accessed TIMESTAMP,
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
+-- Index for migration detection candidate search
+CREATE INDEX idx_archives_migration ON archives(filename, file_size);
 
 thumbnails (
   id            INTEGER PRIMARY KEY,
@@ -72,7 +76,49 @@ passwords (
 - JSON index files → parsing 10k+ entries is slow, no atomic writes
 - Sled/RocksDB → overkill, less tooling support
 
-### 3. Thumbnail generation pipeline
+### 3. Migration detection via reverse path matching
+
+**Decision**: When opening an archive (or future: folder) and no exact path match exists in the cache, perform a migration candidate search by filename + file size, then reverse-compare path segments to detect relocated packs. Prompt the user to confirm before updating the cached path.
+
+**Flow**:
+```
+open(E:/new-loc/collection/pack.zip)
+  │
+  ├── Exact match on archive_path? → YES → use cache (normal flow)
+  │
+  └── NO → query: SELECT * FROM archives WHERE filename = 'pack.zip' AND file_size = <size>
+      │
+      ├── 0 candidates → new archive, scan fresh
+      │
+      └── 1+ candidates → reverse path comparison:
+          │
+          │  New:  E: / new-loc / collection / pack.zip
+          │  Old:  D: / old-loc / collection / pack.zip
+          │                       ↑ segments match from tail inward
+          │
+          ├── Best candidate found → show confirmation modal:
+          │   "检测到此图包可能从 <old-path> 迁移至当前位置，
+          │    是否更新缓存路径以复用已有缓存？"
+          │
+          │   [更新并使用缓存]  [当作新图包扫描]
+          │
+          ├── User confirms → UPDATE archives SET archive_path = <new>, archive_hash = <new-hash> WHERE id = <id>
+          │   → continue with cached data (normal flow)
+          │
+          └── User declines → treat as new archive, scan fresh
+```
+
+**Reverse path comparison algorithm**:
+1. Split both paths into segments, reverse both arrays
+2. Walk segments from index 0 (filename) inward, counting consecutive exact matches
+3. The candidate with the most matching tail segments wins (filename itself at index 0 must always match)
+4. If multiple candidates tie, present all to the user (rare edge case)
+
+**Rationale**: Users frequently relocate image packs across drives or reorganize folder structures. Without this, every move invalidates the entire thumbnail cache — potentially hours of processing for large collections. The reverse-path approach is deterministic and exact (no fuzzy matching), and the modal ensures the user stays in control. This strategy is generic and will extend naturally to folder-based caches in the future.
+
+**SQLite support**: The `archives` table stores `filename` and `file_size` as independent indexed columns to enable fast candidate lookups without scanning all rows.
+
+### 4. Thumbnail generation pipeline
 
 **Decision**: Generate WebP thumbnails (max 400px on longest side) in a background pipeline that mirrors the existing `scan_directory` batch emission pattern.
 
@@ -94,11 +140,11 @@ Thumbnails are stored at `<cache-dir>/thumbs/<archive-hash>/<entry-hash>.webp`. 
 
 **Rationale**: WebP gives good quality at small sizes. The batch-emit pattern is already understood by the frontend. Processing happens on a rayon thread pool for parallelism.
 
-### 4. Full-image extraction (on-demand)
+### 5. Full-image extraction (on-demand)
 
 **Decision**: When the user opens the image viewer for an archive entry, extract the full image to `<cache-dir>/extracted/<archive-hash>/` and serve it via the existing image server endpoint. Extracted full images are treated as temporary — cleaned up more aggressively than thumbnails.
 
-### 5. Solid archive handling
+### 6. Solid archive handling
 
 **Decision**: Detect solid compression during archive open. If solid, show a warning dialog explaining cache implications and recommending extraction. If the user proceeds, extract the entire solid block to cache (unavoidable for solid archives). Track the higher cache cost in SQLite for display in the cache management UI.
 
@@ -107,7 +153,7 @@ Thumbnails are stored at `<cache-dir>/thumbs/<archive-hash>/<entry-hash>.webp`. 
 - 7z: Check if multiple files share a single coder block
 - ZIP: Not applicable (ZIP doesn't support solid compression)
 
-### 6. Password flow
+### 7. Password flow
 
 ```
 User opens archive
@@ -131,7 +177,7 @@ User opens archive
 
 **Master password encryption**: Derive key with PBKDF2 (100k iterations, random salt), encrypt with AES-256-GCM. Salt and IV stored alongside ciphertext in the passwords table. The master password itself is never stored — only validated by attempting to decrypt.
 
-### 7. Cache cleanup strategies
+### 8. Cache cleanup strategies
 
 Three user-selectable modes (stored in settings):
 
@@ -142,7 +188,7 @@ Three user-selectable modes (stored in settings):
 
 Cache management page (`/cache` route) shows all cached archives with size, entry count, last accessed date, pin status, and per-archive delete buttons. Bulk actions: "Clear unpinned" and "Clear all".
 
-### 8. Archive entry points
+### 9. Archive entry points
 
 Three ways to open an archive, all converging to the same `scan_archive` flow:
 
@@ -150,7 +196,7 @@ Three ways to open an archive, all converging to the same `scan_archive` flow:
 2. **File picker**: Add a new "Open Archive" option alongside "Open Folder", using Tauri's file dialog with archive extension filters
 3. **Inline discovery**: When `scan_directory` encounters an archive file, include it in results as a special entry (type: "archive") that the frontend renders as a clickable virtual folder
 
-### 9. Crate selection
+### 10. Crate selection
 
 | Purpose | Crate | Notes |
 |---------|-------|-------|
@@ -161,7 +207,7 @@ Three ways to open an archive, all converging to the same `scan_archive` flow:
 | Thumbnails | `image` (already in deps) | Resize + WebP encode |
 | Encryption | `aes-gcm` + `pbkdf2` | For master password encryption |
 
-### 10. PlatformService extension
+### 11. PlatformService extension
 
 Add to `PlatformCapabilities`:
 ```typescript

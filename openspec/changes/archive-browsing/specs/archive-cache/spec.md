@@ -85,6 +85,33 @@ The application SHALL provide a `/cache` route with a management UI showing all 
 - **WHEN** the cache management page loads
 - **THEN** the total disk usage across all caches SHALL be displayed
 
+### Requirement: Migration detection
+When an archive is opened and no exact path match exists in the cache, the system SHALL search for migration candidates by filename and file size, then use reverse path segment comparison to identify relocated packs. This mechanism is designed to be generic and reusable for folder-based caches in the future.
+
+#### Scenario: Exact path match exists
+- **WHEN** an archive is opened and its full path matches an entry in the `archives` table
+- **THEN** the system SHALL use the cached data directly without migration detection
+
+#### Scenario: No exact match, migration candidate found
+- **WHEN** an archive is opened at path `E:/new/collection/pack.zip`, no exact path match exists, and the `archives` table contains an entry with `filename = 'pack.zip'` AND `file_size` matching the current file
+- **THEN** the system SHALL reverse-compare path segments between the new path and the candidate's stored path, and present a confirmation modal to the user
+
+#### Scenario: User confirms migration
+- **WHEN** the user confirms the migration in the modal
+- **THEN** the system SHALL update the candidate's `archive_path` and `archive_hash` in SQLite to reflect the new location, and proceed using the existing cache
+
+#### Scenario: User declines migration
+- **WHEN** the user declines the migration in the modal
+- **THEN** the system SHALL treat the archive as new, scanning it fresh and creating a new cache entry
+
+#### Scenario: No migration candidate found
+- **WHEN** an archive is opened with no exact path match and no candidate with matching filename + file_size exists
+- **THEN** the system SHALL proceed as a new archive without showing any migration UI
+
+#### Scenario: Multiple migration candidates
+- **WHEN** multiple cache entries share the same filename and file_size
+- **THEN** the system SHALL rank candidates by the number of matching tail path segments (most matches first) and present the best match to the user
+
 ### Requirement: On-demand full image extraction
 When the user views a full-size image from an archive, the system SHALL extract the original image to `<cache-dir>/extracted/<archive-hash>/` and serve it via the HTTP server.
 

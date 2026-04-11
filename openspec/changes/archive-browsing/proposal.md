@@ -10,6 +10,7 @@ Most image collections are distributed as compressed archives (ZIP, RAR, 7z), of
 - Add a SQLite-backed cache system for thumbnail storage and archive metadata
 - Add a cache management page where users can view cache usage, pin archives to prevent auto-cleanup, and manually clear caches
 - Add three configurable cache cleanup strategies: auto-clean on app restart (with whitelist), full retention with manual cleanup
+- Add migration detection: when opening an archive (or future: folder) whose path has no cache hit, reverse-compare path segments against orphaned cache entries to detect relocated packs, prompt the user to confirm, and auto-update the cached path
 - Add password management: passwords stored in memory by default, with opt-in persistence in plaintext or encrypted via a master password (AES-256-GCM)
 - Support three entry points for opening archives: drag-and-drop, file picker (extended to accept archive files), and inline discovery (archives shown as virtual folders during directory browsing)
 - Detect solid archives (RAR/7z) and warn users about high cache cost before proceeding
@@ -19,7 +20,7 @@ Most image collections are distributed as compressed archives (ZIP, RAR, 7z), of
 
 ### New Capabilities
 - `archive-reader`: Rust backend for reading archive file lists and extracting individual entries from ZIP, RAR, and 7z formats, including password-protected archives
-- `archive-cache`: SQLite-based thumbnail cache with configurable cleanup strategies, whitelist support, and a UI management page
+- `archive-cache`: SQLite-based thumbnail cache with configurable cleanup strategies, whitelist support, a UI management page, and migration detection via reverse path matching
 - `archive-passwords`: Password prompt flow, in-memory storage, and optional persistence (plaintext or master-password-encrypted)
 
 ### Modified Capabilities
@@ -33,6 +34,6 @@ Most image collections are distributed as compressed archives (ZIP, RAR, 7z), of
 - **Rust backend**: New dependencies — `zip`, `sevenz-rust`, `unrar` (FFI), `rusqlite`, `image` (thumbnail generation), `ring` or `aes-gcm` (password encryption)
 - **Tauri commands**: New commands `scan_archive`, `extract_archive_entry`, `get_archive_info`, `manage_cache`, `unlock_archive`
 - **PlatformService**: New `capabilities.canBrowseArchives` flag; new methods for archive operations
-- **Frontend**: New cache management route (`/cache`), password dialog component, solid archive warning dialog
+- **Frontend**: New cache management route (`/cache`), password dialog component, solid archive warning dialog, migration confirmation modal
 - **State management**: New Zustand store or extension for archive/cache state
 - **i18n**: New translation keys for archive-related UI strings (EN + ZH-TW)
