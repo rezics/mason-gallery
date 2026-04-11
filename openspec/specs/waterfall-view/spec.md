@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Virtualized masonry grid
-The application SHALL display images in a masonry (waterfall) layout using the masonic library with virtualization — only rendering images visible in the viewport. The grid SHALL support instant scroll jumps to arbitrary positions without freezing, by pre-populating the positioner with known image dimensions.
+The application SHALL display images in a masonry (waterfall) layout using the masonic library with virtualization — only rendering images visible in the viewport. The grid SHALL support instant scroll jumps to arbitrary positions without freezing, by pre-populating the positioner with known image dimensions. The WaterfallGrid component SHALL expose its positioner instance to parent components via an `onPositionerReady` callback prop, enabling external features such as scroll-to-index and position estimation.
 
 #### Scenario: Large collection rendering
 - **WHEN** 5,000 images are loaded
@@ -11,6 +11,11 @@ The application SHALL display images in a masonry (waterfall) layout using the m
 - **WHEN** 10,000 images are loaded and the user jumps from the top to the 8,000th image via scrollbar
 - **THEN** the grid SHALL render the target viewport within one frame (no multi-second freeze)
 - **AND** no more than the visible items plus overscan buffer SHALL be rendered in the DOM
+
+#### Scenario: Positioner accessible externally
+- **WHEN** the WaterfallGrid mounts and the positioner is initialized
+- **THEN** the parent component SHALL receive the positioner instance via the `onPositionerReady` callback
+- **AND** when the positioner is recreated (due to scan or column change), the callback SHALL fire again with the new instance
 
 ### Requirement: Responsive column breakpoints
 The masonry grid SHALL adjust column count based on window width with configurable breakpoints.
