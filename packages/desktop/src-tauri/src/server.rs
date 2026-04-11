@@ -20,9 +20,21 @@ pub struct ServerState {
     pub allowed_roots: AllowedRoots,
 }
 
+#[derive(Clone)]
+struct AppState {
+    allowed_roots: AllowedRoots,
+    cache_dir: PathBuf,
+}
+
 #[derive(serde::Deserialize)]
 struct ImageQuery {
     path: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct ThumbQuery {
+    archive: Option<String>,
+    entry: Option<String>,
 }
 
 fn content_type_for_ext(ext: &str) -> &'static str {
@@ -55,7 +67,7 @@ fn is_path_allowed(canonical: &PathBuf, allowed_roots: &AllowedRoots) -> bool {
 }
 
 async fn image_handler(
-    State(state): State<AllowedRoots>,
+    State(state): State<AppState>,
     headers: HeaderMap,
     Query(query): Query<ImageQuery>,
 ) -> Response {
@@ -70,11 +82,43 @@ async fn image_handler(
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    if !is_path_allowed(&canonical, &state) {
+    if !is_path_allowed(&canonical, &state.allowed_roots) {
         return StatusCode::FORBIDDEN.into_response();
     }
 
-    let metadata = match fs::metadata(&canonical) {
+    serve_file(&canonical, &headers)
+}
+
+async fn thumb_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ThumbQuery>,
+) -> Response {
+    let archive_hash = match query.archive {
+        Some(h) if !h.is_empty() => h,
+        _ => return (StatusCode::BAD_REQUEST, "Missing 'archive' query parameter").into_response(),
+    };
+    let entry_hash = match query.entry {
+        Some(h) if !h.is_empty() => h,
+        _ => return (StatusCode::BAD_REQUEST, "Missing 'entry' query parameter").into_response(),
+    };
+
+    let thumb_path = state
+        .cache_dir
+        .join("thumbs")
+        .join(&archive_hash)
+        .join(format!("{}.webp", entry_hash));
+
+    let canonical = match fs::canonicalize(&thumb_path) {
+        Ok(p) => p,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    serve_file(&canonical, &headers)
+}
+
+fn serve_file(canonical: &PathBuf, headers: &HeaderMap) -> Response {
+    let metadata = match fs::metadata(canonical) {
         Ok(m) => m,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
@@ -83,7 +127,7 @@ async fn image_handler(
         return StatusCode::NOT_FOUND.into_response();
     }
 
-    let etag = compute_etag(&canonical, &metadata);
+    let etag = compute_etag(canonical, &metadata);
 
     if let Some(if_none_match) = headers.get(header::IF_NONE_MATCH) {
         if let Ok(val) = if_none_match.to_str() {
@@ -93,7 +137,7 @@ async fn image_handler(
         }
     }
 
-    let body = match fs::read(&canonical) {
+    let body = match fs::read(canonical) {
         Ok(b) => b,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
@@ -118,10 +162,19 @@ async fn image_handler(
     (StatusCode::OK, response_headers, body).into_response()
 }
 
-pub async fn start_server(allowed_roots: AllowedRoots) -> Result<u16, Box<dyn std::error::Error>> {
+pub async fn start_server(
+    allowed_roots: AllowedRoots,
+    cache_dir: PathBuf,
+) -> Result<u16, Box<dyn std::error::Error>> {
+    let state = AppState {
+        allowed_roots,
+        cache_dir,
+    };
+
     let app = Router::new()
         .route("/image", get(image_handler))
-        .with_state(allowed_roots);
+        .route("/thumb", get(thumb_handler))
+        .with_state(state);
 
     let listener = TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0))).await?;
     let port = listener.local_addr()?.port();

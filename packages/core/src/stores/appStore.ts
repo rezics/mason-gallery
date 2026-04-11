@@ -9,6 +9,16 @@ interface AppState {
   expandedFolders: string[];
   folderImageCounts: Record<string, number>;
 
+  // Archive-related state
+  archivePath: string | null;
+  archivePasswordNeeded: string | null;
+  archiveSolidWarning: string | null;
+  archiveMigrationCandidate: {
+    archiveId: number;
+    oldPath: string;
+    newPath: string;
+  } | null;
+
   setFolders: (folders: string[]) => void;
   setSettingsOpen: (open: boolean) => void;
   toggleSettings: () => void;
@@ -30,6 +40,10 @@ export const useAppStore = create<AppState>((set) => ({
   selectedFolder: null,
   expandedFolders: [],
   folderImageCounts: {},
+  archivePath: null,
+  archivePasswordNeeded: null,
+  archiveSolidWarning: null,
+  archiveMigrationCandidate: null,
 
   setFolders: (folders) => set({ folders }),
   setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
@@ -71,5 +85,9 @@ export const useAppStore = create<AppState>((set) => ({
       selectedFolder: null,
       expandedFolders: [],
       folderImageCounts: {},
+      archivePath: null,
+      archivePasswordNeeded: null,
+      archiveSolidWarning: null,
+      archiveMigrationCandidate: null,
     }),
 }));

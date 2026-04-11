@@ -184,6 +184,113 @@ export async function incrementalRefresh() {
   }
 }
 
+export async function startArchiveScan(
+  archivePath: string,
+  password?: string,
+) {
+  const { resetAndScan, setScanning, appendImages, setTotalCount } =
+    useViewerStore.getState();
+  const { setFolders, resetDirectoryState } = useAppStore.getState();
+  const { formats, sortMethod, pageSize } = useSettingsStore.getState();
+
+  resetAndScan();
+  resetDirectoryState();
+  setFolders([archivePath]);
+  useAppStore.setState({ archivePath });
+
+  const platform = getPlatform();
+  if (!platform.scanArchive) {
+    console.error("Archive scanning not supported on this platform");
+    setScanning(false);
+    return;
+  }
+
+  // Check for migration candidate before scanning
+  if (platform.checkMigration) {
+    try {
+      const candidate = await platform.checkMigration(archivePath);
+      if (candidate) {
+        useAppStore.setState({
+          archiveMigrationCandidate: {
+            archiveId: candidate.archiveId,
+            oldPath: candidate.oldPath,
+            newPath: archivePath,
+          },
+        });
+        setScanning(false);
+        return; // Wait for user to confirm migration or scan fresh
+      }
+    } catch {
+      // Migration check failed, proceed normally
+    }
+  }
+
+  await executeArchiveScan(archivePath, password);
+}
+
+export async function executeArchiveScan(
+  archivePath: string,
+  password?: string,
+) {
+  const { resetAndScan, setScanning, appendImages, setTotalCount } =
+    useViewerStore.getState();
+  const { formats, sortMethod, pageSize } = useSettingsStore.getState();
+
+  const platform = getPlatform();
+  if (!platform.scanArchive) return;
+
+  // Check if solid and warn
+  if (platform.getArchiveInfo) {
+    try {
+      const info = await platform.getArchiveInfo(archivePath);
+      if (info.isSolid) {
+        useAppStore.setState({
+          archiveSolidWarning: archivePath,
+        });
+        setScanning(false);
+        return; // Wait for user confirmation
+      }
+    } catch {
+      // Info check failed, proceed anyway
+    }
+  }
+
+  resetAndScan();
+
+  try {
+    await platform.scanArchive(
+      {
+        path: archivePath,
+        formats,
+        pageSize,
+        sortMethod,
+        password,
+      },
+      (batch) => {
+        if (batch.images.length > 0) {
+          appendImages(batch.images);
+        }
+      },
+      () => {
+        setScanning(false);
+      },
+      (total) => {
+        setTotalCount(total);
+      },
+    );
+  } catch (e) {
+    const errorMsg = String(e);
+    if (errorMsg.includes("PasswordRequired")) {
+      useAppStore.setState({ archivePasswordNeeded: archivePath });
+    } else if (errorMsg.includes("WrongPassword")) {
+      useAppStore.setState({ archivePasswordNeeded: archivePath });
+    } else {
+      console.error("Archive scan failed:", e);
+    }
+    setScanning(false);
+  }
+}
+
 export function resetToDropZone() {
   useViewerStore.getState().reset();
   useAppStore.getState().setFolders([]);

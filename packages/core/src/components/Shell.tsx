@@ -6,6 +6,7 @@ import { useHashLocation } from "wouter/use-hash-location";
 import SettingsDrawer from "@/components/SettingsDrawer";
 import { getTranslations, I18nContext } from "@/i18n";
 import AboutPage from "@/pages/AboutPage";
+import CachePage from "@/pages/CachePage";
 import HomePage from "@/pages/HomePage";
 import { useSettingsStore } from "@/stores/settingsStore";
 
@@ -52,6 +53,7 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
             <Switch>
               <Route path="/" component={HomePage} />
               <Route path="/about" component={AboutPage} />
+              <Route path="/cache" component={CachePage} />
               <Route>
                 <HomePage />
               </Route>

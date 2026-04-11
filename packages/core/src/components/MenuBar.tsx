@@ -15,11 +15,13 @@ import {
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import {
   incrementalRefresh,
   openFolderAndScan,
   resetToDropZone,
+  startArchiveScan,
 } from "@/lib/scanActions";
 import { useAppStore } from "@/stores/appStore";
 
@@ -37,6 +39,7 @@ export default function MenuBar({
   draggable,
 }: MenuBarProps) {
   const t = useI18n();
+  const platform = usePlatform();
   const toggleSettings = useAppStore((s) => s.toggleSettings);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const [, navigate] = useLocation();
@@ -97,6 +100,20 @@ export default function MenuBar({
           >
             {t.menu.openFolder}
           </MenuItem>
+          {platform.capabilities.canBrowseArchives &&
+            platform.pickArchive && (
+              <MenuItem
+                onClick={async () => {
+                  setFileAnchor(null);
+                  if (platform.pickArchive) {
+                    const path = await platform.pickArchive();
+                    if (path) startArchiveScan(path);
+                  }
+                }}
+              >
+                {t.archive.openArchive}
+              </MenuItem>
+            )}
           <MenuItem
             onClick={() => {
               setFileAnchor(null);

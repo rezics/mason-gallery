@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { getPlatform } from "@/context/PlatformContext";
 import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
+import type {
+  CacheCleanupStrategy,
+  PasswordStorageMode,
+} from "@/types/platform";
 
 interface SettingsState {
   formats: string[];
@@ -11,6 +15,8 @@ interface SettingsState {
   showGridPosition: boolean;
   confirmDelete: boolean;
   showDeleteToast: boolean;
+  cacheCleanupStrategy: CacheCleanupStrategy;
+  passwordStorageMode: PasswordStorageMode;
   _hydrated: boolean;
 
   setFormats: (formats: string[]) => void;
@@ -21,6 +27,8 @@ interface SettingsState {
   setShowGridPosition: (show: boolean) => void;
   setConfirmDelete: (v: boolean) => void;
   setShowDeleteToast: (v: boolean) => void;
+  setCacheCleanupStrategy: (strategy: CacheCleanupStrategy) => void;
+  setPasswordStorageMode: (mode: PasswordStorageMode) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -41,6 +49,8 @@ const DEFAULTS = {
   showGridPosition: true,
   confirmDelete: true,
   showDeleteToast: true,
+  cacheCleanupStrategy: "auto-clean" as CacheCleanupStrategy,
+  passwordStorageMode: "none" as PasswordStorageMode,
 };
 
 async function persist(key: string, value: unknown) {
@@ -88,6 +98,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ showDeleteToast });
     persist("showDeleteToast", showDeleteToast);
   },
+  setCacheCleanupStrategy: (cacheCleanupStrategy) => {
+    set({ cacheCleanupStrategy });
+    persist("cacheCleanupStrategy", cacheCleanupStrategy);
+  },
+  setPasswordStorageMode: (passwordStorageMode) => {
+    set({ passwordStorageMode });
+    persist("passwordStorageMode", passwordStorageMode);
+  },
 
   hydrate: async () => {
     const timeout = new Promise<never>((_, reject) =>
@@ -108,6 +126,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           settings.showGridPosition ?? DEFAULTS.showGridPosition,
         confirmDelete: settings.confirmDelete ?? DEFAULTS.confirmDelete,
         showDeleteToast: settings.showDeleteToast ?? DEFAULTS.showDeleteToast,
+        cacheCleanupStrategy:
+          (settings as Record<string, unknown>).cacheCleanupStrategy as CacheCleanupStrategy ??
+          DEFAULTS.cacheCleanupStrategy,
+        passwordStorageMode:
+          (settings as Record<string, unknown>).passwordStorageMode as PasswordStorageMode ??
+          DEFAULTS.passwordStorageMode,
         _hydrated: true,
       });
     } catch (e) {

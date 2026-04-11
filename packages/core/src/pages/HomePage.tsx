@@ -6,7 +6,15 @@ import FolderSidebar from "@/components/FolderSidebar";
 import ImageViewer from "@/components/ImageViewer";
 import WaterfallGrid from "@/components/WaterfallGrid";
 import { useI18n } from "@/i18n";
-import { startScan } from "@/lib/scanActions";
+import MigrationConfirmDialog from "@/components/MigrationConfirmDialog";
+import PasswordDialog from "@/components/PasswordDialog";
+import SolidArchiveWarningDialog from "@/components/SolidArchiveWarningDialog";
+import { usePlatform } from "@/context/PlatformContext";
+import {
+  executeArchiveScan,
+  startArchiveScan,
+  startScan,
+} from "@/lib/scanActions";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
@@ -70,6 +78,14 @@ export default function HomePage() {
   const totalCount = useViewerStore((s) => s.totalCount);
   const showGridPosition = useSettingsStore((s) => s.showGridPosition);
   const selectedFolder = useAppStore((s) => s.selectedFolder);
+
+  const platform = usePlatform();
+  const archivePasswordNeeded = useAppStore((s) => s.archivePasswordNeeded);
+  const archiveSolidWarning = useAppStore((s) => s.archiveSolidWarning);
+  const archiveMigrationCandidate = useAppStore(
+    (s) => s.archiveMigrationCandidate,
+  );
+  const [passwordError, setPasswordError] = useState("");
 
   const images = useMemo(() => {
     if (!selectedFolder) {
@@ -164,7 +180,10 @@ export default function HomePage() {
       )}
 
       {showDropZone ? (
-        <DropZone onFoldersSelected={startScan} />
+        <DropZone
+          onFoldersSelected={startScan}
+          onArchiveSelected={startArchiveScan}
+        />
       ) : (
         <>
           <Box
@@ -247,6 +266,78 @@ export default function HomePage() {
       )}
 
       <ImageViewer />
+
+      {/* Archive Password Dialog */}
+      <PasswordDialog
+        open={!!archivePasswordNeeded}
+        archivePath={archivePasswordNeeded ?? ""}
+        error={passwordError}
+        onSubmit={async (password, remember) => {
+          const path = archivePasswordNeeded;
+          if (!path) return;
+
+          try {
+            if (platform.unlockArchive) {
+              const { passwordStorageMode } =
+                useSettingsStore.getState();
+              await platform.unlockArchive(
+                path,
+                password,
+                remember,
+                passwordStorageMode,
+              );
+            }
+            useAppStore.setState({ archivePasswordNeeded: null });
+            setPasswordError("");
+            executeArchiveScan(path, password);
+          } catch {
+            setPasswordError(t.archive.wrongPassword);
+          }
+        }}
+        onCancel={() => {
+          useAppStore.setState({ archivePasswordNeeded: null });
+          setPasswordError("");
+        }}
+      />
+
+      {/* Migration Confirm Dialog */}
+      <MigrationConfirmDialog
+        open={!!archiveMigrationCandidate}
+        oldPath={archiveMigrationCandidate?.oldPath ?? ""}
+        newPath={archiveMigrationCandidate?.newPath ?? ""}
+        onUseCache={async () => {
+          const candidate = archiveMigrationCandidate;
+          if (!candidate || !platform.confirmMigration) return;
+          await platform.confirmMigration(
+            candidate.archiveId,
+            candidate.newPath,
+          );
+          useAppStore.setState({ archiveMigrationCandidate: null });
+          executeArchiveScan(candidate.newPath);
+        }}
+        onScanFresh={() => {
+          const candidate = archiveMigrationCandidate;
+          useAppStore.setState({ archiveMigrationCandidate: null });
+          if (candidate) {
+            executeArchiveScan(candidate.newPath);
+          }
+        }}
+      />
+
+      {/* Solid Archive Warning */}
+      <SolidArchiveWarningDialog
+        open={!!archiveSolidWarning}
+        onContinue={() => {
+          const path = archiveSolidWarning;
+          useAppStore.setState({ archiveSolidWarning: null });
+          if (path) {
+            executeArchiveScan(path);
+          }
+        }}
+        onCancel={() => {
+          useAppStore.setState({ archiveSolidWarning: null });
+        }}
+      />
     </Box>
   );
 }

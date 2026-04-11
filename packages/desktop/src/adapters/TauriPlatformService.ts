@@ -1,6 +1,12 @@
 import type {
+  ArchiveInfo,
+  CacheCleanupStrategy,
+  CacheStats,
   ImageBatch,
+  MigrationCandidate,
+  PasswordStorageMode,
   PlatformService,
+  ScanArchiveParams,
   ScanParams,
   Settings,
 } from "@mason-gallery/core";
@@ -28,6 +34,7 @@ export const tauriPlatformService: PlatformService = {
     hasCustomTitlebar: true,
     canAutoUpdate: true,
     canDragDropFolders: true,
+    canBrowseArchives: true,
   },
 
   async scanImages(
@@ -70,6 +77,8 @@ export const tauriPlatformService: PlatformService = {
         "Image server port not initialized. Call scanImages first.",
       );
     }
+    // Archive URIs get served via the thumb endpoint (for browsing) or extracted path (for viewer)
+    // The source is already the archive URI — the frontend calls extractArchiveEntry for full images
     return `http://localhost:${cachedServerPort}/image?path=${encodeURIComponent(source)}`;
   },
 
@@ -143,5 +152,100 @@ export const tauriPlatformService: PlatformService = {
       { paths },
     );
     return result.directories;
+  },
+
+  async pickArchive(): Promise<string | null> {
+    const selected = await open({
+      multiple: false,
+      filters: [
+        {
+          name: "Archives",
+          extensions: ["zip", "rar", "7z", "cbz", "cbr"],
+        },
+      ],
+    });
+    if (!selected) return null;
+    return Array.isArray(selected) ? selected[0] ?? null : selected;
+  },
+
+  async scanArchive(
+    params: ScanArchiveParams,
+    onBatch: (batch: ImageBatch) => void,
+    onComplete: () => void,
+    onCount?: (total: number) => void,
+  ): Promise<void> {
+    await getServerPort();
+
+    let unlistenCount: (() => void) | undefined;
+    if (onCount) {
+      unlistenCount = await listen<{ total: number }>(
+        "images:count",
+        (event) => {
+          onCount(event.payload.total);
+          unlistenCount?.();
+        },
+      );
+    }
+
+    const unlisten = await listen<ImageBatch>("images:batch", (event) => {
+      const batch = event.payload;
+      if (batch.images.length > 0) {
+        onBatch(batch);
+      }
+      if (batch.done) {
+        onComplete();
+        unlisten();
+      }
+    });
+
+    await invoke("scan_archive", { params });
+  },
+
+  async extractArchiveEntry(uri: string): Promise<string> {
+    return invoke<string>("extract_archive_entry", { uri });
+  },
+
+  async getArchiveInfo(path: string): Promise<ArchiveInfo> {
+    return invoke<ArchiveInfo>("get_archive_info", { path });
+  },
+
+  async getCacheStats(): Promise<CacheStats[]> {
+    return invoke<CacheStats[]>("get_cache_stats");
+  },
+
+  async clearCache(archiveId?: number): Promise<void> {
+    await invoke("clear_cache", { archiveId: archiveId ?? null });
+  },
+
+  async pinCache(archiveId: number, pinned: boolean): Promise<void> {
+    await invoke("pin_cache", { archiveId, pinned });
+  },
+
+  async unlockArchive(
+    path: string,
+    password: string,
+    remember: boolean,
+    storageMode?: PasswordStorageMode,
+    masterPassword?: string,
+  ): Promise<void> {
+    await invoke("unlock_archive", {
+      path,
+      password,
+      remember,
+      storageMode: storageMode ?? null,
+      masterPassword: masterPassword ?? null,
+    });
+  },
+
+  async checkMigration(path: string): Promise<MigrationCandidate | null> {
+    return invoke<MigrationCandidate | null>("check_migration", { path });
+  },
+
+  async confirmMigration(archiveId: number, newPath: string): Promise<void> {
+    await invoke("confirm_migration", { archiveId, newPath });
+  },
+
+  async startupCacheCleanup(strategy: CacheCleanupStrategy): Promise<void> {
+    await invoke("startup_cache_cleanup", { strategy });
   },
 };

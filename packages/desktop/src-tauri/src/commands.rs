@@ -46,6 +46,7 @@ struct FileEntry {
     path: String,
     relative_path: String,
     modified: Option<SystemTime>,
+    is_archive: bool,
 }
 
 #[tauri::command]
@@ -90,7 +91,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                 .map(|e| e.to_lowercase())
                 .unwrap_or_default();
 
-            if formats.contains(&ext) {
+            if formats.contains(&ext) || crate::archive::is_archive_extension(&ext) {
                 let modified = fs::metadata(entry.path()).and_then(|m| m.modified()).ok();
 
                 let relative_path = entry
@@ -104,6 +105,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                     path: entry.path().to_string_lossy().to_string(),
                     relative_path,
                     modified,
+                    is_archive: crate::archive::is_archive_extension(&ext),
                 });
             }
         }
@@ -126,12 +128,22 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
         let images: Vec<WImage> = chunk
             .par_iter()
             .map(|entry| {
-                let (width, height) = get_image_dimensions(Path::new(&entry.path));
-                WImage {
-                    source: entry.path.clone(),
-                    relative_path: entry.relative_path.clone(),
-                    width,
-                    height,
+                if entry.is_archive {
+                    // Archive entries get null dimensions — rendered as virtual folders
+                    WImage {
+                        source: entry.path.clone(),
+                        relative_path: entry.relative_path.clone(),
+                        width: None,
+                        height: None,
+                    }
+                } else {
+                    let (width, height) = get_image_dimensions(Path::new(&entry.path));
+                    WImage {
+                        source: entry.path.clone(),
+                        relative_path: entry.relative_path.clone(),
+                        width,
+                        height,
+                    }
                 }
             })
             .collect();

@@ -4,22 +4,44 @@ import { useCallback, useEffect } from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 
-interface DropZoneProps {
-  onFoldersSelected: (paths: string[]) => void;
+const ARCHIVE_EXTENSIONS = [".zip", ".rar", ".7z", ".cbz", ".cbr"];
+
+function isArchiveFile(path: string): boolean {
+  const lower = path.toLowerCase();
+  return ARCHIVE_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
-export default function DropZone({ onFoldersSelected }: DropZoneProps) {
+interface DropZoneProps {
+  onFoldersSelected: (paths: string[]) => void;
+  onArchiveSelected?: (path: string) => void;
+}
+
+export default function DropZone({
+  onFoldersSelected,
+  onArchiveSelected,
+}: DropZoneProps) {
   const t = useI18n();
   const platform = usePlatform();
 
   useEffect(() => {
     const cleanup = platform.onDragDrop((paths) => {
-      if (paths.length > 0) {
+      if (paths.length === 0) return;
+
+      // Separate archives from folders
+      const archives = paths.filter(isArchiveFile);
+      const folders = paths.filter((p) => !isArchiveFile(p));
+
+      if (archives.length > 0 && archives[0] && onArchiveSelected) {
+        // Open the first archive
+        onArchiveSelected(archives[0]);
+      } else if (folders.length > 0) {
+        onFoldersSelected(folders);
+      } else if (paths.length > 0) {
         onFoldersSelected(paths);
       }
     });
     return cleanup;
-  }, [platform, onFoldersSelected]);
+  }, [platform, onFoldersSelected, onArchiveSelected]);
 
   const handleSelectFolder = useCallback(async () => {
     const paths = await platform.pickFolders();
@@ -27,6 +49,8 @@ export default function DropZone({ onFoldersSelected }: DropZoneProps) {
       onFoldersSelected(paths);
     }
   }, [platform, onFoldersSelected]);
+
+  const canBrowseArchives = platform.capabilities.canBrowseArchives;
 
   return (
     <Box
@@ -53,7 +77,7 @@ export default function DropZone({ onFoldersSelected }: DropZoneProps) {
         {t.home.dropZoneTitle}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        {t.home.dropZoneHint}
+        {canBrowseArchives ? t.archive.dropZoneHint : t.home.dropZoneHint}
       </Typography>
       <Button variant="outlined" startIcon={<CloudUploadIcon />}>
         {t.home.selectFolder}

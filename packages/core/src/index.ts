@@ -18,10 +18,12 @@ export type { Locales, TranslationKeys } from "./i18n/index";
 export { getTranslations, I18nContext, useI18n } from "./i18n/index";
 // Lib
 export {
+  executeArchiveScan,
   incrementalRefresh,
   openFolderAndScan,
   refresh,
   resetToDropZone,
+  startArchiveScan,
   startScan,
 } from "./lib/scanActions";
 export { default as AboutPage } from "./pages/AboutPage";
@@ -41,9 +43,15 @@ export type {
 } from "./types/index";
 // Types
 export type {
+  ArchiveInfo,
+  CacheCleanupStrategy,
+  CacheStats,
   ImageBatch as PlatformImageBatch,
+  MigrationCandidate,
+  PasswordStorageMode,
   PlatformCapabilities,
   PlatformService,
+  ScanArchiveParams,
   ScanParams as PlatformScanParams,
   Settings,
 } from "./types/platform";
