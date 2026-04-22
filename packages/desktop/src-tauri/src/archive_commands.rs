@@ -214,6 +214,32 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
 
     let thumb_dir = cache_dir.join("thumbs").join(&archive_hash);
 
+    // Try extracting the first uncached entry to detect password errors early.
+    // ZIP archives allow listing entries without a password, but extraction fails.
+    // Without this check, password errors are silently swallowed by filter_map.
+    if !image_entries.is_empty() {
+        let needs_extract = image_entries.iter().any(|entry| {
+            match db.get_cached_thumbnail(archive_id, &entry.path) {
+                Ok(Some(thumb)) => !cache_dir.join(&thumb.thumb_path).exists(),
+                _ => true,
+            }
+        });
+        if needs_extract {
+            // Probe the first uncached entry
+            let probe_entry = image_entries.iter().find(|entry| {
+                match db.get_cached_thumbnail(archive_id, &entry.path) {
+                    Ok(Some(thumb)) => !cache_dir.join(&thumb.thumb_path).exists(),
+                    _ => true,
+                }
+            });
+            if let Some(entry) = probe_entry {
+                reader
+                    .extract_entry_to_memory(&entry.path, password.as_deref())
+                    .map_err(archive_error_to_string)?;
+            }
+        }
+    }
+
     // Process in batches
     for chunk in image_entries.chunks(params.page_size) {
         let images: Vec<WImage> = chunk

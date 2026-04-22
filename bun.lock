@@ -30,6 +30,10 @@
         "@tailwindcss/vite": "^4.2.2",
         "tailwindcss": "^4.2.2",
       },
+      "devDependencies": {
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+      },
       "peerDependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.1",

@@ -1,3 +1,4 @@
+use crate::archive::{compute_archive_hash, compute_entry_hash, parse_archive_uri};
 use axum::{
     extract::{Query, State},
     http::{HeaderMap, StatusCode, header},
@@ -11,6 +12,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
+use std::time::UNIX_EPOCH;
 use tokio::net::TcpListener;
 
 pub type AllowedRoots = Arc<RwLock<HashSet<PathBuf>>>;
@@ -76,6 +78,11 @@ async fn image_handler(
         _ => return (StatusCode::BAD_REQUEST, "Missing 'path' query parameter").into_response(),
     };
 
+    // Handle archive:/// URIs by resolving to cached thumbnails
+    if raw_path.starts_with("archive:///") {
+        return serve_archive_thumb(&state, &headers, &raw_path);
+    }
+
     let requested = PathBuf::from(&raw_path);
     let canonical = match fs::canonicalize(&requested) {
         Ok(p) => p,
@@ -87,6 +94,41 @@ async fn image_handler(
     }
 
     serve_file(&canonical, &headers)
+}
+
+fn serve_archive_thumb(state: &AppState, headers: &HeaderMap, uri: &str) -> Response {
+    let (archive_path, entry_path) = match parse_archive_uri(uri) {
+        Ok(pair) => pair,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    let metadata = match fs::metadata(&archive_path) {
+        Ok(m) => m,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+    let file_size = metadata.len();
+    let mtime = metadata
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let archive_hash = compute_archive_hash(&archive_path, file_size, mtime);
+    let entry_hash = compute_entry_hash(&entry_path);
+
+    let thumb_path = state
+        .cache_dir
+        .join("thumbs")
+        .join(&archive_hash)
+        .join(format!("{}.webp", entry_hash));
+
+    let canonical = match fs::canonicalize(&thumb_path) {
+        Ok(p) => p,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    serve_file(&canonical, headers)
 }
 
 async fn thumb_handler(

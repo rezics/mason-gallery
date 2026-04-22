@@ -1,5 +1,7 @@
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { Box, Button, Typography } from "@mui/material";
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect } from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
@@ -50,11 +52,19 @@ export default function DropZone({
     }
   }, [platform, onFoldersSelected]);
 
-  const canBrowseArchives = platform.capabilities.canBrowseArchives;
+  const handleSelectArchive = useCallback(async () => {
+    if (!platform.pickArchive || !onArchiveSelected) return;
+    const path = await platform.pickArchive();
+    if (path) {
+      onArchiveSelected(path);
+    }
+  }, [platform, onArchiveSelected]);
+
+  const canBrowseArchives =
+    platform.capabilities.canBrowseArchives && onArchiveSelected;
 
   return (
     <Box
-      onClick={handleSelectFolder}
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -65,11 +75,7 @@ export default function DropZone({
         borderColor: "divider",
         borderRadius: 2,
         m: 4,
-        cursor: "pointer",
         transition: "border-color 0.2s",
-        "&:hover": {
-          borderColor: "primary.main",
-        },
       }}
     >
       <CloudUploadIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
@@ -79,9 +85,24 @@ export default function DropZone({
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {canBrowseArchives ? t.archive.dropZoneHint : t.home.dropZoneHint}
       </Typography>
-      <Button variant="outlined" startIcon={<CloudUploadIcon />}>
-        {t.home.selectFolder}
-      </Button>
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="outlined"
+          startIcon={<FolderOpenIcon />}
+          onClick={handleSelectFolder}
+        >
+          {t.home.selectFolder}
+        </Button>
+        {canBrowseArchives && (
+          <Button
+            variant="outlined"
+            startIcon={<Inventory2OutlinedIcon />}
+            onClick={handleSelectArchive}
+          >
+            {t.archive.openArchive}
+          </Button>
+        )}
+      </Stack>
     </Box>
   );
 }
