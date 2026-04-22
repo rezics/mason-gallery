@@ -100,20 +100,19 @@ export default function MenuBar({
           >
             {t.menu.openFolder}
           </MenuItem>
-          {platform.capabilities.canBrowseArchives &&
-            platform.pickArchive && (
-              <MenuItem
-                onClick={async () => {
-                  setFileAnchor(null);
-                  if (platform.pickArchive) {
-                    const path = await platform.pickArchive();
-                    if (path) startArchiveScan(path);
-                  }
-                }}
-              >
-                {t.archive.openArchive}
-              </MenuItem>
-            )}
+          {platform.capabilities.canBrowseArchives && platform.pickArchive && (
+            <MenuItem
+              onClick={async () => {
+                setFileAnchor(null);
+                if (platform.pickArchive) {
+                  const path = await platform.pickArchive();
+                  if (path) startArchiveScan(path);
+                }
+              }}
+            >
+              {t.archive.openArchive}
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() => {
               setFileAnchor(null);

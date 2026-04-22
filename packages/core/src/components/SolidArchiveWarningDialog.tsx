@@ -25,9 +25,7 @@ export default function SolidArchiveWarningDialog({
     <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
       <DialogTitle>{t.archive.solidWarningTitle}</DialogTitle>
       <DialogContent>
-        <Typography variant="body2">
-          {t.archive.solidWarningMessage}
-        </Typography>
+        <Typography variant="body2">{t.archive.solidWarningMessage}</Typography>
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel}>{t.archive.cancel}</Button>

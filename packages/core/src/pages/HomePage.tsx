@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DropZone from "@/components/DropZone";
 import FolderSidebar from "@/components/FolderSidebar";
 import ImageViewer from "@/components/ImageViewer";
-import WaterfallGrid from "@/components/WaterfallGrid";
-import { useI18n } from "@/i18n";
 import MigrationConfirmDialog from "@/components/MigrationConfirmDialog";
 import PasswordDialog from "@/components/PasswordDialog";
 import SolidArchiveWarningDialog from "@/components/SolidArchiveWarningDialog";
+import WaterfallGrid from "@/components/WaterfallGrid";
 import { usePlatform } from "@/context/PlatformContext";
+import { useI18n } from "@/i18n";
 import {
   executeArchiveScan,
   startArchiveScan,
@@ -278,8 +278,7 @@ export default function HomePage() {
 
           try {
             if (platform.unlockArchive) {
-              const { passwordStorageMode } =
-                useSettingsStore.getState();
+              const { passwordStorageMode } = useSettingsStore.getState();
               await platform.unlockArchive(
                 path,
                 password,

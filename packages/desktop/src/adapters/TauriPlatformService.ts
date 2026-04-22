@@ -1,6 +1,7 @@
 import type {
   ArchiveInfo,
   CacheCleanupStrategy,
+  CachePolicy,
   CacheStats,
   ImageBatch,
   MigrationCandidate,
@@ -9,6 +10,7 @@ import type {
   ScanArchiveParams,
   ScanParams,
   Settings,
+  SourceOverride,
 } from "@mason-gallery/core";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -24,6 +26,15 @@ async function getServerPort(): Promise<number> {
   if (cachedServerPort !== null) return cachedServerPort;
   cachedServerPort = await invoke<number>("get_image_server_port");
   return cachedServerPort;
+}
+
+function parseThumbUri(
+  thumbId: string,
+): { source: string; entry: string; w: string } | null {
+  // Expected: mg-thumb:///<sourceHash>/<entryHash>?w=<width>
+  const m = thumbId.match(/^mg-thumb:\/\/\/([^/]+)\/([^?]+)\?w=(\d+)/);
+  if (!m || !m[1] || !m[2] || !m[3]) return null;
+  return { source: m[1], entry: m[2], w: m[3] };
 }
 
 export const tauriPlatformService: PlatformService = {
@@ -43,7 +54,6 @@ export const tauriPlatformService: PlatformService = {
     onComplete: () => void,
     onCount?: (total: number) => void,
   ): Promise<void> {
-    // Ensure server port is cached before images start rendering
     await getServerPort();
 
     let unlistenCount: (() => void) | undefined;
@@ -77,9 +87,17 @@ export const tauriPlatformService: PlatformService = {
         "Image server port not initialized. Call scanImages first.",
       );
     }
-    // Archive URIs get served via the thumb endpoint (for browsing) or extracted path (for viewer)
-    // The source is already the archive URI — the frontend calls extractArchiveEntry for full images
     return `http://localhost:${cachedServerPort}/image?path=${encodeURIComponent(source)}`;
+  },
+
+  getThumbUrl(thumbId: string): string {
+    if (cachedServerPort === null) {
+      return "";
+    }
+    const parsed = parseThumbUri(thumbId);
+    if (!parsed) return "";
+    const { source, entry, w } = parsed;
+    return `http://localhost:${cachedServerPort}/thumb?source=${encodeURIComponent(source)}&entry=${encodeURIComponent(entry)}&w=${w}`;
   },
 
   async deleteFile(path: string): Promise<void> {
@@ -128,6 +146,8 @@ export const tauriPlatformService: PlatformService = {
     const showGridPosition = await store.get<boolean>("showGridPosition");
     const confirmDelete = await store.get<boolean>("confirmDelete");
     const showDeleteToast = await store.get<boolean>("showDeleteToast");
+    const cachePolicy = await store.get<CachePolicy>("cachePolicy");
+    const thumbnailSizes = await store.get<number[]>("thumbnailSizes");
 
     return {
       ...(formats != null && { formats }),
@@ -138,6 +158,8 @@ export const tauriPlatformService: PlatformService = {
       ...(showGridPosition != null && { showGridPosition }),
       ...(confirmDelete != null && { confirmDelete }),
       ...(showDeleteToast != null && { showDeleteToast }),
+      ...(cachePolicy != null && { cachePolicy }),
+      ...(thumbnailSizes != null && { thumbnailSizes }),
     };
   },
 
@@ -165,7 +187,7 @@ export const tauriPlatformService: PlatformService = {
       ],
     });
     if (!selected) return null;
-    return Array.isArray(selected) ? selected[0] ?? null : selected;
+    return Array.isArray(selected) ? (selected[0] ?? null) : selected;
   },
 
   async scanArchive(
@@ -201,10 +223,6 @@ export const tauriPlatformService: PlatformService = {
     await invoke("scan_archive", { params });
   },
 
-  async extractArchiveEntry(uri: string): Promise<string> {
-    return invoke<string>("extract_archive_entry", { uri });
-  },
-
   async getArchiveInfo(path: string): Promise<ArchiveInfo> {
     return invoke<ArchiveInfo>("get_archive_info", { path });
   },
@@ -213,12 +231,16 @@ export const tauriPlatformService: PlatformService = {
     return invoke<CacheStats[]>("get_cache_stats");
   },
 
-  async clearCache(archiveId?: number): Promise<void> {
-    await invoke("clear_cache", { archiveId: archiveId ?? null });
+  async clearThumbnails(sourceId?: number): Promise<void> {
+    await invoke("clear_thumbnails", { sourceId: sourceId ?? null });
   },
 
-  async pinCache(archiveId: number, pinned: boolean): Promise<void> {
-    await invoke("pin_cache", { archiveId, pinned });
+  async clearExtracted(sourceId?: number): Promise<void> {
+    await invoke("clear_extracted", { sourceId: sourceId ?? null });
+  },
+
+  async pinCache(sourceId: number, pinned: boolean): Promise<void> {
+    await invoke("pin_cache", { sourceId, pinned });
   },
 
   async unlockArchive(
@@ -241,11 +263,25 @@ export const tauriPlatformService: PlatformService = {
     return invoke<MigrationCandidate | null>("check_migration", { path });
   },
 
-  async confirmMigration(archiveId: number, newPath: string): Promise<void> {
-    await invoke("confirm_migration", { archiveId, newPath });
+  async confirmMigration(sourceId: number, newPath: string): Promise<void> {
+    await invoke("confirm_migration", { sourceId, newPath });
   },
 
   async startupCacheCleanup(strategy: CacheCleanupStrategy): Promise<void> {
     await invoke("startup_cache_cleanup", { strategy });
+  },
+
+  async setCachePolicy(policy: CachePolicy): Promise<void> {
+    await invoke("set_cache_policy", { policy });
+  },
+
+  async setSourcePolicy(
+    sourceId: number,
+    override: SourceOverride | null,
+  ): Promise<void> {
+    await invoke("set_source_policy", {
+      sourceId,
+      policyOverride: override,
+    });
   },
 };

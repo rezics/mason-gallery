@@ -184,14 +184,9 @@ export async function incrementalRefresh() {
   }
 }
 
-export async function startArchiveScan(
-  archivePath: string,
-  password?: string,
-) {
-  const { resetAndScan, setScanning, appendImages, setTotalCount } =
-    useViewerStore.getState();
+export async function startArchiveScan(archivePath: string, password?: string) {
+  const { resetAndScan, setScanning } = useViewerStore.getState();
   const { setFolders, resetDirectoryState } = useAppStore.getState();
-  const { formats, sortMethod, pageSize } = useSettingsStore.getState();
 
   resetAndScan();
   resetDirectoryState();
@@ -212,7 +207,7 @@ export async function startArchiveScan(
       if (candidate) {
         useAppStore.setState({
           archiveMigrationCandidate: {
-            archiveId: candidate.archiveId,
+            archiveId: candidate.sourceId,
             oldPath: candidate.oldPath,
             newPath: archivePath,
           },

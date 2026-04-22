@@ -3,7 +3,12 @@ import { getPlatform } from "@/context/PlatformContext";
 import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
 import type {
   CacheCleanupStrategy,
+  CachePolicy,
   PasswordStorageMode,
+} from "@/types/platform";
+import {
+  DEFAULT_CACHE_POLICY,
+  DEFAULT_THUMBNAIL_SIZES,
 } from "@/types/platform";
 
 interface SettingsState {
@@ -17,6 +22,8 @@ interface SettingsState {
   showDeleteToast: boolean;
   cacheCleanupStrategy: CacheCleanupStrategy;
   passwordStorageMode: PasswordStorageMode;
+  cachePolicy: CachePolicy;
+  thumbnailSizes: number[];
   _hydrated: boolean;
 
   setFormats: (formats: string[]) => void;
@@ -29,6 +36,8 @@ interface SettingsState {
   setShowDeleteToast: (v: boolean) => void;
   setCacheCleanupStrategy: (strategy: CacheCleanupStrategy) => void;
   setPasswordStorageMode: (mode: PasswordStorageMode) => void;
+  setCachePolicy: (policy: CachePolicy) => void;
+  setThumbnailSizes: (sizes: number[]) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -51,6 +60,8 @@ const DEFAULTS = {
   showDeleteToast: true,
   cacheCleanupStrategy: "auto-clean" as CacheCleanupStrategy,
   passwordStorageMode: "none" as PasswordStorageMode,
+  cachePolicy: DEFAULT_CACHE_POLICY,
+  thumbnailSizes: DEFAULT_THUMBNAIL_SIZES,
 };
 
 async function persist(key: string, value: unknown) {
@@ -106,6 +117,18 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ passwordStorageMode });
     persist("passwordStorageMode", passwordStorageMode);
   },
+  setCachePolicy: (cachePolicy) => {
+    set({ cachePolicy });
+    persist("cachePolicy", cachePolicy);
+    const platform = getPlatform();
+    platform
+      .setCachePolicy?.(cachePolicy)
+      .catch((e) => console.error("Failed to sync cachePolicy to backend:", e));
+  },
+  setThumbnailSizes: (thumbnailSizes) => {
+    set({ thumbnailSizes });
+    persist("thumbnailSizes", thumbnailSizes);
+  },
 
   hydrate: async () => {
     const timeout = new Promise<never>((_, reject) =>
@@ -127,11 +150,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         confirmDelete: settings.confirmDelete ?? DEFAULTS.confirmDelete,
         showDeleteToast: settings.showDeleteToast ?? DEFAULTS.showDeleteToast,
         cacheCleanupStrategy:
-          (settings as Record<string, unknown>).cacheCleanupStrategy as CacheCleanupStrategy ??
+          ((settings as Record<string, unknown>)
+            .cacheCleanupStrategy as CacheCleanupStrategy) ??
           DEFAULTS.cacheCleanupStrategy,
         passwordStorageMode:
-          (settings as Record<string, unknown>).passwordStorageMode as PasswordStorageMode ??
+          ((settings as Record<string, unknown>)
+            .passwordStorageMode as PasswordStorageMode) ??
           DEFAULTS.passwordStorageMode,
+        cachePolicy: settings.cachePolicy ?? DEFAULTS.cachePolicy,
+        thumbnailSizes: settings.thumbnailSizes ?? DEFAULTS.thumbnailSizes,
         _hydrated: true,
       });
     } catch (e) {

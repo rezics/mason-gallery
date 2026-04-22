@@ -112,6 +112,35 @@ export type TranslationKeys = {
     masterPasswordMismatch: string;
     deletePasswordsWarning: string;
   };
+  cache: {
+    section: string;
+    extractedMode: string;
+    extractedModeNoCache: string;
+    extractedModeLru: string;
+    extractedModeUnlimited: string;
+    extractedMinFileSize: string;
+    extractedMaxSizePerSource: string;
+    thumbnailRetention: string;
+    thumbnailRetainUntilRemoved: string;
+    thumbnailRetainLru: string;
+    thumbnailMaxTotalSize: string;
+    thumbnailSizes: string;
+    thumbnailSizesHint: string;
+    clearThumbs: string;
+    clearExtracted: string;
+    clearThumbsConfirm: string;
+    clearExtractedConfirm: string;
+    bytes: string;
+    mb: string;
+    confirm: string;
+    customize: string;
+    resetToDefaults: string;
+    overridePolicy: string;
+    useDefault: string;
+    effectivePolicy: string;
+    thumbCache: string;
+    extractedCache: string;
+  };
 };
 
 export type Translations = Record<Locales, TranslationKeys>;

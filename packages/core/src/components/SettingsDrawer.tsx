@@ -5,6 +5,10 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Drawer,
   FormControlLabel,
@@ -23,7 +27,15 @@ import { useI18n } from "@/i18n";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { Locale, SortMethod } from "@/types";
-import type { CacheCleanupStrategy, PasswordStorageMode } from "@/types/platform";
+import type {
+  CacheCleanupStrategy,
+  CachePolicy,
+  ExtractedMode,
+  PasswordStorageMode,
+  ThumbRetain,
+} from "@/types/platform";
+
+const MB = 1024 * 1024;
 
 export default function SettingsDrawer() {
   const t = useI18n();
@@ -55,12 +67,40 @@ export default function SettingsDrawer() {
   const setPasswordStorageMode = useSettingsStore(
     (s) => s.setPasswordStorageMode,
   );
+  const cachePolicy = useSettingsStore((s) => s.cachePolicy);
+  const setCachePolicy = useSettingsStore((s) => s.setCachePolicy);
+  const thumbnailSizes = useSettingsStore((s) => s.thumbnailSizes);
+  const setThumbnailSizes = useSettingsStore((s) => s.setThumbnailSizes);
 
   const platform = usePlatform();
   const [, navigate] = useLocation();
 
   const [newFormat, setNewFormat] = useState("");
   const [newBpWidth, setNewBpWidth] = useState("");
+  const [thumbSizesText, setThumbSizesText] = useState(
+    thumbnailSizes.join(", "),
+  );
+  const [clearConfirm, setClearConfirm] = useState<
+    null | "thumbs" | "extracted"
+  >(null);
+
+  const updateCachePolicy = (patch: Partial<CachePolicy>) => {
+    setCachePolicy({ ...cachePolicy, ...patch });
+  };
+
+  const commitThumbSizes = () => {
+    const parsed = thumbSizesText
+      .split(",")
+      .map((s) => Number.parseInt(s.trim(), 10))
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .sort((a, b) => a - b);
+    if (parsed.length > 0) {
+      setThumbnailSizes(parsed);
+      setThumbSizesText(parsed.join(", "));
+    } else {
+      setThumbSizesText(thumbnailSizes.join(", "));
+    }
+  };
 
   const handleAddFormat = () => {
     const fmt = newFormat.trim().toLowerCase();
@@ -307,9 +347,7 @@ export default function SettingsDrawer() {
               size="small"
               value={cacheCleanupStrategy}
               onChange={(e) =>
-                setCacheCleanupStrategy(
-                  e.target.value as CacheCleanupStrategy,
-                )
+                setCacheCleanupStrategy(e.target.value as CacheCleanupStrategy)
               }
               sx={{ mb: 2 }}
             >
@@ -326,9 +364,7 @@ export default function SettingsDrawer() {
               size="small"
               value={passwordStorageMode}
               onChange={(e) =>
-                setPasswordStorageMode(
-                  e.target.value as PasswordStorageMode,
-                )
+                setPasswordStorageMode(e.target.value as PasswordStorageMode)
               }
               sx={{ mb: 2 }}
             >
@@ -349,6 +385,228 @@ export default function SettingsDrawer() {
             >
               {t.archive.manageCache}
             </Button>
+
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle1" sx={{ mb: 2 }}>
+              {t.cache.section}
+            </Typography>
+
+            {/* Extracted cache mode */}
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t.cache.extractedMode}
+            </Typography>
+            <Select
+              fullWidth
+              size="small"
+              value={cachePolicy.extracted.mode}
+              onChange={(e) =>
+                updateCachePolicy({
+                  extracted: {
+                    ...cachePolicy.extracted,
+                    mode: e.target.value as ExtractedMode,
+                  },
+                })
+              }
+              sx={{ mb: 2 }}
+            >
+              <MenuItem value="no-cache">
+                {t.cache.extractedModeNoCache}
+              </MenuItem>
+              <MenuItem value="lru-capped">{t.cache.extractedModeLru}</MenuItem>
+              <MenuItem value="unlimited">
+                {t.cache.extractedModeUnlimited}
+              </MenuItem>
+            </Select>
+
+            {cachePolicy.extracted.mode === "lru-capped" && (
+              <>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  {t.cache.extractedMaxSizePerSource}
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="number"
+                  value={
+                    cachePolicy.extracted.maxSizePerSource != null
+                      ? Math.round(cachePolicy.extracted.maxSizePerSource / MB)
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const mb = Number.parseInt(e.target.value, 10);
+                    updateCachePolicy({
+                      extracted: {
+                        ...cachePolicy.extracted,
+                        maxSizePerSource:
+                          Number.isFinite(mb) && mb > 0 ? mb * MB : undefined,
+                      },
+                    });
+                  }}
+                  slotProps={{ htmlInput: { min: 0 } }}
+                  sx={{ mb: 2 }}
+                />
+              </>
+            )}
+
+            {cachePolicy.extracted.mode !== "no-cache" && (
+              <>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  {t.cache.extractedMinFileSize}
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="number"
+                  value={
+                    cachePolicy.extracted.minFileSize != null
+                      ? Math.round(cachePolicy.extracted.minFileSize / MB)
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const mb = Number.parseInt(e.target.value, 10);
+                    updateCachePolicy({
+                      extracted: {
+                        ...cachePolicy.extracted,
+                        minFileSize:
+                          Number.isFinite(mb) && mb > 0 ? mb * MB : undefined,
+                      },
+                    });
+                  }}
+                  slotProps={{ htmlInput: { min: 0 } }}
+                  sx={{ mb: 2 }}
+                />
+              </>
+            )}
+
+            {/* Thumbnail retention */}
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t.cache.thumbnailRetention}
+            </Typography>
+            <Select
+              fullWidth
+              size="small"
+              value={cachePolicy.thumbnails.retain}
+              onChange={(e) =>
+                updateCachePolicy({
+                  thumbnails: {
+                    ...cachePolicy.thumbnails,
+                    retain: e.target.value as ThumbRetain,
+                  },
+                })
+              }
+              sx={{ mb: 2 }}
+            >
+              <MenuItem value="until-source-removed">
+                {t.cache.thumbnailRetainUntilRemoved}
+              </MenuItem>
+              <MenuItem value="lru-capped">
+                {t.cache.thumbnailRetainLru}
+              </MenuItem>
+            </Select>
+
+            {cachePolicy.thumbnails.retain === "lru-capped" && (
+              <>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  {t.cache.thumbnailMaxTotalSize}
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="number"
+                  value={
+                    cachePolicy.thumbnails.maxTotalSize != null
+                      ? Math.round(cachePolicy.thumbnails.maxTotalSize / MB)
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const mb = Number.parseInt(e.target.value, 10);
+                    updateCachePolicy({
+                      thumbnails: {
+                        ...cachePolicy.thumbnails,
+                        maxTotalSize:
+                          Number.isFinite(mb) && mb > 0 ? mb * MB : undefined,
+                      },
+                    });
+                  }}
+                  slotProps={{ htmlInput: { min: 0 } }}
+                  sx={{ mb: 2 }}
+                />
+              </>
+            )}
+
+            {/* Thumbnail sizes */}
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t.cache.thumbnailSizes}
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              value={thumbSizesText}
+              placeholder={t.cache.thumbnailSizesHint}
+              onChange={(e) => setThumbSizesText(e.target.value)}
+              onBlur={commitThumbSizes}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitThumbSizes();
+              }}
+              sx={{ mb: 2 }}
+            />
+
+            {/* Clear actions */}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                onClick={() => setClearConfirm("thumbs")}
+              >
+                {t.cache.clearThumbs}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                onClick={() => setClearConfirm("extracted")}
+              >
+                {t.cache.clearExtracted}
+              </Button>
+            </Box>
+
+            <Dialog
+              open={clearConfirm !== null}
+              onClose={() => setClearConfirm(null)}
+            >
+              <DialogTitle>
+                {clearConfirm === "thumbs"
+                  ? t.cache.clearThumbs
+                  : t.cache.clearExtracted}
+              </DialogTitle>
+              <DialogContent>
+                <Typography>
+                  {clearConfirm === "thumbs"
+                    ? t.cache.clearThumbsConfirm
+                    : t.cache.clearExtractedConfirm}
+                </Typography>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setClearConfirm(null)}>
+                  {t.archive.cancel}
+                </Button>
+                <Button
+                  color="error"
+                  onClick={async () => {
+                    const which = clearConfirm;
+                    setClearConfirm(null);
+                    if (which === "thumbs") {
+                      await platform.clearThumbnails();
+                    } else if (which === "extracted") {
+                      await platform.clearExtracted();
+                    }
+                  }}
+                >
+                  {t.cache.confirm}
+                </Button>
+              </DialogActions>
+            </Dialog>
           </>
         )}
       </Box>

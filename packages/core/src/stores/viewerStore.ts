@@ -24,7 +24,7 @@ interface ViewerState {
   getCurrentPaths: () => Set<string>;
 }
 
-export const useViewerStore = create<ViewerState>((set) => ({
+export const useViewerStore = create<ViewerState>((set, get) => ({
   images: [],
   currentIndex: 0,
   isViewerOpen: false,
@@ -94,7 +94,7 @@ export const useViewerStore = create<ViewerState>((set) => ({
     }),
 
   getCurrentPaths: () => {
-    const { images } = useViewerStore.getState();
+    const { images } = get();
     return new Set(images.map((img) => img.source));
   },
 }));

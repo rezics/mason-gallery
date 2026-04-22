@@ -82,9 +82,34 @@ interface ImageCellData extends WImage {
   globalIndex: number;
 }
 
-function ImageCell({ data }: RenderComponentProps<ImageCellData>) {
+function ImageCell({
+  data,
+  width: cellWidth,
+}: RenderComponentProps<ImageCellData>) {
   const openViewer = useViewerStore((s) => s.openViewer);
   const platform = usePlatform();
+
+  const thumbs = data.thumbnails ?? [];
+  const hasThumbs = thumbs.length > 0;
+
+  const srcSet = hasThumbs
+    ? thumbs
+        .map((t) => {
+          const url = platform.getThumbUrl(t.source);
+          return url ? `${url} ${t.width}w` : "";
+        })
+        .filter(Boolean)
+        .join(", ")
+    : undefined;
+
+  // `sizes` reflects the rendered column width so the browser picks the right srcset candidate.
+  const sizes = cellWidth > 0 ? `${Math.round(cellWidth)}px` : undefined;
+
+  // Fallback src: smallest thumbnail if we have them, otherwise the original.
+  const firstThumb = thumbs[0];
+  const fallback = firstThumb
+    ? platform.getThumbUrl(firstThumb.source)
+    : platform.getImageUrl(data.source);
 
   return (
     <button
@@ -93,9 +118,13 @@ function ImageCell({ data }: RenderComponentProps<ImageCellData>) {
       onClick={() => openViewer(data.globalIndex)}
     >
       <img
-        src={platform.getImageUrl(data.source)}
+        src={fallback || platform.getImageUrl(data.source)}
+        srcSet={srcSet}
+        sizes={sizes}
         alt=""
         loading="lazy"
+        width={data.width ?? undefined}
+        height={data.height ?? undefined}
         className="w-full block"
         style={{
           aspectRatio:

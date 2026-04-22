@@ -1,4 +1,37 @@
-import type { ColumnBreakpoints, Locale, SortMethod } from "./index";
+import type { ColumnBreakpoints, Locale, SortMethod, Thumbnail } from "./index";
+
+export type { Thumbnail };
+
+export type ExtractedMode = "no-cache" | "lru-capped" | "unlimited";
+export type ThumbRetain = "until-source-removed" | "lru-capped";
+
+export interface ExtractedPolicy {
+  mode: ExtractedMode;
+  maxSizePerSource?: number;
+  minFileSize?: number;
+}
+
+export interface ThumbnailPolicy {
+  retain: ThumbRetain;
+  maxTotalSize?: number;
+}
+
+export interface CachePolicy {
+  extracted: ExtractedPolicy;
+  thumbnails: ThumbnailPolicy;
+}
+
+export type SourceOverride = {
+  extracted?: Partial<ExtractedPolicy>;
+  thumbnails?: Partial<ThumbnailPolicy>;
+};
+
+export const DEFAULT_CACHE_POLICY: CachePolicy = {
+  extracted: { mode: "unlimited" },
+  thumbnails: { retain: "until-source-removed" },
+};
+
+export const DEFAULT_THUMBNAIL_SIZES = [400, 800, 1600];
 
 export interface Settings {
   formats: string[];
@@ -9,6 +42,8 @@ export interface Settings {
   showGridPosition: boolean;
   confirmDelete: boolean;
   showDeleteToast: boolean;
+  cachePolicy: CachePolicy;
+  thumbnailSizes: number[];
 }
 
 export interface ScanParams {
@@ -24,6 +59,7 @@ export interface ImageBatch {
     relativePath: string;
     width: number | null;
     height: number | null;
+    thumbnails?: Thumbnail[];
   }>;
   done: boolean;
 }
@@ -51,12 +87,15 @@ export interface ArchiveInfo {
 
 export interface CacheStats {
   id: number;
-  archivePath: string;
-  filename: string;
+  kind: "archive" | "folder";
+  originPath: string;
+  identitySegment: string;
   entryCount: number | null;
-  cacheSize: number;
+  thumbCacheSize: number;
+  extractedCacheSize: number;
   isPinned: boolean;
   lastAccessed: string | null;
+  policyOverride?: string | null;
 }
 
 export interface ScanArchiveParams {
@@ -65,11 +104,13 @@ export interface ScanArchiveParams {
   pageSize: number;
   sortMethod: string;
   password?: string;
+  thumbnailSizes?: number[];
 }
 
 export interface MigrationCandidate {
-  archiveId: number;
+  sourceId: number;
   oldPath: string;
+  kind: "archive" | "folder";
   matchScore: number;
 }
 
@@ -84,6 +125,13 @@ export interface PlatformService {
   ): Promise<void>;
 
   getImageUrl(source: string): string;
+
+  /**
+   * Translate a thumbnail URI (`mg-thumb:///<sourceHash>/<entryHash>?w=<width>`)
+   * into an actual fetchable URL. Returns an empty string on platforms that
+   * don't serve thumbnails (web).
+   */
+  getThumbUrl(thumbId: string): string;
 
   deleteFile(path: string): Promise<void>;
 
@@ -107,11 +155,11 @@ export interface PlatformService {
     onComplete: () => void,
     onCount?: (total: number) => void,
   ): Promise<void>;
-  extractArchiveEntry?(uri: string): Promise<string>;
   getArchiveInfo?(path: string): Promise<ArchiveInfo>;
   getCacheStats?(): Promise<CacheStats[]>;
-  clearCache?(archiveId?: number): Promise<void>;
-  pinCache?(archiveId: number, pinned: boolean): Promise<void>;
+  clearThumbnails(sourceId?: number): Promise<void>;
+  clearExtracted(sourceId?: number): Promise<void>;
+  pinCache?(sourceId: number, pinned: boolean): Promise<void>;
   unlockArchive?(
     path: string,
     password: string,
@@ -120,6 +168,11 @@ export interface PlatformService {
     masterPassword?: string,
   ): Promise<void>;
   checkMigration?(path: string): Promise<MigrationCandidate | null>;
-  confirmMigration?(archiveId: number, newPath: string): Promise<void>;
+  confirmMigration?(sourceId: number, newPath: string): Promise<void>;
   startupCacheCleanup?(strategy: CacheCleanupStrategy): Promise<void>;
+  setCachePolicy?(policy: CachePolicy): Promise<void>;
+  setSourcePolicy?(
+    sourceId: number,
+    override: SourceOverride | null,
+  ): Promise<void>;
 }

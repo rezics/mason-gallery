@@ -1,8 +1,15 @@
+export interface Thumbnail {
+  source: string;
+  width: number;
+  height: number;
+}
+
 export interface WImage {
   source: string;
   relativePath: string;
   width: number | null;
   height: number | null;
+  thumbnails?: Thumbnail[];
 }
 
 export interface ImageBatch {

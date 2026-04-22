@@ -39,13 +39,16 @@ export type {
   Locale,
   ScanParams,
   SortMethod,
+  Thumbnail,
   WImage,
 } from "./types/index";
-// Types
 export type {
   ArchiveInfo,
   CacheCleanupStrategy,
+  CachePolicy,
   CacheStats,
+  ExtractedMode,
+  ExtractedPolicy,
   ImageBatch as PlatformImageBatch,
   MigrationCandidate,
   PasswordStorageMode,
@@ -54,4 +57,12 @@ export type {
   ScanArchiveParams,
   ScanParams as PlatformScanParams,
   Settings,
+  SourceOverride,
+  ThumbnailPolicy,
+  ThumbRetain,
+} from "./types/platform";
+// Types
+export {
+  DEFAULT_CACHE_POLICY,
+  DEFAULT_THUMBNAIL_SIZES,
 } from "./types/platform";
