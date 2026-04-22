@@ -1,16 +1,17 @@
-use crate::archive::{
-    self, compute_archive_hash, compute_entry_hash, is_archive_extension, open_archive,
-    parse_archive_uri, ArchiveError,
-};
-use crate::commands::{ImageBatch, ImageCount, WImage};
+use crate::archive::{compute_entry_hash, open_archive, ArchiveError};
+use crate::commands::{ImageBatch, ImageCount, WImage, WThumbnail};
 use crate::database::Database;
 use crate::password::PasswordCache;
+use crate::server::SharedPolicy;
+use crate::services::archive_service::ArchiveService;
+use crate::services::image_service::ImageService;
+use crate::services::policy::{CachePolicy, CachePolicyOverride};
+use crate::services::source_service::{SourceKind, SourceService};
+use crate::services::thumbnail_service::ThumbnailService;
 use crate::CacheDir;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
-use std::time::UNIX_EPOCH;
 use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Debug, Deserialize)]
@@ -21,6 +22,8 @@ pub struct ScanArchiveParams {
     pub page_size: usize,
     pub sort_method: String,
     pub password: Option<String>,
+    #[serde(default)]
+    pub thumbnail_sizes: Option<Vec<u32>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -37,32 +40,29 @@ pub struct ArchiveInfoResponse {
 #[serde(rename_all = "camelCase")]
 pub struct CacheStatsResponse {
     pub id: i64,
-    pub archive_path: String,
-    pub filename: String,
+    pub kind: String,
+    pub origin_path: String,
+    pub identity_segment: String,
     pub entry_count: Option<i64>,
-    pub cache_size: i64,
+    pub thumb_cache_size: i64,
+    pub extracted_cache_size: i64,
     pub is_pinned: bool,
     pub last_accessed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub policy_override: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MigrationCandidate {
-    pub archive_id: i64,
+pub struct MigrationCandidateResp {
+    pub source_id: i64,
     pub old_path: String,
+    pub kind: String,
     pub match_score: usize,
 }
 
-fn get_file_metadata(path: &str) -> Result<(u64, u64), String> {
-    let metadata = fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
-    let file_size = metadata.len();
-    let mtime = metadata
-        .modified()
-        .map_err(|e| format!("Failed to get mtime: {}", e))?
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    Ok((file_size, mtime))
+fn archive_error_to_string(e: ArchiveError) -> String {
+    format!("{}", e)
 }
 
 fn get_password_for_archive(
@@ -70,12 +70,11 @@ fn get_password_for_archive(
     archive_path: &str,
     explicit_password: Option<&str>,
 ) -> Option<String> {
-    // Priority: explicit > in-memory > persisted
     if let Some(pw) = explicit_password {
         return Some(pw.to_string());
     }
 
-    let pw_cache = app.state::<PasswordCache>();
+    let pw_cache = app.state::<Arc<PasswordCache>>();
     if let Some(pw) = pw_cache.get(archive_path) {
         return Some(pw);
     }
@@ -85,66 +84,35 @@ fn get_password_for_archive(
         if !record.encrypted {
             return Some(record.password);
         }
-        // Encrypted passwords need the master password to decrypt — handled in unlock flow
     }
 
     None
 }
 
-fn generate_thumbnail(
-    image_data: &[u8],
-    output_path: &Path,
-) -> Result<(u32, u32), String> {
-    let img = image::load_from_memory(image_data)
-        .map_err(|e| format!("Failed to decode image: {}", e))?;
-
-    let (w, h) = (img.width(), img.height());
-    let max_dim = 400u32;
-    let thumb = if w > max_dim || h > max_dim {
-        img.thumbnail(max_dim, max_dim)
-    } else {
-        img
-    };
-
-    let (tw, th) = (thumb.width(), thumb.height());
-
-    if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create thumb dir: {}", e))?;
-    }
-
-    thumb
-        .save(output_path)
-        .map_err(|e| format!("Failed to save thumbnail: {}", e))?;
-
-    Ok((tw, th))
-}
-
-fn archive_error_to_string(e: ArchiveError) -> String {
-    format!("{}", e)
+fn default_thumbnail_widths() -> Vec<u32> {
+    vec![400, 800, 1600]
 }
 
 #[tauri::command]
 pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(), String> {
     let archive_path = params.path.clone();
     let db = app.state::<Arc<Database>>().inner().clone();
-    let cache_dir = app.state::<CacheDir>().0.clone();
+    let source_svc = app.state::<Arc<SourceService>>().inner().clone();
+    let thumbnail_svc = app.state::<Arc<ThumbnailService>>().inner().clone();
 
-    let (file_size, mtime) = get_file_metadata(&archive_path)?;
-    let archive_hash = compute_archive_hash(&archive_path, file_size, mtime);
-    let filename = Path::new(&archive_path)
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
+    let widths = params
+        .thumbnail_sizes
+        .clone()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(default_thumbnail_widths);
 
     let password = get_password_for_archive(&app, &archive_path, params.password.as_deref());
 
-    // Open archive and list image entries
     let reader = open_archive(Path::new(&archive_path)).map_err(archive_error_to_string)?;
     let entries = reader
         .list_entries(password.as_deref())
         .map_err(archive_error_to_string)?;
+    let is_solid = reader.is_solid().unwrap_or(false);
 
     let formats: Vec<String> = params
         .formats
@@ -167,44 +135,17 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
         })
         .collect();
 
-    // Sort entries
     match params.sort_method.as_str() {
         "name-asc" => image_entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
         "name-desc" => image_entries.sort_by(|a, b| natord::compare(&b.path, &a.path)),
         _ => image_entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
     }
 
-    // Upsert archive record
-    let archive_id = {
-        // Check if we have an existing record with matching hash
-        if let Ok(Some(existing)) = db.get_archive_by_path(&archive_path) {
-            if existing.archive_hash == archive_hash {
-                db.touch_archive(existing.id)?;
-                existing.id
-            } else {
-                // Archive changed — re-cache
-                db.upsert_archive(
-                    &archive_path,
-                    &filename,
-                    file_size as i64,
-                    &archive_hash,
-                    reader.is_solid().unwrap_or(false),
-                    Some(image_entries.len() as i64),
-                )?
-            }
-        } else {
-            db.upsert_archive(
-                &archive_path,
-                &filename,
-                file_size as i64,
-                &archive_hash,
-                reader.is_solid().unwrap_or(false),
-                Some(image_entries.len() as i64),
-            )?
-        }
-    };
+    let (source_rec, _size) =
+        source_svc.open_or_create_archive(&archive_path, Some(is_solid), Some(image_entries.len() as i64))?;
+    let source_id = source_rec.id;
+    let source_hash = source_rec.content_hash.clone();
 
-    // Emit total count
     let _ = app.emit(
         "images:count",
         ImageCount {
@@ -212,83 +153,97 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
         },
     );
 
-    let thumb_dir = cache_dir.join("thumbs").join(&archive_hash);
-
-    // Try extracting the first uncached entry to detect password errors early.
-    // ZIP archives allow listing entries without a password, but extraction fails.
-    // Without this check, password errors are silently swallowed by filter_map.
+    // Probe for password errors early: pick first uncached entry and extract.
     if !image_entries.is_empty() {
-        let needs_extract = image_entries.iter().any(|entry| {
-            match db.get_cached_thumbnail(archive_id, &entry.path) {
-                Ok(Some(thumb)) => !cache_dir.join(&thumb.thumb_path).exists(),
-                _ => true,
-            }
+        let probe = image_entries.iter().find(|entry| {
+            let existing = db.get_thumbnails_by_entry(source_id, &entry.path).ok();
+            existing.as_ref().map(|v| v.is_empty()).unwrap_or(true)
         });
-        if needs_extract {
-            // Probe the first uncached entry
-            let probe_entry = image_entries.iter().find(|entry| {
-                match db.get_cached_thumbnail(archive_id, &entry.path) {
-                    Ok(Some(thumb)) => !cache_dir.join(&thumb.thumb_path).exists(),
-                    _ => true,
-                }
-            });
-            if let Some(entry) = probe_entry {
-                reader
-                    .extract_entry_to_memory(&entry.path, password.as_deref())
-                    .map_err(archive_error_to_string)?;
-            }
+        if let Some(entry) = probe {
+            reader
+                .extract_entry_to_memory(&entry.path, password.as_deref())
+                .map_err(archive_error_to_string)?;
         }
     }
 
-    // Process in batches
     for chunk in image_entries.chunks(params.page_size) {
-        let images: Vec<WImage> = chunk
-            .iter()
-            .filter_map(|entry| {
-                let entry_hash = compute_entry_hash(&entry.path);
+        let mut images: Vec<WImage> = Vec::with_capacity(chunk.len());
+        for entry in chunk {
+            let entry_hash = compute_entry_hash(&entry.path);
 
-                // Check cache first
-                if let Ok(Some(thumb)) = db.get_cached_thumbnail(archive_id, &entry.path) {
-                    let thumb_full_path = cache_dir.join(&thumb.thumb_path);
-                    if thumb_full_path.exists() {
-                        return Some(WImage {
-                            source: format!("archive:///{}#{}", archive_path, entry.path),
-                            relative_path: entry.path.clone(),
-                            width: thumb.width,
-                            height: thumb.height,
-                        });
-                    }
-                }
+            // Gather existing thumbs; figure out which widths still need generation.
+            let existing = db
+                .get_thumbnails_by_entry(source_id, &entry.path)
+                .unwrap_or_default();
+            let existing_widths: std::collections::HashSet<u32> =
+                existing.iter().map(|t| t.width).collect();
+            let missing: Vec<u32> = widths
+                .iter()
+                .copied()
+                .filter(|w| !existing_widths.contains(w))
+                .collect();
 
-                // Cache miss — extract and generate thumbnail
-                let thumb_filename = format!("{}.webp", entry_hash);
-                let thumb_path = thumb_dir.join(&thumb_filename);
-                let relative_thumb = format!("thumbs/{}/{}", archive_hash, thumb_filename);
-
-                let image_data = reader
-                    .extract_entry_to_memory(&entry.path, password.as_deref())
-                    .ok()?;
-
-                let (tw, th) = generate_thumbnail(&image_data, &thumb_path).ok()?;
-
-                let thumb_size = fs::metadata(&thumb_path).map(|m| m.len()).unwrap_or(0);
-                let _ = db.insert_thumbnail(
-                    archive_id,
-                    &entry.path,
-                    &relative_thumb,
-                    tw,
-                    th,
-                    thumb_size as i64,
-                );
-
-                Some(WImage {
-                    source: format!("archive:///{}#{}", archive_path, entry.path),
-                    relative_path: entry.path.clone(),
-                    width: Some(tw),
-                    height: Some(th),
+            let mut all_thumbs: Vec<WThumbnail> = existing
+                .iter()
+                .map(|t| WThumbnail {
+                    source: ThumbnailService::build_uri(&source_hash, &entry_hash, t.width),
+                    width: t.width,
+                    height: t.height,
                 })
-            })
-            .collect();
+                .collect();
+
+            let mut width_hint: Option<u32> = existing.iter().map(|t| t.width).max();
+            let mut height_hint: Option<u32> = existing
+                .iter()
+                .max_by_key(|t| t.width)
+                .map(|t| t.height);
+
+            if !missing.is_empty() {
+                match reader.extract_entry_to_memory(&entry.path, password.as_deref()) {
+                    Ok(data) => {
+                        match thumbnail_svc.generate_for_entry(
+                            source_id,
+                            &source_hash,
+                            &entry.path,
+                            &data,
+                            &missing,
+                        ) {
+                            Ok(generated) => {
+                                for g in &generated {
+                                    all_thumbs.push(WThumbnail {
+                                        source: ThumbnailService::build_uri(
+                                            &source_hash,
+                                            &entry_hash,
+                                            g.width,
+                                        ),
+                                        width: g.width,
+                                        height: g.height,
+                                    });
+                                    if width_hint.map(|w| g.width > w).unwrap_or(true) {
+                                        width_hint = Some(g.width);
+                                        height_hint = Some(g.height);
+                                    }
+                                }
+                            }
+                            Err(_) => continue,
+                        }
+                    }
+                    Err(_) => continue,
+                }
+            }
+
+            // Dedup & sort by width ascending.
+            all_thumbs.sort_by_key(|t| t.width);
+            all_thumbs.dedup_by_key(|t| t.width);
+
+            images.push(WImage {
+                source: format!("archive:///{}#{}", archive_path, entry.path),
+                relative_path: entry.path.clone(),
+                width: width_hint,
+                height: height_hint,
+                thumbnails: Some(all_thumbs),
+            });
+        }
 
         let _ = app.emit(
             "images:batch",
@@ -299,13 +254,6 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
         );
     }
 
-    // Update cache size
-    if let Ok(thumbs) = db.get_all_thumbnails_for_archive(archive_id) {
-        let total_cache: i64 = thumbs.iter().filter_map(|t| t.file_size).sum();
-        let _ = db.update_archive_cache_size(archive_id, total_cache);
-    }
-
-    // Final done signal
     let _ = app.emit(
         "images:batch",
         ImageBatch {
@@ -315,39 +263,6 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
     );
 
     Ok(())
-}
-
-#[tauri::command]
-pub async fn extract_archive_entry(app: AppHandle, uri: String) -> Result<String, String> {
-    let (archive_path, entry_path) = parse_archive_uri(&uri).map_err(archive_error_to_string)?;
-    let cache_dir = app.state::<CacheDir>().0.clone();
-
-    let (file_size, mtime) = get_file_metadata(&archive_path)?;
-    let archive_hash = compute_archive_hash(&archive_path, file_size, mtime);
-    let entry_hash = compute_entry_hash(&entry_path);
-
-    let ext = Path::new(&entry_path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("bin");
-    let extracted_path = cache_dir
-        .join("extracted")
-        .join(&archive_hash)
-        .join(format!("{}.{}", entry_hash, ext));
-
-    // Return cached extracted file if it exists
-    if extracted_path.exists() {
-        return Ok(extracted_path.to_string_lossy().to_string());
-    }
-
-    let password = get_password_for_archive(&app, &archive_path, None);
-
-    let reader = open_archive(Path::new(&archive_path)).map_err(archive_error_to_string)?;
-    reader
-        .extract_entry(&entry_path, &extracted_path, password.as_deref())
-        .map_err(archive_error_to_string)?;
-
-    Ok(extracted_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -374,55 +289,60 @@ pub async fn get_archive_info(
 #[tauri::command]
 pub async fn get_cache_stats(app: AppHandle) -> Result<Vec<CacheStatsResponse>, String> {
     let db = app.state::<Arc<Database>>().inner().clone();
-    let archives = db.get_all_archives()?;
-
-    Ok(archives
+    let sources = db.get_all_sources()?;
+    Ok(sources
         .into_iter()
-        .map(|a| CacheStatsResponse {
-            id: a.id,
-            archive_path: a.archive_path,
-            filename: a.filename,
-            entry_count: a.entry_count,
-            cache_size: a.cache_size,
-            is_pinned: a.is_pinned,
-            last_accessed: a.last_accessed,
+        .map(|s| CacheStatsResponse {
+            id: s.id,
+            kind: s.kind,
+            origin_path: s.origin_path,
+            identity_segment: s.identity_segment,
+            entry_count: s.entry_count,
+            thumb_cache_size: s.thumb_cache_size,
+            extracted_cache_size: s.extracted_cache_size,
+            is_pinned: s.is_pinned,
+            last_accessed: s.last_accessed,
+            policy_override: s.policy_override,
         })
         .collect())
 }
 
 #[tauri::command]
-pub async fn clear_cache(
-    app: AppHandle,
-    archive_id: Option<i64>,
-) -> Result<(), String> {
+pub async fn clear_thumbnails(app: AppHandle, source_id: Option<i64>) -> Result<(), String> {
     let db = app.state::<Arc<Database>>().inner().clone();
-    let cache_dir = app.state::<CacheDir>().0.clone();
+    let thumbnail_svc = app.state::<Arc<ThumbnailService>>().inner().clone();
 
-    if let Some(id) = archive_id {
-        // Get the archive hash to find its cache directory
-        let archives = db.get_all_archives()?;
-        if let Some(archive) = archives.iter().find(|a| a.id == id) {
-            // Delete thumbs and extracted dirs
-            let thumb_dir = cache_dir.join("thumbs").join(&archive.archive_hash);
-            let extracted_dir = cache_dir.join("extracted").join(&archive.archive_hash);
-            let _ = fs::remove_dir_all(&thumb_dir);
-            let _ = fs::remove_dir_all(&extracted_dir);
-        }
-        db.delete_archive(id)?;
+    if let Some(id) = source_id {
+        let rec = db
+            .get_source_by_id(id)?
+            .ok_or_else(|| format!("Source {} not found", id))?;
+        thumbnail_svc.clear_for_source(id, &rec.content_hash)?;
     } else {
-        // Clear all
-        let _ = fs::remove_dir_all(cache_dir.join("thumbs"));
-        let _ = fs::remove_dir_all(cache_dir.join("extracted"));
-        db.delete_all_archives()?;
+        thumbnail_svc.clear_all()?;
     }
-
     Ok(())
 }
 
 #[tauri::command]
-pub async fn pin_cache(app: AppHandle, archive_id: i64, pinned: bool) -> Result<(), String> {
+pub async fn clear_extracted(app: AppHandle, source_id: Option<i64>) -> Result<(), String> {
     let db = app.state::<Arc<Database>>().inner().clone();
-    db.set_pinned(archive_id, pinned)
+    let image_svc = app.state::<Arc<ImageService>>().inner().clone();
+
+    if let Some(id) = source_id {
+        let rec = db
+            .get_source_by_id(id)?
+            .ok_or_else(|| format!("Source {} not found", id))?;
+        image_svc.clear_for_source(id, &rec.content_hash)?;
+    } else {
+        image_svc.clear_all()?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn pin_cache(app: AppHandle, source_id: i64, pinned: bool) -> Result<(), String> {
+    let db = app.state::<Arc<Database>>().inner().clone();
+    db.set_source_pinned(source_id, pinned)
 }
 
 #[tauri::command]
@@ -434,17 +354,14 @@ pub async fn unlock_archive(
     storage_mode: Option<String>,
     master_password: Option<String>,
 ) -> Result<(), String> {
-    // Validate password by trying to read the archive
     let reader = open_archive(Path::new(&path)).map_err(archive_error_to_string)?;
     let _ = reader
         .list_entries(Some(&password))
         .map_err(archive_error_to_string)?;
 
-    // Store in memory
-    let pw_cache = app.state::<PasswordCache>();
+    let pw_cache = app.state::<Arc<PasswordCache>>();
     pw_cache.set(&path, &password);
 
-    // Optionally persist
     if remember {
         let db = app.state::<Arc<Database>>().inner().clone();
         let mode = storage_mode.unwrap_or_else(|| "none".to_string());
@@ -455,8 +372,7 @@ pub async fn unlock_archive(
             }
             "master" => {
                 if let Some(mp) = master_password {
-                    let encrypted =
-                        crate::password::encrypt_password(&password, &mp)?;
+                    let encrypted = crate::password::encrypt_password(&password, &mp)?;
                     db.save_password(&path, &encrypted, true)?;
                 }
             }
@@ -471,71 +387,32 @@ pub async fn unlock_archive(
 pub async fn check_migration(
     app: AppHandle,
     path: String,
-) -> Result<Option<MigrationCandidate>, String> {
-    let db = app.state::<Arc<Database>>().inner().clone();
+) -> Result<Option<MigrationCandidateResp>, String> {
+    let source_svc = app.state::<Arc<SourceService>>().inner().clone();
 
-    // Check exact match first
-    if let Some(_) = db.get_archive_by_path(&path)? {
-        return Ok(None); // No migration needed
-    }
+    let kind = if Path::new(&path).is_dir() {
+        SourceKind::Folder
+    } else {
+        SourceKind::Archive
+    };
 
-    let filename = Path::new(&path)
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
-    let (file_size, _) = get_file_metadata(&path)?;
-
-    let candidates = db.find_migration_candidates(&filename, file_size as i64)?;
-    if candidates.is_empty() {
-        return Ok(None);
-    }
-
-    // Reverse path segment comparison
-    let normalized_path = path.replace('\\', "/");
-    let new_segments: Vec<&str> = normalized_path.split('/').rev().collect();
-
-    let mut best: Option<(i64, String, usize)> = None;
-
-    for candidate in &candidates {
-        let old_normalized = candidate.archive_path.replace('\\', "/");
-        let old_segments: Vec<&str> = old_normalized.split('/').rev().collect();
-
-        // Count consecutive matches from tail (filename is index 0, must match)
-        let mut score = 0;
-        for (new_seg, old_seg) in new_segments.iter().zip(old_segments.iter()) {
-            if new_seg == old_seg {
-                score += 1;
-            } else {
-                break;
-            }
-        }
-
-        if score >= 1 {
-            // At least filename matches
-            if best.is_none() || score > best.as_ref().unwrap().2 {
-                best = Some((candidate.id, candidate.archive_path.clone(), score));
-            }
-        }
-    }
-
-    Ok(best.map(|(id, old_path, score)| MigrationCandidate {
-        archive_id: id,
-        old_path,
-        match_score: score,
+    let candidate = source_svc.find_migration_candidate(&path, kind)?;
+    Ok(candidate.map(|c| MigrationCandidateResp {
+        source_id: c.source_id,
+        old_path: c.old_path,
+        kind: c.kind,
+        match_score: c.match_score,
     }))
 }
 
 #[tauri::command]
 pub async fn confirm_migration(
     app: AppHandle,
-    archive_id: i64,
+    source_id: i64,
     new_path: String,
 ) -> Result<(), String> {
-    let db = app.state::<Arc<Database>>().inner().clone();
-    let (file_size, mtime) = get_file_metadata(&new_path)?;
-    let new_hash = compute_archive_hash(&new_path, file_size, mtime);
-    db.update_archive_path(archive_id, &new_path, &new_hash)
+    let source_svc = app.state::<Arc<SourceService>>().inner().clone();
+    source_svc.confirm_migration(source_id, &new_path)
 }
 
 #[tauri::command]
@@ -550,13 +427,39 @@ pub async fn startup_cache_cleanup(
     let db = app.state::<Arc<Database>>().inner().clone();
     let cache_dir = app.state::<CacheDir>().0.clone();
 
-    let deleted = db.delete_unpinned_archives()?;
-    for archive in &deleted {
-        let thumb_dir = cache_dir.join("thumbs").join(&archive.archive_hash);
-        let extracted_dir = cache_dir.join("extracted").join(&archive.archive_hash);
-        let _ = fs::remove_dir_all(&thumb_dir);
-        let _ = fs::remove_dir_all(&extracted_dir);
+    let deleted = db.delete_unpinned_sources()?;
+    for src in &deleted {
+        let thumbs = cache_dir.join("thumbs").join(&src.content_hash);
+        let extracted = cache_dir.join("extracted").join(&src.content_hash);
+        let _ = std::fs::remove_dir_all(&thumbs);
+        let _ = std::fs::remove_dir_all(&extracted);
     }
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn set_cache_policy(app: AppHandle, policy: CachePolicy) -> Result<(), String> {
+    let shared = app.state::<SharedPolicy>();
+    let mut p = shared.write().map_err(|e| format!("Lock error: {}", e))?;
+    *p = policy;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_source_policy(
+    app: AppHandle,
+    source_id: i64,
+    policy_override: Option<CachePolicyOverride>,
+) -> Result<(), String> {
+    let db = app.state::<Arc<Database>>().inner().clone();
+    let json = match policy_override {
+        Some(o) => Some(
+            serde_json::to_string(&o)
+                .map_err(|e| format!("Failed to encode override: {}", e))?,
+        ),
+        None => None,
+    };
+    db.set_source_policy(source_id, json.as_deref())
+}
+

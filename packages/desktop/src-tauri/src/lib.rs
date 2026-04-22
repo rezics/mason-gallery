@@ -4,12 +4,18 @@ mod commands;
 mod database;
 mod password;
 mod server;
+mod services;
 
 use database::Database;
-use server::AllowedRoots;
+use server::{AllowedRoots, SharedPolicy};
+use services::archive_service::ArchiveService;
+use services::image_service::ImageService;
+use services::policy::CachePolicy;
+use services::source_service::SourceService;
+use services::thumbnail_service::ThumbnailService;
 use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use tauri::Manager;
 
 pub struct CacheDir(pub PathBuf);
@@ -33,26 +39,48 @@ pub fn run() {
         .setup(|app| {
             let allowed_roots: AllowedRoots = Arc::new(RwLock::new(HashSet::new()));
 
-            // Initialize database
             let app_data_dir = app
                 .path()
                 .app_data_dir()
                 .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-            let db = Database::new(&app_data_dir)
-                .map_err(|e| format!("Failed to initialize database: {}", e))?;
-            let db = Arc::new(db);
-            app.manage(db.clone());
-
-            // Cache directory for thumbnails and extracted files
             let cache_dir = app_data_dir.join("archive-cache");
+
+            let db = Arc::new(
+                Database::new(&app_data_dir)
+                    .map_err(|e| format!("Failed to initialize database: {}", e))?,
+            );
             std::fs::create_dir_all(&cache_dir)
                 .map_err(|e| format!("Failed to create cache dir: {}", e))?;
+
+            app.manage(db.clone());
             app.manage(CacheDir(cache_dir.clone()));
 
-            // In-memory password cache
-            app.manage(password::PasswordCache::new());
+            // Services
+            let archive_svc = Arc::new(ArchiveService::new());
+            let source_svc = Arc::new(SourceService::new(db.clone()));
+            let thumbnail_svc = Arc::new(ThumbnailService::new(db.clone(), cache_dir.clone()));
+            let extract_locks = services::new_extract_locks();
+            let password_cache = Arc::new(password::PasswordCache::new());
+            app.manage(password_cache.clone());
+            let image_svc = Arc::new(ImageService::new(
+                db.clone(),
+                archive_svc.clone(),
+                source_svc.clone(),
+                password_cache.clone(),
+                extract_locks.clone(),
+                cache_dir.clone(),
+                allowed_roots.clone(),
+            ));
+            app.manage(archive_svc.clone());
+            app.manage(source_svc.clone());
+            app.manage(thumbnail_svc.clone());
+            app.manage(image_svc.clone());
+            app.manage(extract_locks.clone());
 
-            // Add cache dir as allowed root for the image server
+            let policy: SharedPolicy = Arc::new(RwLock::new(CachePolicy::default()));
+            app.manage(policy.clone());
+
+            // Cache dir is an allowed root (thumbnail + extracted paths live under it).
             {
                 let mut roots = allowed_roots.write().unwrap();
                 if let Ok(canonical) = std::fs::canonicalize(&cache_dir) {
@@ -62,10 +90,13 @@ pub fn run() {
                 }
             }
 
-            let roots_clone = allowed_roots.clone();
             let port = tauri::async_runtime::block_on(server::start_server(
-                roots_clone,
-                cache_dir,
+                db.clone(),
+                image_svc.clone(),
+                thumbnail_svc.clone(),
+                source_svc.clone(),
+                policy.clone(),
+                cache_dir.clone(),
             ))
             .map_err(|e| e.to_string())?;
 
@@ -83,15 +114,17 @@ pub fn run() {
             commands::open_devtools,
             commands::get_image_server_port,
             archive_commands::scan_archive,
-            archive_commands::extract_archive_entry,
             archive_commands::get_archive_info,
             archive_commands::get_cache_stats,
-            archive_commands::clear_cache,
+            archive_commands::clear_thumbnails,
+            archive_commands::clear_extracted,
             archive_commands::pin_cache,
             archive_commands::unlock_archive,
             archive_commands::check_migration,
             archive_commands::confirm_migration,
             archive_commands::startup_cache_cleanup,
+            archive_commands::set_cache_policy,
+            archive_commands::set_source_policy,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

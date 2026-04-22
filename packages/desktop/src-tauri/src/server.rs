@@ -1,7 +1,12 @@
-use crate::archive::{compute_archive_hash, compute_entry_hash, parse_archive_uri};
+use crate::database::Database;
+use crate::services::archive_service::{ArchiveService, ExtractResult};
+use crate::services::image_service::ImageService;
+use crate::services::policy::{parse_override, CachePolicy};
+use crate::services::source_service::SourceService;
+use crate::services::thumbnail_service::ThumbnailService;
 use axum::{
     extract::{Query, State},
-    http::{HeaderMap, StatusCode, header},
+    http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -10,12 +15,12 @@ use std::collections::HashSet;
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use std::time::UNIX_EPOCH;
 use tokio::net::TcpListener;
 
 pub type AllowedRoots = Arc<RwLock<HashSet<PathBuf>>>;
+pub type SharedPolicy = Arc<RwLock<CachePolicy>>;
 
 pub struct ServerState {
     pub port: u16,
@@ -23,9 +28,13 @@ pub struct ServerState {
 }
 
 #[derive(Clone)]
-struct AppState {
-    allowed_roots: AllowedRoots,
-    cache_dir: PathBuf,
+pub struct AppState {
+    pub db: Arc<Database>,
+    pub image_svc: Arc<ImageService>,
+    pub thumbnail_svc: Arc<ThumbnailService>,
+    pub source_svc: Arc<SourceService>,
+    pub policy: SharedPolicy,
+    pub cache_dir: PathBuf,
 }
 
 #[derive(serde::Deserialize)]
@@ -35,8 +44,9 @@ struct ImageQuery {
 
 #[derive(serde::Deserialize)]
 struct ThumbQuery {
-    archive: Option<String>,
+    source: Option<String>,
     entry: Option<String>,
+    w: Option<u32>,
 }
 
 fn content_type_for_ext(ext: &str) -> &'static str {
@@ -53,7 +63,7 @@ fn content_type_for_ext(ext: &str) -> &'static str {
     }
 }
 
-fn compute_etag(path: &PathBuf, metadata: &fs::Metadata) -> String {
+fn compute_etag(path: &Path, metadata: &fs::Metadata) -> String {
     let mut hasher = DefaultHasher::new();
     path.hash(&mut hasher);
     if let Ok(modified) = metadata.modified() {
@@ -63,9 +73,22 @@ fn compute_etag(path: &PathBuf, metadata: &fs::Metadata) -> String {
     format!("\"{:x}\"", hasher.finish())
 }
 
-fn is_path_allowed(canonical: &PathBuf, allowed_roots: &AllowedRoots) -> bool {
-    let roots = allowed_roots.read().unwrap();
-    roots.iter().any(|root| canonical.starts_with(root))
+/// Compute effective policy for an archive URI by merging per-source override
+/// on top of the base. For non-archive URIs, returns the base unchanged.
+fn effective_policy(state: &AppState, uri: &str) -> CachePolicy {
+    let base = state.policy.read().map(|p| p.clone()).unwrap_or_default();
+    if let Some(rest) = uri.strip_prefix("archive:///") {
+        if let Some((archive_path, _)) = rest.split_once('#') {
+            if let Ok(Some(src)) = state.db.get_source_by_path(archive_path) {
+                if let Some(json) = src.policy_override.as_deref() {
+                    if let Some(over) = parse_override(Some(json)) {
+                        return base.merged_with(Some(&over));
+                    }
+                }
+            }
+        }
+    }
+    base
 }
 
 async fn image_handler(
@@ -78,57 +101,22 @@ async fn image_handler(
         _ => return (StatusCode::BAD_REQUEST, "Missing 'path' query parameter").into_response(),
     };
 
-    // Handle archive:/// URIs by resolving to cached thumbnails
-    if raw_path.starts_with("archive:///") {
-        return serve_archive_thumb(&state, &headers, &raw_path);
-    }
-
-    let requested = PathBuf::from(&raw_path);
-    let canonical = match fs::canonicalize(&requested) {
-        Ok(p) => p,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    let policy = effective_policy(&state, &raw_path);
+    let resolved = match state.image_svc.resolve_original(&raw_path, &policy).await {
+        Ok(r) => r,
+        Err(msg) => {
+            let code = if msg.starts_with("Forbidden") {
+                StatusCode::FORBIDDEN
+            } else if msg.contains("PasswordRequired") || msg.contains("WrongPassword") {
+                StatusCode::UNAUTHORIZED
+            } else {
+                StatusCode::NOT_FOUND
+            };
+            return (code, msg).into_response();
+        }
     };
 
-    if !is_path_allowed(&canonical, &state.allowed_roots) {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-
-    serve_file(&canonical, &headers)
-}
-
-fn serve_archive_thumb(state: &AppState, headers: &HeaderMap, uri: &str) -> Response {
-    let (archive_path, entry_path) = match parse_archive_uri(uri) {
-        Ok(pair) => pair,
-        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
-    };
-
-    let metadata = match fs::metadata(&archive_path) {
-        Ok(m) => m,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
-    };
-    let file_size = metadata.len();
-    let mtime = metadata
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-
-    let archive_hash = compute_archive_hash(&archive_path, file_size, mtime);
-    let entry_hash = compute_entry_hash(&entry_path);
-
-    let thumb_path = state
-        .cache_dir
-        .join("thumbs")
-        .join(&archive_hash)
-        .join(format!("{}.webp", entry_hash));
-
-    let canonical = match fs::canonicalize(&thumb_path) {
-        Ok(p) => p,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
-    };
-
-    serve_file(&canonical, headers)
+    serve_extract(resolved, &headers)
 }
 
 async fn thumb_handler(
@@ -136,30 +124,42 @@ async fn thumb_handler(
     headers: HeaderMap,
     Query(query): Query<ThumbQuery>,
 ) -> Response {
-    let archive_hash = match query.archive {
-        Some(h) if !h.is_empty() => h,
-        _ => return (StatusCode::BAD_REQUEST, "Missing 'archive' query parameter").into_response(),
+    let source_hash = match query.source {
+        Some(s) if !s.is_empty() => s,
+        _ => return (StatusCode::BAD_REQUEST, "Missing 'source'").into_response(),
     };
     let entry_hash = match query.entry {
-        Some(h) if !h.is_empty() => h,
-        _ => return (StatusCode::BAD_REQUEST, "Missing 'entry' query parameter").into_response(),
+        Some(e) if !e.is_empty() => e,
+        _ => return (StatusCode::BAD_REQUEST, "Missing 'entry'").into_response(),
+    };
+    let width = match query.w {
+        Some(w) if w > 0 => w,
+        _ => return (StatusCode::BAD_REQUEST, "Missing or invalid 'w'").into_response(),
     };
 
-    let thumb_path = state
-        .cache_dir
-        .join("thumbs")
-        .join(&archive_hash)
-        .join(format!("{}.webp", entry_hash));
-
-    let canonical = match fs::canonicalize(&thumb_path) {
-        Ok(p) => p,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    let path = match state.thumbnail_svc.resolve(&source_hash, &entry_hash, width) {
+        Some(p) => p,
+        None => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    serve_file(&canonical, &headers)
+    serve_file(&path, &headers)
 }
 
-fn serve_file(canonical: &PathBuf, headers: &HeaderMap) -> Response {
+fn serve_extract(result: ExtractResult, headers: &HeaderMap) -> Response {
+    match result {
+        ExtractResult::Cached(p) | ExtractResult::FreshPersisted(p) => serve_file(&p, headers),
+        ExtractResult::Tempfile(temp_path) => {
+            // Read the bytes out, then drop `temp_path` so the tempfile is cleaned up.
+            let path_buf: PathBuf = temp_path.to_path_buf();
+            let response = serve_file(&path_buf, headers);
+            // `temp_path` drops here → deletes the file.
+            drop(temp_path);
+            response
+        }
+    }
+}
+
+fn serve_file(canonical: &Path, headers: &HeaderMap) -> Response {
     let metadata = match fs::metadata(canonical) {
         Ok(m) => m,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
@@ -205,11 +205,19 @@ fn serve_file(canonical: &PathBuf, headers: &HeaderMap) -> Response {
 }
 
 pub async fn start_server(
-    allowed_roots: AllowedRoots,
+    db: Arc<Database>,
+    image_svc: Arc<ImageService>,
+    thumbnail_svc: Arc<ThumbnailService>,
+    source_svc: Arc<SourceService>,
+    policy: SharedPolicy,
     cache_dir: PathBuf,
 ) -> Result<u16, Box<dyn std::error::Error>> {
     let state = AppState {
-        allowed_roots,
+        db,
+        image_svc,
+        thumbnail_svc,
+        source_svc,
+        policy,
         cache_dir,
     };
 
@@ -226,4 +234,12 @@ pub async fn start_server(
     });
 
     Ok(port)
+}
+
+// Helper retained for compatibility with legacy callers; prefer direct service
+// construction. Returns a pre-wired `ArchiveService`, though the server itself
+// owns a single shared `Arc<ArchiveService>` via `ImageService`.
+#[allow(dead_code)]
+pub fn new_archive_service() -> ArchiveService {
+    ArchiveService::new()
 }

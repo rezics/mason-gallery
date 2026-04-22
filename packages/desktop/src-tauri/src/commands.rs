@@ -9,11 +9,21 @@ use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct WThumbnail {
+    pub source: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WImage {
     pub source: String,
     pub relative_path: String,
     pub width: Option<u32>,
     pub height: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thumbnails: Option<Vec<WThumbnail>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,6 +145,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                         relative_path: entry.relative_path.clone(),
                         width: None,
                         height: None,
+                        thumbnails: None,
                     }
                 } else {
                     let (width, height) = get_image_dimensions(Path::new(&entry.path));
@@ -143,6 +154,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                         relative_path: entry.relative_path.clone(),
                         width,
                         height,
+                        thumbnails: None,
                     }
                 }
             })
