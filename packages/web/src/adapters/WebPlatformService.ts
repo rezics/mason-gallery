@@ -173,6 +173,19 @@ export const webPlatformService: PlatformService = {
     return registry.getBlobUrl(source);
   },
 
+  getThumbUrl(): string {
+    // Web platform has no thumbnail cache — waterfall fallbacks to <img src>.
+    return "";
+  },
+
+  async clearThumbnails(): Promise<void> {
+    // No-op: web has no local cache.
+  },
+
+  async clearExtracted(): Promise<void> {
+    // No-op: web has no local cache.
+  },
+
   async deleteFile(): Promise<void> {
     throw new Error("Delete is not supported in the web version");
   },
