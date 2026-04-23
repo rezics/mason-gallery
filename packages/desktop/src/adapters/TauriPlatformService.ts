@@ -3,6 +3,7 @@ import type {
   CacheCleanupStrategy,
   CachePolicy,
   CacheStats,
+  FolderThumbnailsMode,
   ImageBatch,
   MigrationCandidate,
   PasswordStorageMode,
@@ -11,6 +12,7 @@ import type {
   ScanParams,
   Settings,
   SourceOverride,
+  Thumbnail,
 } from "@mason-gallery/core";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -148,6 +150,8 @@ export const tauriPlatformService: PlatformService = {
     const showDeleteToast = await store.get<boolean>("showDeleteToast");
     const cachePolicy = await store.get<CachePolicy>("cachePolicy");
     const thumbnailSizes = await store.get<number[]>("thumbnailSizes");
+    const folderThumbnails =
+      await store.get<FolderThumbnailsMode>("folderThumbnails");
 
     return {
       ...(formats != null && { formats }),
@@ -160,6 +164,7 @@ export const tauriPlatformService: PlatformService = {
       ...(showDeleteToast != null && { showDeleteToast }),
       ...(cachePolicy != null && { cachePolicy }),
       ...(thumbnailSizes != null && { thumbnailSizes }),
+      ...(folderThumbnails != null && { folderThumbnails }),
     };
   },
 
@@ -283,5 +288,56 @@ export const tauriPlatformService: PlatformService = {
       sourceId,
       policyOverride: override,
     });
+  },
+
+  async requestThumbnail(
+    sourceId: number,
+    entryPath: string,
+    widths?: number[],
+  ): Promise<{ enqueued: boolean; skipped: boolean }> {
+    const result = await invoke<{
+      enqueued: boolean;
+      skipped: boolean;
+      reason?: string;
+    }>("request_thumbnail", {
+      params: { sourceId, entryPath, widths: widths ?? [] },
+    });
+    return { enqueued: result.enqueued, skipped: result.skipped };
+  },
+
+  async cancelThumbnail(sourceId: number, entryPath: string): Promise<void> {
+    await invoke("cancel_thumbnail", {
+      params: { sourceId, entryPath },
+    });
+  },
+
+  onThumbnailsReady(
+    callback: (event: {
+      sourceId: number;
+      entryPath: string;
+      thumbnails: Thumbnail[];
+    }) => void,
+  ): () => void {
+    let unlistenFn: (() => void) | null = null;
+    let unsubscribed = false;
+
+    listen<{
+      sourceId: number;
+      entryPath: string;
+      thumbnails: Thumbnail[];
+    }>("images:thumbnails", (event) => {
+      callback(event.payload);
+    }).then((fn) => {
+      if (unsubscribed) {
+        fn();
+      } else {
+        unlistenFn = fn;
+      }
+    });
+
+    return () => {
+      unsubscribed = true;
+      unlistenFn?.();
+    };
   },
 };

@@ -2,6 +2,7 @@ pub mod archive_service;
 pub mod image_service;
 pub mod policy;
 pub mod source_service;
+pub mod thumbnail_queue;
 pub mod thumbnail_service;
 
 use dashmap::DashMap;

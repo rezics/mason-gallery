@@ -263,6 +263,18 @@ export const webPlatformService: PlatformService = {
     }
   },
 
+  async requestThumbnail(): Promise<{ enqueued: boolean; skipped: boolean }> {
+    return { enqueued: false, skipped: true };
+  },
+
+  async cancelThumbnail(): Promise<void> {
+    // No-op on web.
+  },
+
+  onThumbnailsReady(): () => void {
+    return () => {};
+  },
+
   async listDirectoryTree(): Promise<string[]> {
     const directories: string[] = [];
 

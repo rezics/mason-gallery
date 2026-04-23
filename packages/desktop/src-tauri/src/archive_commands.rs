@@ -93,6 +93,164 @@ fn default_thumbnail_widths() -> Vec<u32> {
     vec![400, 800, 1600]
 }
 
+/// Outcome of inline-expanding an archive encountered during a folder scan.
+pub enum MixedArchiveOutcome {
+    /// Archive listed successfully; expanded entries to merge into the batch.
+    Entries(Vec<WImage>),
+    /// Archive needs a password we don't have — caller should emit a
+    /// locked placeholder tile.
+    Locked(WImage),
+    /// Unrecoverable error (corrupt, unsupported, IO). Caller can skip.
+    Skipped(String),
+}
+
+/// Expand an archive file discovered inside a folder scan. Mirrors the
+/// per-entry work `scan_archive` does (source registration, thumbnail
+/// generation, URI construction) but is synchronous and returns the entries
+/// instead of emitting batches directly — the caller interleaves them into
+/// the surrounding folder listing.
+pub fn expand_archive_for_folder_scan(
+    app: &AppHandle,
+    archive_path: &str,
+    formats: &[String],
+    sort_method: &str,
+    widths: &[u32],
+) -> MixedArchiveOutcome {
+    let db = app.state::<Arc<Database>>().inner().clone();
+    let source_svc = app.state::<Arc<SourceService>>().inner().clone();
+    let thumbnail_svc = app.state::<Arc<ThumbnailService>>().inner().clone();
+
+    let password = get_password_for_archive(app, archive_path, None);
+
+    let reader = match open_archive(Path::new(archive_path)) {
+        Ok(r) => r,
+        Err(e) => return MixedArchiveOutcome::Skipped(format!("{}", e)),
+    };
+
+    let entries = match reader.list_entries(password.as_deref()) {
+        Ok(v) => v,
+        Err(ArchiveError::PasswordRequired) | Err(ArchiveError::WrongPassword) => {
+            return MixedArchiveOutcome::Locked(WImage {
+                source: format!("archive:///{}", archive_path),
+                relative_path: SourceService::identity_segment(archive_path),
+                width: None,
+                height: None,
+                thumbnails: None,
+                source_id: None,
+                locked: Some(true),
+            });
+        }
+        Err(e) => return MixedArchiveOutcome::Skipped(format!("{}", e)),
+    };
+
+    let is_solid = reader.is_solid().unwrap_or(false);
+
+    let mut image_entries: Vec<_> = entries
+        .into_iter()
+        .filter(|e| {
+            if e.is_directory {
+                return false;
+            }
+            let ext = Path::new(&e.path)
+                .extension()
+                .and_then(|x| x.to_str())
+                .map(|x| x.to_lowercase())
+                .unwrap_or_default();
+            formats.contains(&ext)
+        })
+        .collect();
+
+    match sort_method {
+        "name-desc" => image_entries.sort_by(|a, b| natord::compare(&b.path, &a.path)),
+        _ => image_entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
+    }
+
+    let (source_rec, _) = match source_svc.open_or_create_archive(
+        archive_path,
+        Some(is_solid),
+        Some(image_entries.len() as i64),
+    ) {
+        Ok(v) => v,
+        Err(e) => return MixedArchiveOutcome::Skipped(e),
+    };
+    let source_id = source_rec.id;
+    let source_hash = source_rec.content_hash.clone();
+
+    let mut out: Vec<WImage> = Vec::with_capacity(image_entries.len());
+    for entry in &image_entries {
+        let entry_hash = compute_entry_hash(&entry.path);
+
+        let existing = db
+            .get_thumbnails_by_entry(source_id, &entry.path)
+            .unwrap_or_default();
+        let existing_widths: std::collections::HashSet<u32> =
+            existing.iter().map(|t| t.width).collect();
+        let missing: Vec<u32> = widths
+            .iter()
+            .copied()
+            .filter(|w| !existing_widths.contains(w))
+            .collect();
+
+        let mut all_thumbs: Vec<WThumbnail> = existing
+            .iter()
+            .map(|t| WThumbnail {
+                source: ThumbnailService::build_uri(&source_hash, &entry_hash, t.width),
+                width: t.width,
+                height: t.height,
+            })
+            .collect();
+
+        let mut width_hint: Option<u32> = existing.iter().map(|t| t.width).max();
+        let mut height_hint: Option<u32> =
+            existing.iter().max_by_key(|t| t.width).map(|t| t.height);
+
+        if !missing.is_empty() {
+            if let Ok(data) =
+                reader.extract_entry_to_memory(&entry.path, password.as_deref())
+            {
+                if let Ok(generated) = thumbnail_svc.generate_for_entry(
+                    source_id,
+                    &source_hash,
+                    &entry.path,
+                    &data,
+                    &missing,
+                ) {
+                    for g in &generated {
+                        all_thumbs.push(WThumbnail {
+                            source: ThumbnailService::build_uri(
+                                &source_hash,
+                                &entry_hash,
+                                g.width,
+                            ),
+                            width: g.width,
+                            height: g.height,
+                        });
+                        if width_hint.map(|w| g.width > w).unwrap_or(true) {
+                            width_hint = Some(g.width);
+                            height_hint = Some(g.height);
+                        }
+                    }
+                }
+            }
+        }
+
+        all_thumbs.sort_by_key(|t| t.width);
+        all_thumbs.dedup_by_key(|t| t.width);
+
+        out.push(WImage {
+            source: format!("archive:///{}#{}", archive_path, entry.path),
+            relative_path: entry.path.clone(),
+            width: width_hint,
+            height: height_hint,
+            thumbnails: Some(all_thumbs),
+            source_id: Some(source_id),
+            locked: None,
+        });
+    }
+
+    MixedArchiveOutcome::Entries(out)
+}
+
 #[tauri::command]
 pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(), String> {
     let archive_path = params.path.clone();
@@ -242,6 +400,8 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
                 width: width_hint,
                 height: height_hint,
                 thumbnails: Some(all_thumbs),
+                source_id: Some(source_id),
+                locked: None,
             });
         }
 

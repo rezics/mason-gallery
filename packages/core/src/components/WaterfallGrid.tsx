@@ -1,3 +1,4 @@
+import LockIcon from "@mui/icons-material/Lock";
 import {
   type RenderComponentProps,
   useMasonry,
@@ -6,10 +7,18 @@ import {
 } from "masonic";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";
+import { useThumbnailRequest } from "@/hooks/useThumbnailRequest";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ColumnBreakpoints, WImage } from "@/types";
+
+function archivePathFromSource(source: string): string | null {
+  if (!source.startsWith("archive:///")) return null;
+  const withoutScheme = source.slice("archive:///".length);
+  const hashIdx = withoutScheme.indexOf("#");
+  return hashIdx === -1 ? withoutScheme : withoutScheme.slice(0, hashIdx);
+}
 
 function getColumnCount(width: number, breakpoints: ColumnBreakpoints): number {
   const keys = Object.keys(breakpoints)
@@ -88,8 +97,45 @@ function ImageCell({
 }: RenderComponentProps<ImageCellData>) {
   const openViewer = useViewerStore((s) => s.openViewer);
   const platform = usePlatform();
+  const folderThumbnails = useSettingsStore((s) => s.folderThumbnails);
 
-  const thumbs = data.thumbnails ?? [];
+  // Subscribe to this specific entry so patchThumbnails triggers a re-render
+  // without re-rendering sibling tiles.
+  const entry = useViewerStore((s) => s.images[data.globalIndex]) ?? data;
+
+  const hookEnabled =
+    folderThumbnails === "lazy" &&
+    !entry.locked &&
+    entry.sourceId !== undefined &&
+    !(entry.thumbnails && entry.thumbnails.length > 0);
+
+  const tileRef = useThumbnailRequest(entry, hookEnabled);
+
+  if (entry.locked) {
+    const archivePath = archivePathFromSource(entry.source);
+    const archiveName = archivePath
+      ? archivePath.split(/[\\/]/).pop() || archivePath
+      : entry.relativePath;
+    return (
+      <button
+        ref={tileRef as React.RefCallback<HTMLButtonElement>}
+        type="button"
+        className="cursor-pointer overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800 transition-shadow hover:shadow-lg w-full border-none p-3 flex flex-col items-center justify-center gap-2 aspect-square"
+        onClick={() => {
+          if (archivePath) {
+            useAppStore.setState({ archivePasswordNeeded: archivePath });
+          }
+        }}
+      >
+        <LockIcon fontSize="large" />
+        <span className="text-xs text-center break-all line-clamp-2">
+          {archiveName}
+        </span>
+      </button>
+    );
+  }
+
+  const thumbs = entry.thumbnails ?? [];
   const hasThumbs = thumbs.length > 0;
 
   const srcSet = hasThumbs
@@ -109,27 +155,28 @@ function ImageCell({
   const firstThumb = thumbs[0];
   const fallback = firstThumb
     ? platform.getThumbUrl(firstThumb.source)
-    : platform.getImageUrl(data.source);
+    : platform.getImageUrl(entry.source);
 
   return (
     <button
+      ref={tileRef as React.RefCallback<HTMLButtonElement>}
       type="button"
       className="cursor-pointer overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800 transition-shadow hover:shadow-lg w-full border-none p-0 block"
       onClick={() => openViewer(data.globalIndex)}
     >
       <img
-        src={fallback || platform.getImageUrl(data.source)}
+        src={fallback || platform.getImageUrl(entry.source)}
         srcSet={srcSet}
         sizes={sizes}
         alt=""
         loading="lazy"
-        width={data.width ?? undefined}
-        height={data.height ?? undefined}
+        width={entry.width ?? undefined}
+        height={entry.height ?? undefined}
         className="w-full block"
         style={{
           aspectRatio:
-            data.width && data.height
-              ? `${data.width} / ${data.height}`
+            entry.width && entry.height
+              ? `${entry.width} / ${entry.height}`
               : undefined,
         }}
       />

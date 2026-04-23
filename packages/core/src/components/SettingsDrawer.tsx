@@ -31,6 +31,7 @@ import type {
   CacheCleanupStrategy,
   CachePolicy,
   ExtractedMode,
+  FolderThumbnailsMode,
   PasswordStorageMode,
   ThumbRetain,
 } from "@/types/platform";
@@ -71,6 +72,8 @@ export default function SettingsDrawer() {
   const setCachePolicy = useSettingsStore((s) => s.setCachePolicy);
   const thumbnailSizes = useSettingsStore((s) => s.thumbnailSizes);
   const setThumbnailSizes = useSettingsStore((s) => s.setThumbnailSizes);
+  const folderThumbnails = useSettingsStore((s) => s.folderThumbnails);
+  const setFolderThumbnails = useSettingsStore((s) => s.setFolderThumbnails);
 
   const platform = usePlatform();
   const [, navigate] = useLocation();
@@ -550,6 +553,30 @@ export default function SettingsDrawer() {
               }}
               sx={{ mb: 2 }}
             />
+
+            {/* Folder thumbnail mode */}
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t.cache.folderThumbnails}
+            </Typography>
+            <Select
+              fullWidth
+              size="small"
+              value={folderThumbnails}
+              onChange={(e) =>
+                setFolderThumbnails(e.target.value as FolderThumbnailsMode)
+              }
+              sx={{ mb: 1 }}
+            >
+              <MenuItem value="off">{t.cache.folderThumbnailsOff}</MenuItem>
+              <MenuItem value="lazy">{t.cache.folderThumbnailsLazy}</MenuItem>
+            </Select>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 2 }}
+            >
+              {t.cache.folderThumbnailsHint}
+            </Typography>
 
             {/* Clear actions */}
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>

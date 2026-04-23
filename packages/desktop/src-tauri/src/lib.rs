@@ -12,6 +12,7 @@ use services::archive_service::ArchiveService;
 use services::image_service::ImageService;
 use services::policy::CachePolicy;
 use services::source_service::SourceService;
+use services::thumbnail_queue::ThumbnailQueue;
 use services::thumbnail_service::ThumbnailService;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -80,6 +81,28 @@ pub fn run() {
             let policy: SharedPolicy = Arc::new(RwLock::new(CachePolicy::default()));
             app.manage(policy.clone());
 
+            // Thumbnail request queue (LIFO, concurrency=4) for lazy folder
+            // thumbnails. The worker task is spawned below after the app handle
+            // is available.
+            let thumb_queue = ThumbnailQueue::new(4);
+            app.manage(thumb_queue.clone());
+
+            let worker_handle = app.handle().clone();
+            let worker_queue = thumb_queue.clone();
+            let worker_thumb_svc = thumbnail_svc.clone();
+            let worker_source_svc = source_svc.clone();
+            let worker_policy = policy.clone();
+            tauri::async_runtime::spawn(async move {
+                commands::run_thumbnail_worker(
+                    worker_handle,
+                    worker_queue,
+                    worker_thumb_svc,
+                    worker_source_svc,
+                    worker_policy,
+                )
+                .await;
+            });
+
             // Cache dir is an allowed root (thumbnail + extracted paths live under it).
             {
                 let mut roots = allowed_roots.write().unwrap();
@@ -113,6 +136,8 @@ pub fn run() {
             commands::delete_to_trash,
             commands::open_devtools,
             commands::get_image_server_port,
+            commands::request_thumbnail,
+            commands::cancel_thumbnail,
             archive_commands::scan_archive,
             archive_commands::get_archive_info,
             archive_commands::get_cache_stats,

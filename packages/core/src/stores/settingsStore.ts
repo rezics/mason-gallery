@@ -4,6 +4,7 @@ import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
 import type {
   CacheCleanupStrategy,
   CachePolicy,
+  FolderThumbnailsMode,
   PasswordStorageMode,
 } from "@/types/platform";
 import {
@@ -24,6 +25,7 @@ interface SettingsState {
   passwordStorageMode: PasswordStorageMode;
   cachePolicy: CachePolicy;
   thumbnailSizes: number[];
+  folderThumbnails: FolderThumbnailsMode;
   _hydrated: boolean;
 
   setFormats: (formats: string[]) => void;
@@ -38,6 +40,7 @@ interface SettingsState {
   setPasswordStorageMode: (mode: PasswordStorageMode) => void;
   setCachePolicy: (policy: CachePolicy) => void;
   setThumbnailSizes: (sizes: number[]) => void;
+  setFolderThumbnails: (mode: FolderThumbnailsMode) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -62,6 +65,7 @@ const DEFAULTS = {
   passwordStorageMode: "none" as PasswordStorageMode,
   cachePolicy: DEFAULT_CACHE_POLICY,
   thumbnailSizes: DEFAULT_THUMBNAIL_SIZES,
+  folderThumbnails: "off" as FolderThumbnailsMode,
 };
 
 async function persist(key: string, value: unknown) {
@@ -129,6 +133,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ thumbnailSizes });
     persist("thumbnailSizes", thumbnailSizes);
   },
+  setFolderThumbnails: (folderThumbnails) => {
+    set({ folderThumbnails });
+    persist("folderThumbnails", folderThumbnails);
+  },
 
   hydrate: async () => {
     const timeout = new Promise<never>((_, reject) =>
@@ -159,6 +167,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           DEFAULTS.passwordStorageMode,
         cachePolicy: settings.cachePolicy ?? DEFAULTS.cachePolicy,
         thumbnailSizes: settings.thumbnailSizes ?? DEFAULTS.thumbnailSizes,
+        folderThumbnails:
+          settings.folderThumbnails ?? DEFAULTS.folderThumbnails,
         _hydrated: true,
       });
     } catch (e) {

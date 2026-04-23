@@ -127,6 +127,11 @@ const zh: TranslationKeys = {
     thumbnailMaxTotalSize: "缩略图缓存总量上限 (MB)",
     thumbnailSizes: "缩略图宽度 (px)",
     thumbnailSizesHint: "逗号分隔的宽度 (例如 400, 800, 1600)",
+    folderThumbnails: "文件夹缩略图",
+    folderThumbnailsOff: "关闭",
+    folderThumbnailsLazy: "惰性（查看时生成）",
+    folderThumbnailsHint:
+      "关闭：文件夹内图片始终加载原图。惰性：图块首次停留在视野中时生成缩略图，之后的查看直接使用缓存。",
     clearThumbs: "清除缩略图缓存",
     clearExtracted: "清除解压缓存",
     clearThumbsConfirm: "删除所有缓存的缩略图？",

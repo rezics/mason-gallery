@@ -2,6 +2,7 @@ use crate::archive::compute_entry_hash;
 use crate::database::Database;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 pub struct GeneratedThumbnail {
@@ -65,6 +66,35 @@ impl ThumbnailService {
         image_data: &[u8],
         widths: &[u32],
     ) -> Result<Vec<GeneratedThumbnail>, String> {
+        self.generate_for_entry_cancelable(
+            source_id,
+            source_hash,
+            entry_path,
+            image_data,
+            widths,
+            None,
+        )
+    }
+
+    /// Same as `generate_for_entry`, but checks `cancel` between resize steps
+    /// and aborts early if the flag is set. Returns `Err("canceled")` on abort.
+    pub fn generate_for_entry_cancelable(
+        &self,
+        source_id: i64,
+        source_hash: &str,
+        entry_path: &str,
+        image_data: &[u8],
+        widths: &[u32],
+        cancel: Option<&Arc<AtomicBool>>,
+    ) -> Result<Vec<GeneratedThumbnail>, String> {
+        let canceled = |c: Option<&Arc<AtomicBool>>| -> bool {
+            c.map(|f| f.load(Ordering::Acquire)).unwrap_or(false)
+        };
+
+        if canceled(cancel) {
+            return Err("canceled".to_string());
+        }
+
         let entry_hash = compute_entry_hash(entry_path);
         let img = image::load_from_memory(image_data)
             .map_err(|e| format!("Failed to decode image: {}", e))?;
@@ -77,6 +107,10 @@ impl ThumbnailService {
         let mut results = Vec::new();
 
         for &w in &sorted {
+            if canceled(cancel) {
+                return Err("canceled".to_string());
+            }
+
             // Never upscale.
             let target_w = w.min(orig_w.max(1));
             let aspect = orig_h as f32 / orig_w.max(1) as f32;
@@ -87,7 +121,11 @@ impl ThumbnailService {
             } else {
                 img.thumbnail(target_w, target_h)
             };
-            let (tw, th) = (thumb.width(), thumb.height());
+            let th = thumb.height();
+
+            if canceled(cancel) {
+                return Err("canceled".to_string());
+            }
 
             let out = self.thumb_path(source_hash, &entry_hash, w);
             if let Some(parent) = out.parent() {
@@ -123,8 +161,6 @@ impl ThumbnailService {
             if target_w >= orig_w {
                 break;
             }
-            // Unused for silencing deadcode warnings
-            let _ = tw;
         }
 
         // Refresh cache-size tally for this source.
@@ -137,6 +173,31 @@ impl ThumbnailService {
         self.db.set_thumb_cache_size(source_id, total)?;
 
         Ok(results)
+    }
+
+    /// Generate thumbnails for a loose filesystem file (folder entry).
+    ///
+    /// `entry_path` is the absolute filesystem path; the same value is used as
+    /// the thumbnails-table entry key (stable across scans). Returns
+    /// `Err("canceled")` if the cancel flag trips mid-generation.
+    pub fn generate_for_file(
+        &self,
+        source_id: i64,
+        source_hash: &str,
+        entry_path: &str,
+        widths: &[u32],
+        cancel: Option<&Arc<AtomicBool>>,
+    ) -> Result<Vec<GeneratedThumbnail>, String> {
+        let bytes = fs::read(entry_path)
+            .map_err(|e| format!("Failed to read {}: {}", entry_path, e))?;
+        self.generate_for_entry_cancelable(
+            source_id,
+            source_hash,
+            entry_path,
+            &bytes,
+            widths,
+            cancel,
+        )
     }
 
     /// Build an `mg-thumb://` URI for a given source/entry/width.

@@ -63,9 +63,12 @@ The backend is layered as `commands` → `services` → `database` + local Axum 
 - `GET /thumb?source=...&entry=...&w=...` — thumbnail lookup only (no generation); returns 404 on miss.
 
 Tauri commands (`src-tauri/src/commands.rs` + `archive_commands.rs`):
-- `scan_directory`, `scan_archive` — emit batches over events; scan_archive generates thumbnails per configured width via `thumbnail_service`
+- `scan_directory`, `scan_archive` — emit batches over events. `scan_directory` now inline-expands archives it encounters during `walkdir`: unlocked archives stream their entries (with thumbnails) into the same `images:batch` stream at the archive's sort position; locked archives emit a single `locked: true` WImage placeholder keyed by `archive:///<path>` for click-to-unlock UX.
+- `request_thumbnail`, `cancel_thumbnail` — on-demand thumbnail generation for the lazy folder pipeline; results delivered via the `images:thumbnails` event.
 - `clear_thumbnails(sourceId?)`, `clear_extracted(sourceId?)` — split cache-clear (replaces old `clear_cache`)
 - `check_migration`, `confirm_migration`, `pin_cache`, `set_cache_policy`, `set_source_policy`, `get_cache_stats`, `unlock_archive`, `delete_to_trash`, etc.
+
+**Lazy folder-thumbnail pipeline** (`folderThumbnails: "off" | "lazy"` setting): When `"lazy"`, grid tiles use an IntersectionObserver + 150ms dwell gate to call `request_thumbnail(sourceId, entryPath)`. A long-running tokio task drains a LIFO queue with a 4-permit semaphore, runs generation on `spawn_blocking`, and emits `images:thumbnails` (skipped on cancel). The frontend patches the specific entry in-place via `useViewerStore.patchThumbnails`, so the positioner never recomputes. Requests below `cachePolicy.extracted.minFileSize` return `skipped: true` and are remembered in `skippedThumbs` to suppress re-requests. Archives (which always get thumbnails at scan time) and loose files with pre-existing thumbnails are gated out of the lazy request path.
 
 ### Split Delivery Pipelines (Frontend)
 

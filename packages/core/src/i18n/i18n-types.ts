@@ -126,6 +126,10 @@ export type TranslationKeys = {
     thumbnailMaxTotalSize: string;
     thumbnailSizes: string;
     thumbnailSizesHint: string;
+    folderThumbnails: string;
+    folderThumbnailsOff: string;
+    folderThumbnailsLazy: string;
+    folderThumbnailsHint: string;
     clearThumbs: string;
     clearExtracted: string;
     clearThumbsConfirm: string;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { WImage } from "@/types";
+import type { Thumbnail, WImage } from "@/types";
 
 interface ViewerState {
   images: WImage[];
@@ -9,6 +9,12 @@ interface ViewerState {
   scanId: number;
   totalCount: number;
   isRelayout: boolean;
+  /** `"<sourceId>:<entryPath>"` keys for entries below minFileSize — no
+   * further requests should be issued for these. */
+  skippedThumbs: Set<string>;
+  /** `"<sourceId>:<entryPath>"` keys for requests currently in flight — used
+   * to dedupe concurrent viewport re-entries. */
+  requestedThumbs: Set<string>;
 
   appendImages: (newImages: WImage[]) => void;
   setCurrentIndex: (index: number) => void;
@@ -22,6 +28,22 @@ interface ViewerState {
   relayout: () => void;
   mergeImages: (added: WImage[], removedPaths: Set<string>) => void;
   getCurrentPaths: () => Set<string>;
+  patchThumbnails: (
+    sourceId: number,
+    entryPath: string,
+    thumbnails: Thumbnail[],
+  ) => void;
+  markSkipped: (sourceId: number, entryPath: string) => void;
+  markRequested: (sourceId: number, entryPath: string) => void;
+  clearRequested: (sourceId: number, entryPath: string) => void;
+  /** Replace a `locked: true` placeholder for `archivePath` with newly scanned
+   * entries. Inserts the new entries at the placeholder's position so sort
+   * order is preserved. No-op when no matching placeholder exists. */
+  replaceLockedArchive: (archivePath: string, added: WImage[]) => void;
+}
+
+function thumbKey(sourceId: number, entryPath: string): string {
+  return `${sourceId}:${entryPath}`;
 }
 
 export const useViewerStore = create<ViewerState>((set, get) => ({
@@ -32,6 +54,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   scanId: 0,
   totalCount: 0,
   isRelayout: false,
+  skippedThumbs: new Set<string>(),
+  requestedThumbs: new Set<string>(),
 
   appendImages: (newImages) =>
     set((state) => ({ images: [...state.images, ...newImages] })),
@@ -62,6 +86,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       scanId: state.scanId + 1,
       totalCount: 0,
       isRelayout: false,
+      skippedThumbs: new Set<string>(),
+      requestedThumbs: new Set<string>(),
     })),
 
   reset: () =>
@@ -71,6 +97,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       isViewerOpen: false,
       isScanning: false,
       totalCount: 0,
+      skippedThumbs: new Set<string>(),
+      requestedThumbs: new Set<string>(),
     }),
 
   relayout: () =>
@@ -97,4 +125,69 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
     const { images } = get();
     return new Set(images.map((img) => img.source));
   },
+
+  patchThumbnails: (sourceId, entryPath, thumbnails) =>
+    set((state) => {
+      let patched = false;
+      const images = state.images.map((img) => {
+        if (img.sourceId === sourceId && img.relativePath === entryPath) {
+          patched = true;
+          return { ...img, thumbnails };
+        }
+        return img;
+      });
+      if (!patched) return state;
+      const key = thumbKey(sourceId, entryPath);
+      const requestedThumbs = new Set(state.requestedThumbs);
+      requestedThumbs.delete(key);
+      return { images, requestedThumbs };
+    }),
+
+  markSkipped: (sourceId, entryPath) =>
+    set((state) => {
+      const key = thumbKey(sourceId, entryPath);
+      if (state.skippedThumbs.has(key)) return state;
+      const skippedThumbs = new Set(state.skippedThumbs);
+      skippedThumbs.add(key);
+      const requestedThumbs = new Set(state.requestedThumbs);
+      requestedThumbs.delete(key);
+      return { skippedThumbs, requestedThumbs };
+    }),
+
+  markRequested: (sourceId, entryPath) =>
+    set((state) => {
+      const key = thumbKey(sourceId, entryPath);
+      if (state.requestedThumbs.has(key)) return state;
+      const requestedThumbs = new Set(state.requestedThumbs);
+      requestedThumbs.add(key);
+      return { requestedThumbs };
+    }),
+
+  clearRequested: (sourceId, entryPath) =>
+    set((state) => {
+      const key = thumbKey(sourceId, entryPath);
+      if (!state.requestedThumbs.has(key)) return state;
+      const requestedThumbs = new Set(state.requestedThumbs);
+      requestedThumbs.delete(key);
+      return { requestedThumbs };
+    }),
+
+  replaceLockedArchive: (archivePath, added) =>
+    set((state) => {
+      const placeholderSource = `archive:///${archivePath}`;
+      const idx = state.images.findIndex(
+        (img) => img.locked && img.source === placeholderSource,
+      );
+      if (idx === -1) return state;
+      const images = [
+        ...state.images.slice(0, idx),
+        ...added,
+        ...state.images.slice(idx + 1),
+      ];
+      const currentIndex = Math.min(
+        state.currentIndex,
+        Math.max(0, images.length - 1),
+      );
+      return { images, currentIndex };
+    }),
 }));

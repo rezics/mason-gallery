@@ -10,6 +10,12 @@ export interface WImage {
   width: number | null;
   height: number | null;
   thumbnails?: Thumbnail[];
+  /** DB id of the owning `sources` row (folder or archive). Present when the
+   * backend has registered a source record for this entry. */
+  sourceId?: number;
+  /** True when this entry is a locked archive placeholder. Grid renders a lock
+   * tile instead of an image; click opens the password dialog. */
+  locked?: boolean;
 }
 
 export interface ImageBatch {

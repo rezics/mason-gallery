@@ -128,6 +128,11 @@ const en: TranslationKeys = {
     thumbnailMaxTotalSize: "Max thumbnail cache total (MB)",
     thumbnailSizes: "Thumbnail widths (px)",
     thumbnailSizesHint: "Comma-separated widths (e.g. 400, 800, 1600)",
+    folderThumbnails: "Folder thumbnails",
+    folderThumbnailsOff: "Off",
+    folderThumbnailsLazy: "Lazy (generate on view)",
+    folderThumbnailsHint:
+      "Off: folders always load the original file. Lazy: thumbnails are generated the first time a tile stays on screen; subsequent views use the cache.",
     clearThumbs: "Clear thumbnail cache",
     clearExtracted: "Clear extracted cache",
     clearThumbsConfirm: "Delete all cached thumbnails?",

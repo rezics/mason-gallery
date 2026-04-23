@@ -33,6 +33,8 @@ export const DEFAULT_CACHE_POLICY: CachePolicy = {
 
 export const DEFAULT_THUMBNAIL_SIZES = [400, 800, 1600];
 
+export type FolderThumbnailsMode = "off" | "lazy";
+
 export interface Settings {
   formats: string[];
   sortMethod: SortMethod;
@@ -44,6 +46,7 @@ export interface Settings {
   showDeleteToast: boolean;
   cachePolicy: CachePolicy;
   thumbnailSizes: number[];
+  folderThumbnails: FolderThumbnailsMode;
 }
 
 export interface ScanParams {
@@ -175,4 +178,34 @@ export interface PlatformService {
     sourceId: number,
     override: SourceOverride | null,
   ): Promise<void>;
+
+  /**
+   * Request on-demand thumbnail generation for a folder entry. Returns
+   * `{ enqueued: true }` when a new task was queued, `{ enqueued: false }` if
+   * the entry is already cached or already queued, and `{ skipped: true }` if
+   * the file is below the minFileSize threshold (no thumbs will ever arrive).
+   */
+  requestThumbnail(
+    sourceId: number,
+    entryPath: string,
+    widths?: number[],
+  ): Promise<{ enqueued: boolean; skipped: boolean }>;
+
+  /**
+   * Cancel a pending or in-flight thumbnail request. Safe to call even if no
+   * request is outstanding.
+   */
+  cancelThumbnail(sourceId: number, entryPath: string): Promise<void>;
+
+  /**
+   * Subscribe to thumbnail-ready events. Returns an unsubscribe function.
+   * On the web platform this is a no-op that returns a no-op unsubscribe.
+   */
+  onThumbnailsReady(
+    callback: (event: {
+      sourceId: number;
+      entryPath: string;
+      thumbnails: Thumbnail[];
+    }) => void,
+  ): () => void;
 }

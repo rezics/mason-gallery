@@ -12,6 +12,7 @@ import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import {
   executeArchiveScan,
+  expandLockedArchive,
   startArchiveScan,
   startScan,
 } from "@/lib/scanActions";
@@ -286,9 +287,19 @@ export default function HomePage() {
                 passwordStorageMode,
               );
             }
+            const placeholderSource = `archive:///${path}`;
+            const hasPlaceholder = useViewerStore
+              .getState()
+              .images.some(
+                (img) => img.locked && img.source === placeholderSource,
+              );
             useAppStore.setState({ archivePasswordNeeded: null });
             setPasswordError("");
-            executeArchiveScan(path, password);
+            if (hasPlaceholder) {
+              expandLockedArchive(path, password).catch(() => {});
+            } else {
+              executeArchiveScan(path, password);
+            }
           } catch {
             setPasswordError(t.archive.wrongPassword);
           }

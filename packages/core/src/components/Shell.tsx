@@ -4,11 +4,13 @@ import { useEffect } from "react";
 import { Route, Router, Switch } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import SettingsDrawer from "@/components/SettingsDrawer";
+import { usePlatform } from "@/context/PlatformContext";
 import { getTranslations, I18nContext } from "@/i18n";
 import AboutPage from "@/pages/AboutPage";
 import CachePage from "@/pages/CachePage";
 import HomePage from "@/pages/HomePage";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useViewerStore } from "@/stores/viewerStore";
 
 const darkTheme = createTheme({
   palette: {
@@ -28,10 +30,24 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
   const language = useSettingsStore((s) => s.language);
   const hydrate = useSettingsStore((s) => s.hydrate);
   const hydrated = useSettingsStore((s) => s._hydrated);
+  const platform = usePlatform();
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    const unsubscribe = platform.onThumbnailsReady(
+      ({ sourceId, entryPath, thumbnails }) => {
+        useViewerStore
+          .getState()
+          .patchThumbnails(sourceId, entryPath, thumbnails);
+      },
+    );
+    return () => {
+      unsubscribe();
+    };
+  }, [platform]);
 
   if (!hydrated) return null;
 

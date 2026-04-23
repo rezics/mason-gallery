@@ -49,6 +49,7 @@ export type {
   CacheStats,
   ExtractedMode,
   ExtractedPolicy,
+  FolderThumbnailsMode,
   ImageBatch as PlatformImageBatch,
   MigrationCandidate,
   PasswordStorageMode,

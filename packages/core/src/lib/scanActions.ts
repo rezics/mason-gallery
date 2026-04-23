@@ -290,3 +290,52 @@ export function resetToDropZone() {
   useViewerStore.getState().reset();
   useAppStore.getState().setFolders([]);
 }
+
+/**
+ * Unlock an encrypted archive that is currently rendered as a locked
+ * placeholder inside a folder view, then stream its entries into that
+ * placeholder's position without resetting the rest of the grid.
+ */
+export async function expandLockedArchive(
+  archivePath: string,
+  password?: string,
+): Promise<void> {
+  const { replaceLockedArchive } = useViewerStore.getState();
+  const { formats, sortMethod, pageSize } = useSettingsStore.getState();
+  const platform = getPlatform();
+  if (!platform.scanArchive) return;
+
+  const collected: WImage[] = [];
+  try {
+    await platform.scanArchive(
+      {
+        path: archivePath,
+        formats,
+        pageSize,
+        sortMethod,
+        password,
+      },
+      (batch) => {
+        if (batch.images.length > 0) {
+          collected.push(...batch.images);
+        }
+      },
+      () => {
+        if (collected.length > 0) {
+          replaceLockedArchive(archivePath, collected);
+        }
+      },
+    );
+  } catch (e) {
+    const errorMsg = String(e);
+    if (
+      errorMsg.includes("PasswordRequired") ||
+      errorMsg.includes("WrongPassword")
+    ) {
+      useAppStore.setState({ archivePasswordNeeded: archivePath });
+    } else {
+      console.error("Archive expand failed:", e);
+    }
+    throw e;
+  }
+}
