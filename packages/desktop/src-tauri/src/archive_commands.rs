@@ -1,11 +1,11 @@
-use crate::archive::{compute_entry_hash, open_archive, ArchiveError};
+use crate::archive::{compute_entry_hash, open_archive, ArchiveError, ArchiveReader};
+use crate::archive_scan::{self, ScanConfig, ScanInputs};
 use crate::commands::{ImageBatch, ImageCount, WImage, WThumbnail};
 use crate::database::Database;
 use crate::password::PasswordCache;
 use crate::server::SharedPolicy;
-use crate::services::archive_service::ArchiveService;
 use crate::services::image_service::ImageService;
-use crate::services::policy::{CachePolicy, CachePolicyOverride};
+use crate::services::policy::{self, CachePolicy, CachePolicyOverride};
 use crate::services::source_service::{SourceKind, SourceService};
 use crate::services::thumbnail_service::ThumbnailService;
 use crate::CacheDir;
@@ -22,8 +22,6 @@ pub struct ScanArchiveParams {
     pub page_size: usize,
     pub sort_method: String,
     pub password: Option<String>,
-    #[serde(default)]
-    pub thumbnail_sizes: Option<Vec<u32>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -89,10 +87,6 @@ fn get_password_for_archive(
     None
 }
 
-fn default_thumbnail_widths() -> Vec<u32> {
-    vec![400, 800, 1600]
-}
-
 /// Outcome of inline-expanding an archive encountered during a folder scan.
 pub enum MixedArchiveOutcome {
     /// Archive listed successfully; expanded entries to merge into the batch.
@@ -114,7 +108,6 @@ pub fn expand_archive_for_folder_scan(
     archive_path: &str,
     formats: &[String],
     sort_method: &str,
-    widths: &[u32],
 ) -> MixedArchiveOutcome {
     let db = app.state::<Arc<Database>>().inner().clone();
     let source_svc = app.state::<Arc<SourceService>>().inner().clone();
@@ -175,6 +168,13 @@ pub fn expand_archive_for_folder_scan(
     };
     let source_id = source_rec.id;
     let source_hash = source_rec.content_hash.clone();
+
+    let global_policy = app
+        .state::<SharedPolicy>()
+        .read()
+        .map(|p| p.clone())
+        .unwrap_or_default();
+    let widths = policy::resolve_widths(source_rec.policy_override.as_deref(), &global_policy);
 
     let mut out: Vec<WImage> = Vec::with_capacity(image_entries.len());
     for entry in &image_entries {
@@ -258,12 +258,6 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
     let source_svc = app.state::<Arc<SourceService>>().inner().clone();
     let thumbnail_svc = app.state::<Arc<ThumbnailService>>().inner().clone();
 
-    let widths = params
-        .thumbnail_sizes
-        .clone()
-        .filter(|v| !v.is_empty())
-        .unwrap_or_else(default_thumbnail_widths);
-
     let password = get_password_for_archive(&app, &archive_path, params.password.as_deref());
 
     let reader = open_archive(Path::new(&archive_path)).map_err(archive_error_to_string)?;
@@ -304,6 +298,16 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
     let source_id = source_rec.id;
     let source_hash = source_rec.content_hash.clone();
 
+    // Widths: per-source override ?? global policy. Resolved here (after the
+    // source record is known) so the frontend can never pass a stale/forged
+    // array that bypasses the policy layer.
+    let global_policy = app
+        .state::<SharedPolicy>()
+        .read()
+        .map(|p| p.clone())
+        .unwrap_or_default();
+    let widths = policy::resolve_widths(source_rec.policy_override.as_deref(), &global_policy);
+
     let _ = app.emit(
         "images:count",
         ImageCount {
@@ -324,103 +328,34 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
         }
     }
 
-    for chunk in image_entries.chunks(params.page_size) {
-        let mut images: Vec<WImage> = Vec::with_capacity(chunk.len());
-        for entry in chunk {
-            let entry_hash = compute_entry_hash(&entry.path);
+    // Hand off to the parallel scanner. The per-entry pipeline is CPU-bound
+    // (decode + resize + encode), so we run it in `spawn_blocking` to keep
+    // the tokio reactor free for event emission and other commands.
+    let reader_arc: Arc<dyn ArchiveReader> = Arc::from(reader);
+    let emit_app = app.clone();
+    let inputs = ScanInputs {
+        reader: reader_arc,
+        password,
+        entries: Arc::new(image_entries),
+        archive_path: Arc::new(archive_path.clone()),
+        db,
+        thumbnail_svc,
+        source_id,
+        source_hash: Arc::new(source_hash),
+        widths: Arc::new(widths),
+    };
+    let cfg = ScanConfig {
+        workers: archive_scan::default_worker_count(),
+        page_size: params.page_size,
+    };
 
-            // Gather existing thumbs; figure out which widths still need generation.
-            let existing = db
-                .get_thumbnails_by_entry(source_id, &entry.path)
-                .unwrap_or_default();
-            let existing_widths: std::collections::HashSet<u32> =
-                existing.iter().map(|t| t.width).collect();
-            let missing: Vec<u32> = widths
-                .iter()
-                .copied()
-                .filter(|w| !existing_widths.contains(w))
-                .collect();
-
-            let mut all_thumbs: Vec<WThumbnail> = existing
-                .iter()
-                .map(|t| WThumbnail {
-                    source: ThumbnailService::build_uri(&source_hash, &entry_hash, t.width),
-                    width: t.width,
-                    height: t.height,
-                })
-                .collect();
-
-            let mut width_hint: Option<u32> = existing.iter().map(|t| t.width).max();
-            let mut height_hint: Option<u32> = existing
-                .iter()
-                .max_by_key(|t| t.width)
-                .map(|t| t.height);
-
-            if !missing.is_empty() {
-                match reader.extract_entry_to_memory(&entry.path, password.as_deref()) {
-                    Ok(data) => {
-                        match thumbnail_svc.generate_for_entry(
-                            source_id,
-                            &source_hash,
-                            &entry.path,
-                            &data,
-                            &missing,
-                        ) {
-                            Ok(generated) => {
-                                for g in &generated {
-                                    all_thumbs.push(WThumbnail {
-                                        source: ThumbnailService::build_uri(
-                                            &source_hash,
-                                            &entry_hash,
-                                            g.width,
-                                        ),
-                                        width: g.width,
-                                        height: g.height,
-                                    });
-                                    if width_hint.map(|w| g.width > w).unwrap_or(true) {
-                                        width_hint = Some(g.width);
-                                        height_hint = Some(g.height);
-                                    }
-                                }
-                            }
-                            Err(_) => continue,
-                        }
-                    }
-                    Err(_) => continue,
-                }
-            }
-
-            // Dedup & sort by width ascending.
-            all_thumbs.sort_by_key(|t| t.width);
-            all_thumbs.dedup_by_key(|t| t.width);
-
-            images.push(WImage {
-                source: format!("archive:///{}#{}", archive_path, entry.path),
-                relative_path: entry.path.clone(),
-                width: width_hint,
-                height: height_hint,
-                thumbnails: Some(all_thumbs),
-                source_id: Some(source_id),
-                locked: None,
-            });
-        }
-
-        let _ = app.emit(
-            "images:batch",
-            ImageBatch {
-                images,
-                done: false,
-            },
-        );
-    }
-
-    let _ = app.emit(
-        "images:batch",
-        ImageBatch {
-            images: vec![],
-            done: true,
-        },
-    );
+    tokio::task::spawn_blocking(move || {
+        archive_scan::run_scan(inputs, cfg, |images, done| {
+            let _ = emit_app.emit("images:batch", ImageBatch { images, done });
+        });
+    })
+    .await
+    .map_err(|e| format!("scan task panicked: {}", e))?;
 
     Ok(())
 }
@@ -613,6 +548,19 @@ pub async fn set_source_policy(
     policy_override: Option<CachePolicyOverride>,
 ) -> Result<(), String> {
     let db = app.state::<Arc<Database>>().inner().clone();
+    if let Some(o) = &policy_override {
+        if let Some(th) = &o.thumbnails {
+            if let Some(w) = &th.widths {
+                if w.is_empty() {
+                    return Err(
+                        "thumbnails.widths override must contain at least one width \
+                         (remove the field to inherit from the global policy)"
+                            .to_string(),
+                    );
+                }
+            }
+        }
+    }
     let json = match policy_override {
         Some(o) => Some(
             serde_json::to_string(&o)

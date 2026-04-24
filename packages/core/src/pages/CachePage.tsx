@@ -54,9 +54,14 @@ function effectivePolicy(
   override: SourceOverride | null,
 ): CachePolicy {
   if (!override) return base;
+  const widthsOverride = override.thumbnails?.widths;
   return {
     extracted: { ...base.extracted, ...override.extracted },
     thumbnails: { ...base.thumbnails, ...override.thumbnails },
+    thumbnailSizes:
+      widthsOverride && widthsOverride.length > 0
+        ? widthsOverride
+        : base.thumbnailSizes,
   };
 }
 
@@ -102,6 +107,9 @@ function CustomizeDialog({
       ? String(Math.round(existing.thumbnails.maxTotalSize / MB))
       : "",
   );
+  const [widthsText, setWidthsText] = useState<string>(
+    existing?.thumbnails?.widths?.join(", ") ?? "",
+  );
 
   useEffect(() => {
     if (!open || !stats) return;
@@ -123,9 +131,22 @@ function CustomizeDialog({
         ? String(Math.round(o.thumbnails.maxTotalSize / MB))
         : "",
     );
+    setWidthsText(o?.thumbnails?.widths?.join(", ") ?? "");
   }, [open, stats]);
 
   if (!stats) return null;
+
+  // Validation: if the user typed text into the widths field but none of the
+  // tokens parse to a valid width (positive integer ≤ 4096), surface an
+  // explicit error and block save. Empty field = no override (inherit global)
+  // and is NOT an error.
+  const widthsHasText = widthsText.trim().length > 0;
+  const parsedWidths = widthsText
+    .split(",")
+    .map((s) => Number.parseInt(s.trim(), 10))
+    .filter((n) => Number.isFinite(n) && n > 0 && n <= 4096)
+    .sort((a, b) => a - b);
+  const widthsError = widthsHasText && parsedWidths.length === 0;
 
   const buildOverride = (): SourceOverride | null => {
     const extracted: SourceOverride["extracted"] = {};
@@ -141,6 +162,10 @@ function CustomizeDialog({
     const maxTotal = Number.parseInt(maxTotalMb, 10);
     if (Number.isFinite(maxTotal) && maxTotal > 0)
       thumbnails.maxTotalSize = maxTotal * MB;
+
+    if (parsedWidths.length > 0) {
+      thumbnails.widths = [...new Set(parsedWidths)];
+    }
 
     const hasExtracted = Object.keys(extracted).length > 0;
     const hasThumbs = Object.keys(thumbnails).length > 0;
@@ -235,6 +260,24 @@ function CustomizeDialog({
           sx={{ mb: 2 }}
         />
 
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          {t.cache.thumbnailSizes}
+        </Typography>
+        <TextField
+          fullWidth
+          size="small"
+          value={widthsText}
+          placeholder={t.cache.thumbnailSizesHint}
+          onChange={(e) => setWidthsText(e.target.value)}
+          error={widthsError}
+          helperText={
+            widthsError
+              ? "Enter at least one positive integer ≤ 4096, or leave empty to inherit the global default."
+              : undefined
+          }
+          sx={{ mb: 2 }}
+        />
+
         <Box
           sx={{
             p: 1.5,
@@ -270,6 +313,9 @@ function CustomizeDialog({
               {Math.round(preview.thumbnails.maxTotalSize / MB)} MB
             </Typography>
           )}
+          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+            thumbnailSizes: [{preview.thumbnailSizes.join(", ")}]
+          </Typography>
         </Box>
       </DialogContent>
       <DialogActions>
@@ -285,6 +331,7 @@ function CustomizeDialog({
         <Button onClick={onClose}>{t.archive.cancel}</Button>
         <Button
           variant="contained"
+          disabled={widthsError}
           onClick={async () => {
             await onSave(stats.id, buildOverride());
             onClose();

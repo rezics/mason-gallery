@@ -127,7 +127,8 @@ const en: TranslationKeys = {
     thumbnailRetainLru: "LRU-capped",
     thumbnailMaxTotalSize: "Max thumbnail cache total (MB)",
     thumbnailSizes: "Thumbnail widths (px)",
-    thumbnailSizesHint: "Comma-separated widths (e.g. 400, 800, 1600)",
+    thumbnailSizesHint:
+      "Comma-separated widths. Default is 800 (single thumbnail per entry — fastest scan). Adding more widths (e.g. 400, 800, 1600) improves rendering on high-DPI displays at the cost of longer scan times and more disk use.",
     folderThumbnails: "Folder thumbnails",
     folderThumbnailsOff: "Off",
     folderThumbnailsLazy: "Lazy (generate on view)",

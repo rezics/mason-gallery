@@ -1,10 +1,11 @@
-mod archive;
+pub mod archive;
 mod archive_commands;
-mod commands;
-mod database;
+pub mod archive_scan;
+pub mod commands;
+pub mod database;
 mod password;
 mod server;
-mod services;
+pub mod services;
 
 use database::Database;
 use server::{AllowedRoots, SharedPolicy};

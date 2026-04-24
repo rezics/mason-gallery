@@ -19,19 +19,36 @@ export interface ThumbnailPolicy {
 export interface CachePolicy {
   extracted: ExtractedPolicy;
   thumbnails: ThumbnailPolicy;
+  /**
+   * Thumbnail widths generated at scan time. The Rust backend resolves per-
+   * source `SourceOverride.thumbnails.widths` on top of this; the frontend
+   * never passes a widths array through the scan call itself.
+   */
+  thumbnailSizes: number[];
+}
+
+export interface SourceThumbnailOverride extends Partial<ThumbnailPolicy> {
+  /**
+   * Override the thumbnail widths for this specific source. When set it
+   * replaces `CachePolicy.thumbnailSizes` wholesale; unset means "inherit
+   * global". Must contain at least one value — the backend rejects empty
+   * arrays in `setSourcePolicy`.
+   */
+  widths?: number[];
 }
 
 export type SourceOverride = {
   extracted?: Partial<ExtractedPolicy>;
-  thumbnails?: Partial<ThumbnailPolicy>;
+  thumbnails?: SourceThumbnailOverride;
 };
+
+export const DEFAULT_THUMBNAIL_SIZES = [800];
 
 export const DEFAULT_CACHE_POLICY: CachePolicy = {
   extracted: { mode: "unlimited" },
   thumbnails: { retain: "until-source-removed" },
+  thumbnailSizes: DEFAULT_THUMBNAIL_SIZES,
 };
-
-export const DEFAULT_THUMBNAIL_SIZES = [400, 800, 1600];
 
 export type FolderThumbnailsMode = "off" | "lazy";
 
@@ -107,7 +124,6 @@ export interface ScanArchiveParams {
   pageSize: number;
   sortMethod: string;
   password?: string;
-  thumbnailSizes?: number[];
 }
 
 export interface MigrationCandidate {

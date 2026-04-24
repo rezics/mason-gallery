@@ -126,7 +126,8 @@ const zh: TranslationKeys = {
     thumbnailRetainLru: "LRU 限额",
     thumbnailMaxTotalSize: "缩略图缓存总量上限 (MB)",
     thumbnailSizes: "缩略图宽度 (px)",
-    thumbnailSizesHint: "逗号分隔的宽度 (例如 400, 800, 1600)",
+    thumbnailSizesHint:
+      "逗号分隔的宽度。默认 800（每张图仅生成一个缩略图 — 扫描最快）。添加更多宽度（例如 400, 800, 1600）能在高 DPI 显示器上提升渲染质量，但扫描耗时和磁盘占用会增加。",
     folderThumbnails: "文件夹缩略图",
     folderThumbnailsOff: "关闭",
     folderThumbnailsLazy: "惰性（查看时生成）",

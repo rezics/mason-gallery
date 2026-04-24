@@ -4,12 +4,31 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
 
 pub struct GeneratedThumbnail {
     pub width: u32,
     pub height: u32,
     pub relative_path: String,
     pub file_size: u64,
+}
+
+/// Per-entry stage timing for benchmarking. All values in nanoseconds.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct StageTimings {
+    pub decode_ns: u64,
+    pub resize_ns: u64,
+    pub encode_ns: u64,
+    pub db_ns: u64,
+}
+
+impl StageTimings {
+    pub fn add(&mut self, other: &StageTimings) {
+        self.decode_ns += other.decode_ns;
+        self.resize_ns += other.resize_ns;
+        self.encode_ns += other.encode_ns;
+        self.db_ns += other.db_ns;
+    }
 }
 
 pub struct ThumbnailService {
@@ -87,6 +106,30 @@ impl ThumbnailService {
         widths: &[u32],
         cancel: Option<&Arc<AtomicBool>>,
     ) -> Result<Vec<GeneratedThumbnail>, String> {
+        self.generate_for_entry_timed(
+            source_id,
+            source_hash,
+            entry_path,
+            image_data,
+            widths,
+            cancel,
+        )
+        .map(|(r, _)| r)
+    }
+
+    /// Instrumented variant: returns per-stage timings alongside the
+    /// generated thumbnails. Used by the benchmark harness. All other
+    /// callers should use `generate_for_entry` / `generate_for_entry_cancelable`
+    /// which discard the timings.
+    pub fn generate_for_entry_timed(
+        &self,
+        source_id: i64,
+        source_hash: &str,
+        entry_path: &str,
+        image_data: &[u8],
+        widths: &[u32],
+        cancel: Option<&Arc<AtomicBool>>,
+    ) -> Result<(Vec<GeneratedThumbnail>, StageTimings), String> {
         let canceled = |c: Option<&Arc<AtomicBool>>| -> bool {
             c.map(|f| f.load(Ordering::Acquire)).unwrap_or(false)
         };
@@ -95,9 +138,13 @@ impl ThumbnailService {
             return Err("canceled".to_string());
         }
 
+        let mut timings = StageTimings::default();
         let entry_hash = compute_entry_hash(entry_path);
+
+        let t = Instant::now();
         let img = image::load_from_memory(image_data)
             .map_err(|e| format!("Failed to decode image: {}", e))?;
+        timings.decode_ns = t.elapsed().as_nanos() as u64;
         let (orig_w, orig_h) = (img.width(), img.height());
 
         let mut sorted: Vec<u32> = widths.iter().copied().filter(|&w| w > 0).collect();
@@ -116,11 +163,13 @@ impl ThumbnailService {
             let aspect = orig_h as f32 / orig_w.max(1) as f32;
             let target_h = ((target_w as f32) * aspect).round().max(1.0) as u32;
 
+            let t = Instant::now();
             let thumb = if target_w == orig_w && target_h == orig_h {
                 img.clone()
             } else {
                 img.thumbnail(target_w, target_h)
             };
+            timings.resize_ns += t.elapsed().as_nanos() as u64;
             let th = thumb.height();
 
             if canceled(cancel) {
@@ -132,13 +181,16 @@ impl ThumbnailService {
                 fs::create_dir_all(parent)
                     .map_err(|e| format!("Failed to create thumb dir: {}", e))?;
             }
+            let t = Instant::now();
             thumb
                 .save(&out)
                 .map_err(|e| format!("Failed to save thumbnail: {}", e))?;
+            timings.encode_ns += t.elapsed().as_nanos() as u64;
 
             let size = fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
             let rel = format!("thumbs/{}/{}_{}.webp", source_hash, entry_hash, w);
 
+            let t = Instant::now();
             self.db.insert_thumbnail(
                 source_id,
                 entry_path,
@@ -147,6 +199,7 @@ impl ThumbnailService {
                 &rel,
                 size as i64,
             )?;
+            timings.db_ns += t.elapsed().as_nanos() as u64;
 
             results.push(GeneratedThumbnail {
                 width: w,
@@ -164,6 +217,7 @@ impl ThumbnailService {
         }
 
         // Refresh cache-size tally for this source.
+        let t = Instant::now();
         let total: i64 = self
             .db
             .get_all_thumbnails_for_source(source_id)?
@@ -171,8 +225,9 @@ impl ThumbnailService {
             .filter_map(|t| t.file_size)
             .sum();
         self.db.set_thumb_cache_size(source_id, total)?;
+        timings.db_ns += t.elapsed().as_nanos() as u64;
 
-        Ok(results)
+        Ok((results, timings))
     }
 
     /// Generate thumbnails for a loose filesystem file (folder entry).

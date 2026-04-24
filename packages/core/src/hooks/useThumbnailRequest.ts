@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { usePlatform } from "@/context/PlatformContext";
-import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { WImage } from "@/types";
 
@@ -19,7 +18,6 @@ export function useThumbnailRequest(
   enabled: boolean,
 ): React.RefCallback<HTMLElement> {
   const platform = usePlatform();
-  const thumbnailSizes = useSettingsStore((s) => s.thumbnailSizes);
 
   const elementRef = useRef<HTMLElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -61,7 +59,7 @@ export function useThumbnailRequest(
               store.markRequested(sourceId, entryPath);
               hasRequestedRef.current = true;
               platform
-                .requestThumbnail(sourceId, entryPath, thumbnailSizes)
+                .requestThumbnail(sourceId, entryPath)
                 .then((result) => {
                   if (result.skipped) {
                     useViewerStore.getState().markSkipped(sourceId, entryPath);
@@ -106,7 +104,7 @@ export function useThumbnailRequest(
         platform.cancelThumbnail(sourceId, entryPath).catch(() => {});
       }
     };
-  }, [enabled, sourceId, entryPath, platform, thumbnailSizes]);
+  }, [enabled, sourceId, entryPath, platform]);
 
   return (el: HTMLElement | null) => {
     elementRef.current = el;

@@ -2,6 +2,7 @@ use crate::archive::compute_entry_hash;
 use crate::archive_commands::{expand_archive_for_folder_scan, MixedArchiveOutcome};
 use crate::database::Database;
 use crate::server::{ServerState, SharedPolicy};
+use crate::services::policy;
 use crate::services::source_service::SourceService;
 use crate::services::thumbnail_queue::{EnqueueOutcome, Key, ThumbnailQueue};
 use crate::services::thumbnail_service::ThumbnailService;
@@ -166,8 +167,6 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
         .map(|e| (e.path.clone(), get_image_dimensions(Path::new(&e.path))))
         .collect();
 
-    let widths = default_widths();
-
     // Initial count = discovered items (archives count as 1 until expansion
     // refines the total). Frontend tolerates count updates.
     let _ = app.emit(
@@ -187,7 +186,6 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                 &entry.path,
                 &formats,
                 &params.sort_method,
-                &widths,
             ) {
                 MixedArchiveOutcome::Entries(archive_imgs) => {
                     for img in archive_imgs {
@@ -362,21 +360,28 @@ pub struct ThumbnailsReadyPayload {
     pub thumbnails: Vec<WThumbnail>,
 }
 
-fn default_widths() -> Vec<u32> {
-    vec![400, 800, 1600]
-}
-
 #[tauri::command]
 pub async fn request_thumbnail(
     app: AppHandle,
     params: RequestThumbnailParams,
 ) -> Result<RequestThumbnailResult, String> {
     let db = app.state::<Arc<Database>>().inner().clone();
-    let policy = app.state::<SharedPolicy>().inner().clone();
+    let policy_state = app.state::<SharedPolicy>().inner().clone();
     let queue = app.state::<Arc<ThumbnailQueue>>().inner().clone();
 
+    // Default path uses the policy-resolved widths; a non-empty `params.widths`
+    // is an explicit override from the frontend (e.g. for one-off requests).
     let widths = if params.widths.is_empty() {
-        default_widths()
+        let override_json = db
+            .get_source_by_id(params.source_id)
+            .ok()
+            .flatten()
+            .and_then(|r| r.policy_override);
+        let global = policy_state
+            .read()
+            .map(|p| p.clone())
+            .unwrap_or_default();
+        policy::resolve_widths(override_json.as_deref(), &global)
     } else {
         params.widths.clone()
     };
@@ -397,7 +402,7 @@ pub async fn request_thumbnail(
     }
 
     // minFileSize gate (applies to folder files; absolute path on disk).
-    let min_size = policy
+    let min_size = policy_state
         .read()
         .ok()
         .and_then(|p| p.extracted.min_file_size);
@@ -453,7 +458,7 @@ pub async fn run_thumbnail_worker(
     queue: Arc<ThumbnailQueue>,
     thumbnail_svc: Arc<ThumbnailService>,
     source_svc: Arc<SourceService>,
-    _policy: SharedPolicy,
+    policy_state: SharedPolicy,
 ) {
     use std::sync::atomic::Ordering;
 
@@ -490,8 +495,8 @@ pub async fn run_thumbnail_worker(
             continue;
         }
 
-        let source_hash = match source_svc.db().get_source_by_id(key.0) {
-            Ok(Some(rec)) => rec.content_hash,
+        let (source_hash, override_json) = match source_svc.db().get_source_by_id(key.0) {
+            Ok(Some(rec)) => (rec.content_hash, rec.policy_override),
             _ => {
                 drop(permit);
                 queue.complete(&key);
@@ -499,7 +504,11 @@ pub async fn run_thumbnail_worker(
             }
         };
 
-        let widths = default_widths();
+        let global_policy = policy_state
+            .read()
+            .map(|p| p.clone())
+            .unwrap_or_default();
+        let widths = policy::resolve_widths(override_json.as_deref(), &global_policy);
         let svc = thumbnail_svc.clone();
         let cancel_flag = slot.cancel.clone();
         let entry_path = key.1.clone();

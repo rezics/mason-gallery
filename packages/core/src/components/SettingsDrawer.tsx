@@ -95,12 +95,14 @@ export default function SettingsDrawer() {
     const parsed = thumbSizesText
       .split(",")
       .map((s) => Number.parseInt(s.trim(), 10))
-      .filter((n) => Number.isFinite(n) && n > 0)
+      .filter((n) => Number.isFinite(n) && n > 0 && n <= 4096)
       .sort((a, b) => a - b);
     if (parsed.length > 0) {
       setThumbnailSizes(parsed);
       setThumbSizesText(parsed.join(", "));
     } else {
+      // Empty/invalid input — revert to the last committed value rather than
+      // persisting an empty array (the backend rejects `widths: []` anyway).
       setThumbSizesText(thumbnailSizes.join(", "));
     }
   };

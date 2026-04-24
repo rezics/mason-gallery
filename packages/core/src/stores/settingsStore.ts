@@ -77,7 +77,7 @@ async function persist(key: string, value: unknown) {
   }
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULTS,
   _hydrated: false,
 
@@ -130,8 +130,20 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       .catch((e) => console.error("Failed to sync cachePolicy to backend:", e));
   },
   setThumbnailSizes: (thumbnailSizes) => {
-    set({ thumbnailSizes });
+    // Keep cachePolicy.thumbnailSizes in sync — that is what the Rust backend
+    // reads when resolving widths during a scan. The flat `thumbnailSizes`
+    // field is retained for UI consumers that bind to it directly.
+    const mergedPolicy = {
+      ...get().cachePolicy,
+      thumbnailSizes,
+    };
+    set({ thumbnailSizes, cachePolicy: mergedPolicy });
     persist("thumbnailSizes", thumbnailSizes);
+    persist("cachePolicy", mergedPolicy);
+    const platform = getPlatform();
+    platform
+      .setCachePolicy?.(mergedPolicy)
+      .catch((e) => console.error("Failed to sync cachePolicy to backend:", e));
   },
   setFolderThumbnails: (folderThumbnails) => {
     set({ folderThumbnails });
@@ -165,8 +177,22 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           ((settings as Record<string, unknown>)
             .passwordStorageMode as PasswordStorageMode) ??
           DEFAULTS.passwordStorageMode,
-        cachePolicy: settings.cachePolicy ?? DEFAULTS.cachePolicy,
-        thumbnailSizes: settings.thumbnailSizes ?? DEFAULTS.thumbnailSizes,
+        cachePolicy: (() => {
+          // Unify the two fields: `thumbnailSizes` (top-level, pre-existing)
+          // and `cachePolicy.thumbnailSizes` (new, authoritative for Rust).
+          // If a legacy install persisted only the flat field, fold it into
+          // the policy so subsequent scans pick it up.
+          const basePolicy = settings.cachePolicy ?? DEFAULTS.cachePolicy;
+          const sizes =
+            basePolicy.thumbnailSizes ??
+            settings.thumbnailSizes ??
+            DEFAULTS.thumbnailSizes;
+          return { ...basePolicy, thumbnailSizes: sizes };
+        })(),
+        thumbnailSizes:
+          settings.cachePolicy?.thumbnailSizes ??
+          settings.thumbnailSizes ??
+          DEFAULTS.thumbnailSizes,
         folderThumbnails:
           settings.folderThumbnails ?? DEFAULTS.folderThumbnails,
         _hydrated: true,
