@@ -84,6 +84,27 @@ export interface ImageBatch {
   done: boolean;
 }
 
+/**
+ * Per-entry indicator: how many entries the masonry grid can render now.
+ * For loose files, an entry is "loaded" once dimensions are probed; for
+ * archive entries, only after the thumbnail file is on disk (since the
+ * grid renders the thumbnail URL).
+ */
+export interface ScanInfoProgress {
+  loaded: number;
+  total: number;
+}
+
+/**
+ * Per-entry indicator: how many entries have a thumbnail file written to
+ * disk during the scan. Loose files don't auto-thumbnail (those go through
+ * the lazy pipeline), so for loose-only scans this stays at 0/0.
+ */
+export interface ScanThumbProgress {
+  generated: number;
+  total: number;
+}
+
 export interface PlatformCapabilities {
   canDeleteFiles: boolean;
   canRevealFile: boolean;
@@ -141,6 +162,8 @@ export interface PlatformService {
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
     onCount?: (total: number) => void,
+    onInfoProgress?: (progress: ScanInfoProgress) => void,
+    onThumbProgress?: (progress: ScanThumbProgress) => void,
   ): Promise<void>;
 
   getImageUrl(source: string): string;
@@ -173,6 +196,8 @@ export interface PlatformService {
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
     onCount?: (total: number) => void,
+    onInfoProgress?: (progress: ScanInfoProgress) => void,
+    onThumbProgress?: (progress: ScanThumbProgress) => void,
   ): Promise<void>;
   getArchiveInfo?(path: string): Promise<ArchiveInfo>;
   getCacheStats?(): Promise<CacheStats[]>;

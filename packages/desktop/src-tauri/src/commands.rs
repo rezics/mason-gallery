@@ -1,5 +1,7 @@
 use crate::archive::compute_entry_hash;
-use crate::archive_commands::{expand_archive_for_folder_scan, MixedArchiveOutcome};
+use crate::archive_commands::{
+    expand_archive_into_scan, ExpansionResult, ScanProgressTracker,
+};
 use crate::database::Database;
 use crate::server::{ServerState, SharedPolicy};
 use crate::services::policy;
@@ -10,6 +12,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tauri::{AppHandle, Emitter, Manager};
@@ -160,13 +163,6 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
         _ => entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
     }
 
-    // Loose-file dimensions in parallel (archives are handled sequentially below).
-    let loose_dims: std::collections::HashMap<String, (Option<u32>, Option<u32>)> = entries
-        .par_iter()
-        .filter(|e| !e.is_archive)
-        .map(|e| (e.path.clone(), get_image_dimensions(Path::new(&e.path))))
-        .collect();
-
     // Initial count = discovered items (archives count as 1 until expansion
     // refines the total). Frontend tolerates count updates.
     let _ = app.emit(
@@ -176,19 +172,57 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
         },
     );
 
+    let loose_count = entries.iter().filter(|e| !e.is_archive).count();
+
+    // Shared progress tracker. Loose files contribute to info_total (each
+    // entry becomes display-ready once dims are probed). Archives contribute
+    // to both info_total and thumb_total when their listings come in (see
+    // expand_archive_into_scan). Locked-archive placeholders count as 1
+    // info entry, 0 thumb entries.
+    let tracker = Arc::new(ScanProgressTracker::new());
+    tracker.info_total.store(loose_count, Ordering::Relaxed);
+    tracker.emit_info(&app);
+    tracker.emit_thumb(&app);
+
+    // Loose-file dimensions in parallel (archives are handled sequentially
+    // below). For large folders this can take seconds-to-minutes — stream
+    // info progress out of the rayon block so the indicator advances live.
+    let loose_tracker = tracker.clone();
+    let loose_progress_app = app.clone();
+    let loose_dims: std::collections::HashMap<String, (Option<u32>, Option<u32>)> = entries
+        .par_iter()
+        .filter(|e| !e.is_archive)
+        .map(|e| {
+            let result = (e.path.clone(), get_image_dimensions(Path::new(&e.path)));
+            let n = loose_tracker
+                .info_loaded
+                .fetch_add(1, Ordering::Relaxed)
+                + 1;
+            if n % 16 == 0 || n == loose_count {
+                loose_tracker.emit_info(&loose_progress_app);
+            }
+            result
+        })
+        .collect();
+
     let mut pending: Vec<WImage> = Vec::with_capacity(params.page_size);
     let mut total_emitted: usize = 0;
 
     for entry in &entries {
         if entry.is_archive {
-            match expand_archive_for_folder_scan(
+            // expand_archive_into_scan streams entries through the on_batch
+            // closure as workers finish them, and updates the tracker
+            // (info_total/thumb_total bumped on listing, info_loaded/
+            // thumb_generated bumped per entry, throttled emits inside).
+            let result = expand_archive_into_scan(
                 &app,
                 &entry.path,
                 &formats,
                 &params.sort_method,
-            ) {
-                MixedArchiveOutcome::Entries(archive_imgs) => {
-                    for img in archive_imgs {
+                params.page_size,
+                &tracker,
+                |images, _done| {
+                    for img in images {
                         pending.push(img);
                         if pending.len() >= params.page_size {
                             total_emitted += pending.len();
@@ -201,8 +235,18 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                             );
                         }
                     }
+                },
+            );
+            match result {
+                ExpansionResult::Listed { entry_count: _ } => {
+                    // Entries already streamed; tracker already updated.
                 }
-                MixedArchiveOutcome::Locked(placeholder) => {
+                ExpansionResult::Locked(placeholder) => {
+                    // Placeholder occupies one display tile and is immediately
+                    // ready (no thumbnail involved).
+                    tracker.info_total.fetch_add(1, Ordering::Relaxed);
+                    tracker.info_loaded.fetch_add(1, Ordering::Relaxed);
+                    tracker.emit_info(&app);
                     pending.push(placeholder);
                     if pending.len() >= params.page_size {
                         total_emitted += pending.len();
@@ -215,7 +259,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                         );
                     }
                 }
-                MixedArchiveOutcome::Skipped(msg) => {
+                ExpansionResult::Skipped(msg) => {
                     eprintln!("Skipping archive {}: {}", entry.path, msg);
                 }
             }
@@ -264,6 +308,11 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
             total: total_emitted,
         },
     );
+
+    // Final settle — emit absolute current state so the indicator lands at
+    // its terminal value even if the last bump fell between throttle ticks.
+    tracker.emit_info(&app);
+    tracker.emit_thumb(&app);
 
     // Final done signal
     let _ = app.emit(

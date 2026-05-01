@@ -116,6 +116,10 @@ export const webPlatformService: PlatformService = {
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
     onCount?: (total: number) => void,
+    // Web has no backend-streamed scan progress — accepted for interface
+    // parity, never invoked.
+    _onInfoProgress?: unknown,
+    _onThumbProgress?: unknown,
   ): Promise<void> {
     registry.clear();
 

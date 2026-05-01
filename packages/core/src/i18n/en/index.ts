@@ -20,6 +20,8 @@ const en: TranslationKeys = {
     selectFolder: "Select Folder",
     scanning: "Scanning...",
     scanProgress: "{loaded} / {total} images",
+    infoProgress: "Info {loaded}/{total}",
+    thumbProgress: "Thumb {generated}/{total}",
     imageCount: "{count} images",
     goToImage: "Go to image (Ctrl+G)",
   },

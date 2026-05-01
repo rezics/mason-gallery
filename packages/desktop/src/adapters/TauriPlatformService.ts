@@ -9,7 +9,9 @@ import type {
   PasswordStorageMode,
   PlatformService,
   ScanArchiveParams,
+  ScanInfoProgress,
   ScanParams,
+  ScanThumbProgress,
   Settings,
   SourceOverride,
   Thumbnail,
@@ -55,6 +57,8 @@ export const tauriPlatformService: PlatformService = {
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
     onCount?: (total: number) => void,
+    onInfoProgress?: (progress: ScanInfoProgress) => void,
+    onThumbProgress?: (progress: ScanThumbProgress) => void,
   ): Promise<void> {
     await getServerPort();
 
@@ -69,6 +73,22 @@ export const tauriPlatformService: PlatformService = {
       );
     }
 
+    let unlistenInfo: (() => void) | undefined;
+    if (onInfoProgress) {
+      unlistenInfo = await listen<ScanInfoProgress>(
+        "images:info_progress",
+        (event) => onInfoProgress(event.payload),
+      );
+    }
+
+    let unlistenThumb: (() => void) | undefined;
+    if (onThumbProgress) {
+      unlistenThumb = await listen<ScanThumbProgress>(
+        "images:thumb_progress",
+        (event) => onThumbProgress(event.payload),
+      );
+    }
+
     const unlisten = await listen<ImageBatch>("images:batch", (event) => {
       const batch = event.payload;
       if (batch.images.length > 0) {
@@ -77,6 +97,8 @@ export const tauriPlatformService: PlatformService = {
       if (batch.done) {
         onComplete();
         unlisten();
+        unlistenInfo?.();
+        unlistenThumb?.();
       }
     });
 
@@ -200,6 +222,8 @@ export const tauriPlatformService: PlatformService = {
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
     onCount?: (total: number) => void,
+    onInfoProgress?: (progress: ScanInfoProgress) => void,
+    onThumbProgress?: (progress: ScanThumbProgress) => void,
   ): Promise<void> {
     await getServerPort();
 
@@ -214,6 +238,22 @@ export const tauriPlatformService: PlatformService = {
       );
     }
 
+    let unlistenInfo: (() => void) | undefined;
+    if (onInfoProgress) {
+      unlistenInfo = await listen<ScanInfoProgress>(
+        "images:info_progress",
+        (event) => onInfoProgress(event.payload),
+      );
+    }
+
+    let unlistenThumb: (() => void) | undefined;
+    if (onThumbProgress) {
+      unlistenThumb = await listen<ScanThumbProgress>(
+        "images:thumb_progress",
+        (event) => onThumbProgress(event.payload),
+      );
+    }
+
     const unlisten = await listen<ImageBatch>("images:batch", (event) => {
       const batch = event.payload;
       if (batch.images.length > 0) {
@@ -222,6 +262,8 @@ export const tauriPlatformService: PlatformService = {
       if (batch.done) {
         onComplete();
         unlisten();
+        unlistenInfo?.();
+        unlistenThumb?.();
       }
     });
 

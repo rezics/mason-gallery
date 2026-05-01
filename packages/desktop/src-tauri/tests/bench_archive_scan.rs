@@ -210,12 +210,17 @@ fn run_once(cfg: &BenchConfig) -> RunResult {
     };
 
     let wall_start = Instant::now();
-    let summary = archive_scan::run_scan(inputs, scan_cfg, |images, _done| {
-        let mut e = emitted.lock().expect("emitted mutex poisoned");
-        for img in images {
-            e.push(img.relative_path);
-        }
-    });
+    let summary = archive_scan::run_scan(
+        inputs,
+        scan_cfg,
+        |images, _done| {
+            let mut e = emitted.lock().expect("emitted mutex poisoned");
+            for img in images {
+                e.push(img.relative_path);
+            }
+        },
+        |_n| {},
+    );
     let wall = wall_start.elapsed();
 
     let emitted_order = emitted.into_inner().expect("emitted mutex poisoned");

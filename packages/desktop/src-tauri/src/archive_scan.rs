@@ -236,16 +236,24 @@ pub struct ScanInputs {
 /// Run the archive scan. Batches are emitted via `on_batch` in archive-sort
 /// order; the final batch (possibly empty) is emitted with `done == true`.
 ///
+/// `on_progress` is called once per entry completion (success **or** error),
+/// with the cumulative count of entries processed so far. The caller owns the
+/// global counter — `run_scan` only reports its local progress. Both errored
+/// and successful entries are counted, so the indicator always reaches `total`
+/// even when poison entries are present.
+///
 /// Errors on individual entries are swallowed silently (matches current
 /// production behavior — one corrupt image shouldn't poison a whole scan);
 /// only the reassembly cursor advances.
-pub fn run_scan<F>(
+pub fn run_scan<F, P>(
     inputs: ScanInputs,
     cfg: ScanConfig,
     mut on_batch: F,
+    mut on_progress: P,
 ) -> ScanSummary
 where
     F: FnMut(Vec<WImage>, bool),
+    P: FnMut(usize),
 {
     let mut summary = ScanSummary {
         stage_totals: StageTimings::default(),
@@ -270,6 +278,7 @@ where
     if cfg.workers == 0 {
         // Serial, on the calling thread. Already in source order, no
         // reassembly needed.
+        let mut progress_count: usize = 0;
         for entry in inputs.entries.iter() {
             let t0 = Instant::now();
             match process_entry(
@@ -289,13 +298,19 @@ where
                     summary.entries_processed += 1;
                     summary.thumbs_generated +=
                         outcome.image.thumbnails.as_ref().map(|v| v.len()).unwrap_or(0);
+                    progress_count += 1;
+                    on_progress(progress_count);
                     push_and_maybe_flush(
                         vec![outcome.image],
                         &mut batch_buffer,
                         &mut on_batch,
                     );
                 }
-                Err(_) => continue,
+                Err(_) => {
+                    progress_count += 1;
+                    on_progress(progress_count);
+                    continue;
+                }
             }
         }
     } else {
@@ -352,6 +367,7 @@ where
         drop(tx);
 
         let mut reassembly = OrderedReassembly::new();
+        let mut progress_count: usize = 0;
         for (idx, res) in rx.iter() {
             let ready = match res {
                 Ok((outcome, ns)) => {
@@ -364,6 +380,8 @@ where
                 }
                 Err(_) => reassembly.insert_err(idx),
             };
+            progress_count += 1;
+            on_progress(progress_count);
             push_and_maybe_flush(ready, &mut batch_buffer, &mut on_batch);
         }
 

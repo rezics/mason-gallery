@@ -1,6 +1,6 @@
-use crate::archive::{compute_entry_hash, open_archive, ArchiveError, ArchiveReader};
+use crate::archive::{open_archive, ArchiveError, ArchiveReader};
 use crate::archive_scan::{self, ScanConfig, ScanInputs};
-use crate::commands::{ImageBatch, ImageCount, WImage, WThumbnail};
+use crate::commands::{ImageBatch, ImageCount, WImage};
 use crate::database::Database;
 use crate::password::PasswordCache;
 use crate::server::SharedPolicy;
@@ -11,6 +11,7 @@ use crate::services::thumbnail_service::ThumbnailService;
 use crate::CacheDir;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -59,6 +60,67 @@ pub struct MigrationCandidateResp {
     pub match_score: usize,
 }
 
+/// Per-entry indicator: how many entries the masonry grid can render now.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InfoProgress {
+    pub loaded: usize,
+    pub total: usize,
+}
+
+/// Per-entry indicator: how many entries have a thumbnail file on disk.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThumbProgress {
+    pub generated: usize,
+    pub total: usize,
+}
+
+/// Shared four-counter tracker for scan progress. One instance covers a whole
+/// `scan_directory` or `scan_archive` invocation, so the loose-file dim probe,
+/// every archive expansion, and any other contributor can fan into the same
+/// running totals without cross-talk.
+///
+/// Throttling: callers should bump counters and check whether to emit; the
+/// `emit_*` methods always emit absolute current state.
+pub struct ScanProgressTracker {
+    pub info_loaded: AtomicUsize,
+    pub info_total: AtomicUsize,
+    pub thumb_generated: AtomicUsize,
+    pub thumb_total: AtomicUsize,
+}
+
+impl ScanProgressTracker {
+    pub fn new() -> Self {
+        Self {
+            info_loaded: AtomicUsize::new(0),
+            info_total: AtomicUsize::new(0),
+            thumb_generated: AtomicUsize::new(0),
+            thumb_total: AtomicUsize::new(0),
+        }
+    }
+
+    pub fn emit_info(&self, app: &AppHandle) {
+        let _ = app.emit(
+            "images:info_progress",
+            InfoProgress {
+                loaded: self.info_loaded.load(Ordering::Relaxed),
+                total: self.info_total.load(Ordering::Relaxed),
+            },
+        );
+    }
+
+    pub fn emit_thumb(&self, app: &AppHandle) {
+        let _ = app.emit(
+            "images:thumb_progress",
+            ThumbProgress {
+                generated: self.thumb_generated.load(Ordering::Relaxed),
+                total: self.thumb_total.load(Ordering::Relaxed),
+            },
+        );
+    }
+}
+
 fn archive_error_to_string(e: ArchiveError) -> String {
     format!("{}", e)
 }
@@ -88,27 +150,45 @@ fn get_password_for_archive(
 }
 
 /// Outcome of inline-expanding an archive encountered during a folder scan.
-pub enum MixedArchiveOutcome {
-    /// Archive listed successfully; expanded entries to merge into the batch.
-    Entries(Vec<WImage>),
+/// Entries themselves are streamed through the caller-supplied callback —
+/// only the lifecycle status is returned here.
+pub enum ExpansionResult {
+    /// Archive listed and processed successfully. `entry_count` is the
+    /// number of image entries that were streamed into `on_batch` (and that
+    /// `on_progress` will eventually report once each).
+    Listed { entry_count: usize },
     /// Archive needs a password we don't have — caller should emit a
-    /// locked placeholder tile.
+    /// locked placeholder tile (carried inline so the caller doesn't have
+    /// to reconstruct it).
     Locked(WImage),
     /// Unrecoverable error (corrupt, unsupported, IO). Caller can skip.
     Skipped(String),
 }
 
-/// Expand an archive file discovered inside a folder scan. Mirrors the
-/// per-entry work `scan_archive` does (source registration, thumbnail
-/// generation, URI construction) but is synchronous and returns the entries
-/// instead of emitting batches directly — the caller interleaves them into
-/// the surrounding folder listing.
-pub fn expand_archive_for_folder_scan(
+/// Expand an archive file discovered inside a folder scan, streaming its
+/// entries directly into the caller's batch buffer via `on_batch`.
+///
+/// Internally this delegates to `archive_scan::run_scan` so a folder-scan
+/// archive expansion gets the same parallel worker pool as a direct
+/// `scan_archive` call. Sort order is preserved via `OrderedReassembly`.
+///
+/// Per-entry progress is fanned into the shared `tracker`: this archive's
+/// entry count is added to `info_total`/`thumb_total` after listing, and
+/// `info_loaded`/`thumb_generated` advance 1:1 as workers complete entries.
+/// Throttled emits (every 16th completion + the final one) keep IPC volume
+/// bounded for archives with thousands of entries.
+pub fn expand_archive_into_scan<F>(
     app: &AppHandle,
     archive_path: &str,
     formats: &[String],
     sort_method: &str,
-) -> MixedArchiveOutcome {
+    page_size: usize,
+    tracker: &Arc<ScanProgressTracker>,
+    mut on_batch: F,
+) -> ExpansionResult
+where
+    F: FnMut(Vec<WImage>, bool),
+{
     let db = app.state::<Arc<Database>>().inner().clone();
     let source_svc = app.state::<Arc<SourceService>>().inner().clone();
     let thumbnail_svc = app.state::<Arc<ThumbnailService>>().inner().clone();
@@ -117,13 +197,13 @@ pub fn expand_archive_for_folder_scan(
 
     let reader = match open_archive(Path::new(archive_path)) {
         Ok(r) => r,
-        Err(e) => return MixedArchiveOutcome::Skipped(format!("{}", e)),
+        Err(e) => return ExpansionResult::Skipped(format!("{}", e)),
     };
 
     let entries = match reader.list_entries(password.as_deref()) {
         Ok(v) => v,
         Err(ArchiveError::PasswordRequired) | Err(ArchiveError::WrongPassword) => {
-            return MixedArchiveOutcome::Locked(WImage {
+            return ExpansionResult::Locked(WImage {
                 source: format!("archive:///{}", archive_path),
                 relative_path: SourceService::identity_segment(archive_path),
                 width: None,
@@ -133,7 +213,7 @@ pub fn expand_archive_for_folder_scan(
                 locked: Some(true),
             });
         }
-        Err(e) => return MixedArchiveOutcome::Skipped(format!("{}", e)),
+        Err(e) => return ExpansionResult::Skipped(format!("{}", e)),
     };
 
     let is_solid = reader.is_solid().unwrap_or(false);
@@ -158,13 +238,15 @@ pub fn expand_archive_for_folder_scan(
         _ => image_entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
     }
 
+    let entry_count = image_entries.len();
+
     let (source_rec, _) = match source_svc.open_or_create_archive(
         archive_path,
         Some(is_solid),
-        Some(image_entries.len() as i64),
+        Some(entry_count as i64),
     ) {
         Ok(v) => v,
-        Err(e) => return MixedArchiveOutcome::Skipped(e),
+        Err(e) => return ExpansionResult::Skipped(e),
     };
     let source_id = source_rec.id;
     let source_hash = source_rec.content_hash.clone();
@@ -176,79 +258,54 @@ pub fn expand_archive_for_folder_scan(
         .unwrap_or_default();
     let widths = policy::resolve_widths(source_rec.policy_override.as_deref(), &global_policy);
 
-    let mut out: Vec<WImage> = Vec::with_capacity(image_entries.len());
-    for entry in &image_entries {
-        let entry_hash = compute_entry_hash(&entry.path);
+    // Bump shared totals before any worker fires so the indicator denominator
+    // grows monotonically as archives are listed.
+    tracker.info_total.fetch_add(entry_count, Ordering::Relaxed);
+    tracker.thumb_total.fetch_add(entry_count, Ordering::Relaxed);
+    tracker.emit_info(app);
+    tracker.emit_thumb(app);
 
-        let existing = db
-            .get_thumbnails_by_entry(source_id, &entry.path)
-            .unwrap_or_default();
-        let existing_widths: std::collections::HashSet<u32> =
-            existing.iter().map(|t| t.width).collect();
-        let missing: Vec<u32> = widths
-            .iter()
-            .copied()
-            .filter(|w| !existing_widths.contains(w))
-            .collect();
+    let reader_arc: Arc<dyn ArchiveReader> = Arc::from(reader);
+    let inputs = ScanInputs {
+        reader: reader_arc,
+        password,
+        entries: Arc::new(image_entries),
+        archive_path: Arc::new(archive_path.to_string()),
+        db,
+        thumbnail_svc,
+        source_id,
+        source_hash: Arc::new(source_hash),
+        widths: Arc::new(widths),
+    };
+    let cfg = ScanConfig {
+        workers: archive_scan::default_worker_count(),
+        page_size,
+    };
 
-        let mut all_thumbs: Vec<WThumbnail> = existing
-            .iter()
-            .map(|t| WThumbnail {
-                source: ThumbnailService::build_uri(&source_hash, &entry_hash, t.width),
-                width: t.width,
-                height: t.height,
-            })
-            .collect();
-
-        let mut width_hint: Option<u32> = existing.iter().map(|t| t.width).max();
-        let mut height_hint: Option<u32> =
-            existing.iter().max_by_key(|t| t.width).map(|t| t.height);
-
-        if !missing.is_empty() {
-            if let Ok(data) =
-                reader.extract_entry_to_memory(&entry.path, password.as_deref())
-            {
-                if let Ok(generated) = thumbnail_svc.generate_for_entry(
-                    source_id,
-                    &source_hash,
-                    &entry.path,
-                    &data,
-                    &missing,
-                ) {
-                    for g in &generated {
-                        all_thumbs.push(WThumbnail {
-                            source: ThumbnailService::build_uri(
-                                &source_hash,
-                                &entry_hash,
-                                g.width,
-                            ),
-                            width: g.width,
-                            height: g.height,
-                        });
-                        if width_hint.map(|w| g.width > w).unwrap_or(true) {
-                            width_hint = Some(g.width);
-                            height_hint = Some(g.height);
-                        }
-                    }
-                }
+    let progress_tracker = tracker.clone();
+    archive_scan::run_scan(
+        inputs,
+        cfg,
+        |images, done| on_batch(images, done),
+        |_n_local| {
+            // Archive entries advance info and thumb 1:1 — the entry is only
+            // display-ready once its thumbnail is on disk.
+            let info_n = progress_tracker
+                .info_loaded
+                .fetch_add(1, Ordering::Relaxed)
+                + 1;
+            progress_tracker
+                .thumb_generated
+                .fetch_add(1, Ordering::Relaxed);
+            let total = progress_tracker.info_total.load(Ordering::Relaxed);
+            if info_n % 16 == 0 || info_n == total {
+                progress_tracker.emit_info(app);
+                progress_tracker.emit_thumb(app);
             }
-        }
+        },
+    );
 
-        all_thumbs.sort_by_key(|t| t.width);
-        all_thumbs.dedup_by_key(|t| t.width);
-
-        out.push(WImage {
-            source: format!("archive:///{}#{}", archive_path, entry.path),
-            relative_path: entry.path.clone(),
-            width: width_hint,
-            height: height_hint,
-            thumbnails: Some(all_thumbs),
-            source_id: Some(source_id),
-            locked: None,
-        });
-    }
-
-    MixedArchiveOutcome::Entries(out)
+    ExpansionResult::Listed { entry_count }
 }
 
 #[tauri::command]
@@ -308,12 +365,24 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
         .unwrap_or_default();
     let widths = policy::resolve_widths(source_rec.policy_override.as_deref(), &global_policy);
 
+    let total_entries = image_entries.len();
     let _ = app.emit(
         "images:count",
         ImageCount {
-            total: image_entries.len(),
+            total: total_entries,
         },
     );
+    // Pre-emit zero progress so the UI can render the indicator immediately
+    // with a known denominator, before any worker starts.
+    let tracker = Arc::new(ScanProgressTracker::new());
+    tracker
+        .info_total
+        .store(total_entries, Ordering::Relaxed);
+    tracker
+        .thumb_total
+        .store(total_entries, Ordering::Relaxed);
+    tracker.emit_info(&app);
+    tracker.emit_thumb(&app);
 
     // Probe for password errors early: pick first uncached entry and extract.
     if !image_entries.is_empty() {
@@ -349,10 +418,31 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
         page_size: params.page_size,
     };
 
+    let progress_app = app.clone();
+    let progress_tracker = tracker.clone();
     tokio::task::spawn_blocking(move || {
-        archive_scan::run_scan(inputs, cfg, |images, done| {
-            let _ = emit_app.emit("images:batch", ImageBatch { images, done });
-        });
+        archive_scan::run_scan(
+            inputs,
+            cfg,
+            |images, done| {
+                let _ = emit_app.emit("images:batch", ImageBatch { images, done });
+            },
+            |_n_local| {
+                // In archive scans info and thumb advance 1:1 — every entry
+                // becomes display-ready exactly when its thumbnail is written.
+                let info_n = progress_tracker
+                    .info_loaded
+                    .fetch_add(1, Ordering::Relaxed)
+                    + 1;
+                progress_tracker
+                    .thumb_generated
+                    .fetch_add(1, Ordering::Relaxed);
+                if info_n % 16 == 0 || info_n == total_entries {
+                    progress_tracker.emit_info(&progress_app);
+                    progress_tracker.emit_thumb(&progress_app);
+                }
+            },
+        );
     })
     .await
     .map_err(|e| format!("scan task panicked: {}", e))?;

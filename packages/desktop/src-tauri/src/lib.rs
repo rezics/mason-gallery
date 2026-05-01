@@ -82,10 +82,10 @@ pub fn run() {
             let policy: SharedPolicy = Arc::new(RwLock::new(CachePolicy::default()));
             app.manage(policy.clone());
 
-            // Thumbnail request queue (LIFO, concurrency=4) for lazy folder
-            // thumbnails. The worker task is spawned below after the app handle
-            // is available.
-            let thumb_queue = ThumbnailQueue::new(4);
+            // Thumbnail request queue (LIFO) for lazy folder thumbnails.
+            // Concurrency matches the archive scanner's worker count so loose
+            // folders aren't artificially gated below archive parallelism.
+            let thumb_queue = ThumbnailQueue::new(archive_scan::default_worker_count());
             app.manage(thumb_queue.clone());
 
             let worker_handle = app.handle().clone();

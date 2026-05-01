@@ -20,6 +20,8 @@ const zh: TranslationKeys = {
     selectFolder: "选择文件夹",
     scanning: "扫描中...",
     scanProgress: "{loaded} / {total} 张图片",
+    infoProgress: "信息 {loaded}/{total}",
+    thumbProgress: "缩略图 {generated}/{total}",
     imageCount: "{count} 张图片",
     goToImage: "跳转到图片 (Ctrl+G)",
   },

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Thumbnail, WImage } from "@/types";
+import type { ScanInfoProgress, ScanThumbProgress } from "@/types/platform";
 
 interface ViewerState {
   images: WImage[];
@@ -9,6 +10,14 @@ interface ViewerState {
   scanId: number;
   totalCount: number;
   isRelayout: boolean;
+  /** Entries the masonry grid can render now (loose dims probed OR archive
+   * thumbnail on disk). Updated live during a scan. */
+  infoLoaded: number;
+  infoTotal: number;
+  /** Entries with thumbnail files written to disk during the scan. Stays at
+   * 0/0 for loose-only scans (those go through the lazy pipeline instead). */
+  thumbGenerated: number;
+  thumbTotal: number;
   /** `"<sourceId>:<entryPath>"` keys for entries below minFileSize — no
    * further requests should be issued for these. */
   skippedThumbs: Set<string>;
@@ -22,6 +31,8 @@ interface ViewerState {
   closeViewer: () => void;
   setScanning: (scanning: boolean) => void;
   setTotalCount: (count: number) => void;
+  setInfoProgress: (progress: ScanInfoProgress) => void;
+  setThumbProgress: (progress: ScanThumbProgress) => void;
   removeImage: (index: number) => void;
   resetAndScan: () => void;
   reset: () => void;
@@ -54,6 +65,10 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   scanId: 0,
   totalCount: 0,
   isRelayout: false,
+  infoLoaded: 0,
+  infoTotal: 0,
+  thumbGenerated: 0,
+  thumbTotal: 0,
   skippedThumbs: new Set<string>(),
   requestedThumbs: new Set<string>(),
 
@@ -69,6 +84,12 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   setScanning: (isScanning) => set({ isScanning }),
 
   setTotalCount: (totalCount) => set({ totalCount }),
+
+  setInfoProgress: ({ loaded, total }) =>
+    set({ infoLoaded: loaded, infoTotal: total }),
+
+  setThumbProgress: ({ generated, total }) =>
+    set({ thumbGenerated: generated, thumbTotal: total }),
 
   removeImage: (index) =>
     set((state) => {
@@ -86,6 +107,10 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       scanId: state.scanId + 1,
       totalCount: 0,
       isRelayout: false,
+      infoLoaded: 0,
+      infoTotal: 0,
+      thumbGenerated: 0,
+      thumbTotal: 0,
       skippedThumbs: new Set<string>(),
       requestedThumbs: new Set<string>(),
     })),
@@ -97,6 +122,10 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       isViewerOpen: false,
       isScanning: false,
       totalCount: 0,
+      infoLoaded: 0,
+      infoTotal: 0,
+      thumbGenerated: 0,
+      thumbTotal: 0,
       skippedThumbs: new Set<string>(),
       requestedThumbs: new Set<string>(),
     }),

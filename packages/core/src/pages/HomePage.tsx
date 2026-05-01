@@ -77,6 +77,10 @@ export default function HomePage() {
   const allImages = useViewerStore((s) => s.images);
   const isScanning = useViewerStore((s) => s.isScanning);
   const totalCount = useViewerStore((s) => s.totalCount);
+  const infoLoaded = useViewerStore((s) => s.infoLoaded);
+  const infoTotal = useViewerStore((s) => s.infoTotal);
+  const thumbGenerated = useViewerStore((s) => s.thumbGenerated);
+  const thumbTotal = useViewerStore((s) => s.thumbTotal);
   const showGridPosition = useSettingsStore((s) => s.showGridPosition);
   const selectedFolder = useAppStore((s) => s.selectedFolder);
 
@@ -191,13 +195,31 @@ export default function HomePage() {
             sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1 }}
           >
             {isScanning ? (
-              <Typography variant="body2" color="text.secondary">
-                {totalCount > 0
-                  ? t.home.scanProgress
-                      .replace("{loaded}", String(allImages.length))
-                      .replace("{total}", String(totalCount))
-                  : t.home.scanning}
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {totalCount > 0
+                    ? t.home.scanProgress
+                        .replace("{loaded}", String(allImages.length))
+                        .replace("{total}", String(totalCount))
+                    : t.home.scanning}
+                </Typography>
+                {infoTotal > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    ·{" "}
+                    {t.home.infoProgress
+                      .replace("{loaded}", String(infoLoaded))
+                      .replace("{total}", String(infoTotal))}
+                  </Typography>
+                )}
+                {thumbTotal > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    ·{" "}
+                    {t.home.thumbProgress
+                      .replace("{generated}", String(thumbGenerated))
+                      .replace("{total}", String(thumbTotal))}
+                  </Typography>
+                )}
+              </Box>
             ) : showGridPosition && images.length > 0 ? (
               isJumpInputOpen ? (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>

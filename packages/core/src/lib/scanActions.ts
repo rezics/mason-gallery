@@ -22,8 +22,14 @@ function computeBatchFolderCounts(
 }
 
 export async function startScan(paths: string[], isRescan = false) {
-  const { resetAndScan, setScanning, appendImages, setTotalCount } =
-    useViewerStore.getState();
+  const {
+    resetAndScan,
+    setScanning,
+    appendImages,
+    setTotalCount,
+    setInfoProgress,
+    setThumbProgress,
+  } = useViewerStore.getState();
   const appState = useAppStore.getState();
   const {
     setFolders,
@@ -81,6 +87,8 @@ export async function startScan(paths: string[], isRescan = false) {
       (total) => {
         setTotalCount(total);
       },
+      setInfoProgress,
+      setThumbProgress,
     );
   } catch (e) {
     console.error("Scan failed:", e);
@@ -227,8 +235,14 @@ export async function executeArchiveScan(
   archivePath: string,
   password?: string,
 ) {
-  const { resetAndScan, setScanning, appendImages, setTotalCount } =
-    useViewerStore.getState();
+  const {
+    resetAndScan,
+    setScanning,
+    appendImages,
+    setTotalCount,
+    setInfoProgress,
+    setThumbProgress,
+  } = useViewerStore.getState();
   const { formats, sortMethod, pageSize } = useSettingsStore.getState();
 
   const platform = getPlatform();
@@ -272,6 +286,8 @@ export async function executeArchiveScan(
       (total) => {
         setTotalCount(total);
       },
+      setInfoProgress,
+      setThumbProgress,
     );
   } catch (e) {
     const errorMsg = String(e);

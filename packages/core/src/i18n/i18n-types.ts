@@ -20,6 +20,8 @@ export type TranslationKeys = {
     selectFolder: string;
     scanning: string;
     scanProgress: string;
+    infoProgress: string;
+    thumbProgress: string;
     imageCount: string;
     goToImage: string;
   };
