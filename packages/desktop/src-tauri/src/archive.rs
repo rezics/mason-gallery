@@ -385,16 +385,10 @@ impl ArchiveReader for RarArchiveReader {
                     if entry_name == normalized_entry {
                         header
                             .extract_to(output_dir)
-                            .map_err(|e| {
-                                ArchiveError::Other(format!("RAR extract error: {:?}", e))
-                            })?;
+                            .map_err(Self::map_rar_error)?;
                         return Ok(());
                     } else {
-                        cursor = header
-                            .skip()
-                            .map_err(|e| {
-                                ArchiveError::Other(format!("RAR skip error: {:?}", e))
-                            })?;
+                        cursor = header.skip().map_err(Self::map_rar_error)?;
                     }
                 }
                 Ok(None) => break,
@@ -436,14 +430,10 @@ impl ArchiveReader for RarArchiveReader {
                         .to_string()
                         .replace('\\', "/");
                     if entry_name == normalized_entry {
-                        let (data, _) = header.read().map_err(|e| {
-                            ArchiveError::Other(format!("RAR read error: {:?}", e))
-                        })?;
+                        let (data, _) = header.read().map_err(Self::map_rar_error)?;
                         return Ok(data);
                     } else {
-                        cursor = header.skip().map_err(|e| {
-                            ArchiveError::Other(format!("RAR skip error: {:?}", e))
-                        })?;
+                        cursor = header.skip().map_err(Self::map_rar_error)?;
                     }
                 }
                 Ok(None) => break,
