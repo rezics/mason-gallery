@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 interface AppState {
   folders: string[];
-  isSettingsOpen: boolean;
+  isQuickPanelOpen: boolean;
   isSidebarOpen: boolean;
   directoryTree: string[];
   selectedFolder: string | null;
@@ -20,8 +20,8 @@ interface AppState {
   } | null;
 
   setFolders: (folders: string[]) => void;
-  setSettingsOpen: (open: boolean) => void;
-  toggleSettings: () => void;
+  setQuickPanelOpen: (open: boolean) => void;
+  toggleQuickPanel: () => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   setDirectoryTree: (tree: string[]) => void;
@@ -34,7 +34,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   folders: [],
-  isSettingsOpen: false,
+  isQuickPanelOpen: false,
   isSidebarOpen: false,
   directoryTree: [],
   selectedFolder: null,
@@ -46,9 +46,9 @@ export const useAppStore = create<AppState>((set) => ({
   archiveMigrationCandidate: null,
 
   setFolders: (folders) => set({ folders }),
-  setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
-  toggleSettings: () =>
-    set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
+  setQuickPanelOpen: (isQuickPanelOpen) => set({ isQuickPanelOpen }),
+  toggleQuickPanel: () =>
+    set((state) => ({ isQuickPanelOpen: !state.isQuickPanelOpen })),
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
   toggleSidebar: () =>
     set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -79,7 +79,7 @@ export const useAppStore = create<AppState>((set) => ({
   reset: () =>
     set({
       folders: [],
-      isSettingsOpen: false,
+      isQuickPanelOpen: false,
       isSidebarOpen: false,
       directoryTree: [],
       selectedFolder: null,

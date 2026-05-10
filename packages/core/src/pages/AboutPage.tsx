@@ -1,7 +1,6 @@
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import GitHubIcon from "@mui/icons-material/GitHub";
-import { Box, Button, Paper, Typography } from "@mui/material";
+import { ArrowLeft, Github } from "lucide-react";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n";
 
 export default function AboutPage() {
@@ -9,43 +8,28 @@ export default function AboutPage() {
   const [, navigate] = useLocation();
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-        p: 4,
-      }}
-    >
-      <Paper sx={{ p: 4, maxWidth: 400, textAlign: "center" }}>
-        <Typography variant="h4" gutterBottom>
-          {t.about.title}
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-          {t.about.description}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+    <div className="flex h-full items-center justify-center p-6">
+      <section className="w-full max-w-md rounded-lg border border-border bg-card p-6 text-center text-card-foreground shadow-sm">
+        <h1 className="text-2xl font-semibold">{t.about.title}</h1>
+        <p className="mt-3 text-muted-foreground">{t.about.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
           {t.about.version}: 2.0.0
-        </Typography>
-        <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate("/")}
-          >
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Button type="button" variant="outline" onClick={() => navigate("/")}>
+            <ArrowLeft />
             Back
           </Button>
           <Button
-            variant="outlined"
-            startIcon={<GitHubIcon />}
+            type="button"
+            variant="outline"
             onClick={() => window.open("https://github.com", "_blank")}
           >
+            <Github />
             {t.about.github}
           </Button>
-        </Box>
-      </Paper>
-    </Box>
+        </div>
+      </section>
+    </div>
   );
 }

@@ -1,11 +1,5 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Typography,
-} from "@mui/material";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n";
 
 interface SolidArchiveWarningDialogProps {
@@ -22,17 +16,22 @@ export default function SolidArchiveWarningDialog({
   const t = useI18n();
 
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
-      <DialogTitle>{t.archive.solidWarningTitle}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2">{t.archive.solidWarningMessage}</Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel}>{t.archive.cancel}</Button>
-        <Button onClick={onContinue} variant="contained">
-          {t.archive.continueAnyway}
-        </Button>
-      </DialogActions>
+    <Dialog
+      open={open}
+      title={t.archive.solidWarningTitle}
+      onClose={onCancel}
+      actions={
+        <>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t.archive.cancel}
+          </Button>
+          <Button type="button" onClick={onContinue}>
+            {t.archive.continueAnyway}
+          </Button>
+        </>
+      }
+    >
+      <p>{t.archive.solidWarningMessage}</p>
     </Dialog>
   );
 }

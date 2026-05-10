@@ -52,11 +52,14 @@ export const DEFAULT_CACHE_POLICY: CachePolicy = {
 
 export type FolderThumbnailsMode = "off" | "lazy";
 
+export type ThemePreference = "system" | "light" | "dark";
+
 export interface Settings {
   formats: string[];
   sortMethod: SortMethod;
   pageSize: number;
   language: Locale;
+  theme: ThemePreference;
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
   confirmDelete: boolean;

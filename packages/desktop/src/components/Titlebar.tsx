@@ -1,10 +1,8 @@
 import { MenuBar } from "@mason-gallery/core";
-import CloseIcon from "@mui/icons-material/Close";
-import CropSquareIcon from "@mui/icons-material/CropSquare";
-import MinimizeIcon from "@mui/icons-material/Minimize";
-import { IconButton } from "@mui/material";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Maximize2, Minus, X } from "lucide-react";
+import type { ReactNode } from "react";
 import { useRef } from "react";
 
 function useAppWindow() {
@@ -15,37 +13,56 @@ function useAppWindow() {
   return ref.current;
 }
 
+function WindowButton({
+  title,
+  danger,
+  onClick,
+  children,
+}: {
+  title: string;
+  danger?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      className={`flex h-9 w-9 items-center justify-center transition-colors hover:bg-accent ${
+        danger ? "hover:bg-destructive hover:text-destructive-foreground" : ""
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
 function WindowControls() {
   const appWindow = useAppWindow();
 
   return (
     <>
-      <IconButton
-        size="small"
+      <WindowButton
+        title="Minimize"
         onClick={() => appWindow.minimize().catch(console.error)}
-        sx={{ borderRadius: 0, width: 36, height: 36 }}
       >
-        <MinimizeIcon sx={{ fontSize: 18 }} />
-      </IconButton>
-      <IconButton
-        size="small"
+        <Minus className="size-4" />
+      </WindowButton>
+      <WindowButton
+        title="Maximize"
         onClick={() => appWindow.toggleMaximize().catch(console.error)}
-        sx={{ borderRadius: 0, width: 36, height: 36 }}
       >
-        <CropSquareIcon sx={{ fontSize: 16 }} />
-      </IconButton>
-      <IconButton
-        size="small"
+        <Maximize2 className="size-3.5" />
+      </WindowButton>
+      <WindowButton
+        title="Close"
+        danger
         onClick={() => appWindow.close().catch(console.error)}
-        sx={{
-          borderRadius: 0,
-          width: 36,
-          height: 36,
-          "&:hover": { bgcolor: "error.main", color: "white" },
-        }}
       >
-        <CloseIcon sx={{ fontSize: 18 }} />
-      </IconButton>
+        <X className="size-4" />
+      </WindowButton>
     </>
   );
 }

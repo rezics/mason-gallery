@@ -37,7 +37,7 @@ function parseThumbUri(
 ): { source: string; entry: string; w: string } | null {
   // Expected: mg-thumb:///<sourceHash>/<entryHash>?w=<width>
   const m = thumbId.match(/^mg-thumb:\/\/\/([^/]+)\/([^?]+)\?w=(\d+)/);
-  if (!m || !m[1] || !m[2] || !m[3]) return null;
+  if (!m?.[1] || !m[2] || !m[3]) return null;
   return { source: m[1], entry: m[2], w: m[3] };
 }
 

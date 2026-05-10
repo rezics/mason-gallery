@@ -1,5 +1,5 @@
-import { Box, LinearProgress, TextField, Typography } from "@mui/material";
 import type { Positioner } from "masonic";
+import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DropZone from "@/components/DropZone";
 import FolderSidebar from "@/components/FolderSidebar";
@@ -21,8 +21,8 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 
 function useApproxScrollIndex(
-  scrollContainerRef: React.RefObject<HTMLElement | null>,
-  positionerRef: React.RefObject<{
+  scrollContainerRef: RefObject<HTMLElement | null>,
+  positionerRef: RefObject<{
     positioner: Positioner;
     columnCount: number;
   } | null>,
@@ -174,14 +174,16 @@ export default function HomePage() {
       : undefined;
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="flex h-full flex-col">
       {isScanning && (
-        <LinearProgress
-          variant={
-            progressValue !== undefined ? "determinate" : "indeterminate"
-          }
-          value={progressValue}
-        />
+        <div className="h-1 overflow-hidden bg-muted">
+          <div
+            className={`h-full bg-primary ${
+              progressValue === undefined ? "animate-pulse" : ""
+            }`}
+            style={{ width: `${progressValue ?? 35}%` }}
+          />
+        </div>
       )}
 
       {showDropZone ? (
@@ -191,42 +193,41 @@ export default function HomePage() {
         />
       ) : (
         <>
-          <Box
-            sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1 }}
-          >
+          <div className="flex items-center gap-1 px-4 py-2">
             {isScanning ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                <Typography variant="body2" color="text.secondary">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span>
                   {totalCount > 0
                     ? t.home.scanProgress
                         .replace("{loaded}", String(allImages.length))
                         .replace("{total}", String(totalCount))
                     : t.home.scanning}
-                </Typography>
+                </span>
                 {infoTotal > 0 && (
-                  <Typography variant="body2" color="text.secondary">
-                    ·{" "}
+                  <span>
+                    {" "}
+                    -{" "}
                     {t.home.infoProgress
                       .replace("{loaded}", String(infoLoaded))
                       .replace("{total}", String(infoTotal))}
-                  </Typography>
+                  </span>
                 )}
                 {thumbTotal > 0 && (
-                  <Typography variant="body2" color="text.secondary">
-                    ·{" "}
+                  <span>
+                    {" "}
+                    -{" "}
                     {t.home.thumbProgress
                       .replace("{generated}", String(thumbGenerated))
                       .replace("{total}", String(thumbTotal))}
-                  </Typography>
+                  </span>
                 )}
-              </Box>
+              </div>
             ) : showGridPosition && images.length > 0 ? (
               isJumpInputOpen ? (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <TextField
-                    size="small"
+                <div className="flex items-center gap-2">
+                  <input
+                    className="h-7 w-20 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     type="number"
-                    autoFocus
                     value={jumpValue}
                     onChange={(e) => setJumpValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -241,50 +242,39 @@ export default function HomePage() {
                       setJumpValue("");
                     }}
                     placeholder={String(currentIndex)}
-                    slotProps={{
-                      htmlInput: {
-                        min: 1,
-                        max: images.length,
-                        style: { padding: "2px 8px" },
-                      },
-                    }}
-                    sx={{ width: 80 }}
+                    min={1}
+                    max={images.length}
                   />
-                  <Typography variant="body2" color="text.secondary">
+                  <span className="text-sm text-muted-foreground">
                     / {images.length}
-                  </Typography>
-                </Box>
+                  </span>
+                </div>
               ) : (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    cursor: "pointer",
-                    userSelect: "none",
-                    "&:hover": { color: "text.primary" },
-                  }}
+                <button
+                  type="button"
+                  className="select-none text-sm text-muted-foreground hover:text-foreground"
                   onClick={() => setIsJumpInputOpen(true)}
                   title={t.home.goToImage}
                 >
                   ~{currentIndex} / {images.length}
-                </Typography>
+                </button>
               )
             ) : (
-              <Typography variant="body2" color="text.secondary">
+              <span className="text-sm text-muted-foreground">
                 {t.home.imageCount.replace("{count}", String(images.length))}
-              </Typography>
+              </span>
             )}
-          </Box>
-          <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          </div>
+          <div className="flex flex-1 overflow-hidden">
             <FolderSidebar />
-            <Box ref={scrollContainerRef} sx={{ flex: 1, overflow: "auto" }}>
+            <div ref={scrollContainerRef} className="flex-1 overflow-auto">
               <WaterfallGrid
                 scrollContainerRef={scrollContainerRef}
                 images={images}
                 onPositionerReady={handlePositionerReady}
               />
-            </Box>
-          </Box>
+            </div>
+          </div>
         </>
       )}
 
@@ -370,6 +360,6 @@ export default function HomePage() {
           useAppStore.setState({ archiveSolidWarning: null });
         }}
       />
-    </Box>
+    </div>
   );
 }

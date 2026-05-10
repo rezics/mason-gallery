@@ -6,6 +6,7 @@ import type {
   CachePolicy,
   FolderThumbnailsMode,
   PasswordStorageMode,
+  ThemePreference,
 } from "@/types/platform";
 import {
   DEFAULT_CACHE_POLICY,
@@ -17,6 +18,7 @@ interface SettingsState {
   sortMethod: SortMethod;
   pageSize: number;
   language: Locale;
+  theme: ThemePreference;
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
   confirmDelete: boolean;
@@ -32,6 +34,7 @@ interface SettingsState {
   setSortMethod: (method: SortMethod) => void;
   setPageSize: (size: number) => void;
   setLanguage: (lang: Locale) => void;
+  setTheme: (theme: ThemePreference) => void;
   setBreakpoints: (bp: ColumnBreakpoints) => void;
   setShowGridPosition: (show: boolean) => void;
   setConfirmDelete: (v: boolean) => void;
@@ -49,6 +52,7 @@ const DEFAULTS = {
   sortMethod: "name-asc" as SortMethod,
   pageSize: 50,
   language: "en" as Locale,
+  theme: "system" as ThemePreference,
   breakpoints: {
     0: 1,
     500: 2,
@@ -96,6 +100,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLanguage: (language) => {
     set({ language });
     persist("language", language);
+  },
+  setTheme: (theme) => {
+    set({ theme });
+    persist("theme", theme);
   },
   setBreakpoints: (breakpoints) => {
     set({ breakpoints });
@@ -164,6 +172,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         sortMethod: settings.sortMethod ?? DEFAULTS.sortMethod,
         pageSize: settings.pageSize ?? DEFAULTS.pageSize,
         language: settings.language ?? DEFAULTS.language,
+        theme:
+          ((settings as Record<string, unknown>).theme as ThemePreference) ??
+          DEFAULTS.theme,
         breakpoints: settings.breakpoints ?? DEFAULTS.breakpoints,
         showGridPosition:
           settings.showGridPosition ?? DEFAULTS.showGridPosition,

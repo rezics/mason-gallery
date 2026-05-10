@@ -1,7 +1,7 @@
-import { useI18n } from "@mason-gallery/core";
-import { Alert, Button, CircularProgress, Snackbar } from "@mui/material";
+import { Button, useI18n } from "@mason-gallery/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 export default function UpdateChecker() {
@@ -39,47 +39,46 @@ export default function UpdateChecker() {
 
   if (error) {
     return (
-      <Snackbar
-        open
-        autoHideDuration={5000}
-        onClose={() => setError(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity="error" onClose={() => setError(false)}>
-          {t.update.error}
-        </Alert>
-      </Snackbar>
+      <div className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-md border border-destructive bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
+        <div className="flex items-center gap-3">
+          <span>{t.update.error}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setError(false)}
+          >
+            {t.actions.close}
+          </Button>
+        </div>
+      </div>
     );
   }
 
+  if (!open) return null;
+
   return (
-    <Snackbar
-      open={open}
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-    >
-      <Alert
-        severity="info"
-        action={
-          installing ? (
-            <CircularProgress size={20} color="inherit" />
-          ) : (
-            <>
-              <Button
-                color="inherit"
-                size="small"
-                onClick={() => setOpen(false)}
-              >
-                {t.update.dismiss}
-              </Button>
-              <Button color="inherit" size="small" onClick={handleInstall}>
-                {t.update.install}
-              </Button>
-            </>
-          )
-        }
-      >
-        {installing ? t.update.installing : t.update.available}
-      </Alert>
-    </Snackbar>
+    <div className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-md border border-border bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
+      <div className="flex items-center gap-3">
+        <span>{installing ? t.update.installing : t.update.available}</span>
+        {installing ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(false)}
+            >
+              {t.update.dismiss}
+            </Button>
+            <Button type="button" size="sm" onClick={handleInstall}>
+              {t.update.install}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

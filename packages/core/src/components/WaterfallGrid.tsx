@@ -1,10 +1,11 @@
-import LockIcon from "@mui/icons-material/Lock";
+import { Lock } from "lucide-react";
 import {
   type RenderComponentProps,
   useMasonry,
   usePositioner,
   useResizeObserver,
 } from "masonic";
+import type { RefCallback, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { useThumbnailRequest } from "@/hooks/useThumbnailRequest";
@@ -26,14 +27,12 @@ function getColumnCount(width: number, breakpoints: ColumnBreakpoints): number {
     .sort((a, b) => b - a);
   const maxColumns = Math.max(...Object.values(breakpoints), 1);
   for (const key of keys) {
-    if (width >= key) {
-      return Math.min(breakpoints[key] ?? 1, maxColumns);
-    }
+    if (width >= key) return Math.min(breakpoints[key] ?? 1, maxColumns);
   }
   return 1;
 }
 
-function useContainerScroll(ref: React.RefObject<HTMLElement | null>) {
+function useContainerScroll(ref: RefObject<HTMLElement | null>) {
   const [scrollTop, setScrollTop] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const rafRef = useRef(0);
@@ -65,7 +64,7 @@ function useContainerScroll(ref: React.RefObject<HTMLElement | null>) {
   return { scrollTop, isScrolling };
 }
 
-function useContainerSize(ref: React.RefObject<HTMLElement | null>) {
+function useContainerSize(ref: RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -98,9 +97,6 @@ function ImageCell({
   const openViewer = useViewerStore((s) => s.openViewer);
   const platform = usePlatform();
   const folderThumbnails = useSettingsStore((s) => s.folderThumbnails);
-
-  // Subscribe to this specific entry so patchThumbnails triggers a re-render
-  // without re-rendering sibling tiles.
   const entry = useViewerStore((s) => s.images[data.globalIndex]) ?? data;
 
   const hookEnabled =
@@ -118,17 +114,17 @@ function ImageCell({
       : entry.relativePath;
     return (
       <button
-        ref={tileRef as React.RefCallback<HTMLButtonElement>}
+        ref={tileRef as RefCallback<HTMLButtonElement>}
         type="button"
-        className="cursor-pointer overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800 transition-shadow hover:shadow-lg w-full border-none p-3 flex flex-col items-center justify-center gap-2 aspect-square"
+        className="flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-md border border-border bg-muted p-3 transition-shadow hover:shadow-lg"
         onClick={() => {
           if (archivePath) {
             useAppStore.setState({ archivePasswordNeeded: archivePath });
           }
         }}
       >
-        <LockIcon fontSize="large" />
-        <span className="text-xs text-center break-all line-clamp-2">
+        <Lock className="size-8" />
+        <span className="line-clamp-2 break-all text-center text-xs">
           {archiveName}
         </span>
       </button>
@@ -136,22 +132,17 @@ function ImageCell({
   }
 
   const thumbs = entry.thumbnails ?? [];
-  const hasThumbs = thumbs.length > 0;
-
-  const srcSet = hasThumbs
-    ? thumbs
-        .map((t) => {
-          const url = platform.getThumbUrl(t.source);
-          return url ? `${url} ${t.width}w` : "";
-        })
-        .filter(Boolean)
-        .join(", ")
-    : undefined;
-
-  // `sizes` reflects the rendered column width so the browser picks the right srcset candidate.
+  const srcSet =
+    thumbs.length > 0
+      ? thumbs
+          .map((t) => {
+            const url = platform.getThumbUrl(t.source);
+            return url ? `${url} ${t.width}w` : "";
+          })
+          .filter(Boolean)
+          .join(", ")
+      : undefined;
   const sizes = cellWidth > 0 ? `${Math.round(cellWidth)}px` : undefined;
-
-  // Fallback src: smallest thumbnail if we have them, otherwise the original.
   const firstThumb = thumbs[0];
   const fallback = firstThumb
     ? platform.getThumbUrl(firstThumb.source)
@@ -159,9 +150,9 @@ function ImageCell({
 
   return (
     <button
-      ref={tileRef as React.RefCallback<HTMLButtonElement>}
+      ref={tileRef as RefCallback<HTMLButtonElement>}
       type="button"
-      className="cursor-pointer overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800 transition-shadow hover:shadow-lg w-full border-none p-0 block"
+      className="block w-full cursor-pointer overflow-hidden rounded-md border-0 bg-muted p-0 transition-shadow hover:shadow-lg"
       onClick={() => openViewer(data.globalIndex)}
     >
       <img
@@ -172,7 +163,7 @@ function ImageCell({
         loading="lazy"
         width={entry.width ?? undefined}
         height={entry.height ?? undefined}
-        className="w-full block"
+        className="block w-full"
         style={{
           aspectRatio:
             entry.width && entry.height
@@ -185,7 +176,7 @@ function ImageCell({
 }
 
 interface WaterfallGridProps {
-  scrollContainerRef: React.RefObject<HTMLElement | null>;
+  scrollContainerRef: RefObject<HTMLElement | null>;
   images: ImageCellData[];
   onPositionerReady?: (
     positioner: ReturnType<typeof usePositioner>,
@@ -210,7 +201,6 @@ export default function WaterfallGrid({
   const savedScrollRef = useRef<number | null>(null);
   const prevScanIdRef = useRef(scanId);
 
-  // Capture scroll position before positioner resets on relayout
   if (scanId !== prevScanIdRef.current) {
     if (isRelayout && scrollContainerRef.current) {
       savedScrollRef.current = scrollContainerRef.current.scrollTop;
@@ -220,9 +210,7 @@ export default function WaterfallGrid({
     prevScanIdRef.current = scanId;
   }
 
-  // Restore scroll position synchronously after DOM update.
-  // scanId is intentionally in deps to trigger after positioner reset.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scanId triggers the restore
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scanId triggers restore
   useLayoutEffect(() => {
     if (savedScrollRef.current !== null && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = savedScrollRef.current;
@@ -230,13 +218,10 @@ export default function WaterfallGrid({
     }
   }, [scanId, scrollContainerRef]);
 
-  // Reset scroll to top when folder filter changes
   const prevFolderRef = useRef(selectedFolder);
   if (selectedFolder !== prevFolderRef.current) {
     prevFolderRef.current = selectedFolder;
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
   }
 
   const safeWidth = Math.max(width, 1);
@@ -246,19 +231,10 @@ export default function WaterfallGrid({
     [scanId, columnCount, selectedFolder],
   );
 
-  // Notify parent when positioner changes
   useEffect(() => {
     onPositionerReady?.(positioner, columnCount);
   }, [positioner, columnCount, onPositionerReady]);
 
-  // Pre-fill positioner with calculated heights from known dimensions.
-  // This eliminates the "batch catch-up" freeze when scrolling to unmeasured regions,
-  // because masonic's needsFreshBatch check sees measuredCount === itemCount.
-  // Guard: skip when container hasn't been measured yet (width===0), otherwise
-  // pre-fill runs with columnWidth≈1px producing tiny heights. When the real width
-  // arrives, masonic's optsChanged branch copies those wrong heights into the new
-  // positioner and the pre-fill loop is skipped (measuredCount===itemCount), causing
-  // images to stack on top of each other.
   const measuredCount = positioner.size();
   if (width > 0 && measuredCount < images.length) {
     for (let i = measuredCount; i < images.length; i++) {

@@ -3,9 +3,13 @@
 export { default as DropZone } from "./components/DropZone";
 export { default as ImageViewer } from "./components/ImageViewer";
 export { default as MenuBar } from "./components/MenuBar";
+export { default as QuickGalleryPanel } from "./components/QuickGalleryPanel";
 export { default as SettingsDrawer } from "./components/SettingsDrawer";
 // Components
 export { default as Shell } from "./components/Shell";
+export { Button, buttonVariants } from "./components/ui/button";
+export { ConfirmDialog, Dialog } from "./components/ui/dialog";
+export { Checkbox, Input, Select, Switch } from "./components/ui/field";
 export { default as WaterfallGrid } from "./components/WaterfallGrid";
 export {
   getPlatform,
@@ -29,6 +33,7 @@ export {
 export { default as AboutPage } from "./pages/AboutPage";
 // Pages
 export { default as HomePage } from "./pages/HomePage";
+export { default as SettingsPage } from "./pages/SettingsPage";
 export { useAppStore } from "./stores/appStore";
 export { useSettingsStore } from "./stores/settingsStore";
 // Stores
@@ -61,6 +66,7 @@ export type {
   ScanThumbProgress,
   Settings,
   SourceOverride,
+  ThemePreference,
   ThumbnailPolicy,
   ThumbRetain,
 } from "./types/platform";

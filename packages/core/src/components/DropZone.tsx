@@ -1,8 +1,6 @@
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Archive, FolderOpen, UploadCloud } from "lucide-react";
 import { useCallback, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 
@@ -28,13 +26,10 @@ export default function DropZone({
   useEffect(() => {
     const cleanup = platform.onDragDrop((paths) => {
       if (paths.length === 0) return;
-
-      // Separate archives from folders
       const archives = paths.filter(isArchiveFile);
       const folders = paths.filter((p) => !isArchiveFile(p));
 
       if (archives.length > 0 && archives[0] && onArchiveSelected) {
-        // Open the first archive
         onArchiveSelected(archives[0]);
       } else if (folders.length > 0) {
         onFoldersSelected(folders);
@@ -47,62 +42,39 @@ export default function DropZone({
 
   const handleSelectFolder = useCallback(async () => {
     const paths = await platform.pickFolders();
-    if (paths && paths.length > 0) {
-      onFoldersSelected(paths);
-    }
+    if (paths && paths.length > 0) onFoldersSelected(paths);
   }, [platform, onFoldersSelected]);
 
   const handleSelectArchive = useCallback(async () => {
     if (!platform.pickArchive || !onArchiveSelected) return;
     const path = await platform.pickArchive();
-    if (path) {
-      onArchiveSelected(path);
-    }
+    if (path) onArchiveSelected(path);
   }, [platform, onArchiveSelected]);
 
   const canBrowseArchives =
     platform.capabilities.canBrowseArchives && onArchiveSelected;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-        border: "2px dashed",
-        borderColor: "divider",
-        borderRadius: 2,
-        m: 4,
-        transition: "border-color 0.2s",
-      }}
-    >
-      <CloudUploadIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-      <Typography variant="h5" color="text.secondary" gutterBottom>
+    <div className="m-8 flex h-[calc(100%-4rem)] flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-background text-center">
+      <UploadCloud className="mb-4 size-16 text-muted-foreground" />
+      <h1 className="text-xl font-semibold text-muted-foreground">
         {t.home.dropZoneTitle}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      </h1>
+      <p className="mt-2 text-sm text-muted-foreground">
         {canBrowseArchives ? t.archive.dropZoneHint : t.home.dropZoneHint}
-      </Typography>
-      <Stack direction="row" spacing={1}>
-        <Button
-          variant="outlined"
-          startIcon={<FolderOpenIcon />}
-          onClick={handleSelectFolder}
-        >
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <Button type="button" variant="outline" onClick={handleSelectFolder}>
+          <FolderOpen />
           {t.home.selectFolder}
         </Button>
         {canBrowseArchives && (
-          <Button
-            variant="outlined"
-            startIcon={<Inventory2OutlinedIcon />}
-            onClick={handleSelectArchive}
-          >
+          <Button type="button" variant="outline" onClick={handleSelectArchive}>
+            <Archive />
             {t.archive.openArchive}
           </Button>
         )}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 }

@@ -1,24 +1,8 @@
-import DeleteIcon from "@mui/icons-material/Delete";
-import PushPinIcon from "@mui/icons-material/PushPin";
-import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
-import SettingsIcon from "@mui/icons-material/Settings";
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Pin, PinOff, Settings, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Input, Select } from "@/components/ui/field";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -34,10 +18,9 @@ const MB = 1024 * 1024;
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < MB) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * MB) return `${(bytes / MB).toFixed(1)} MB`;
+  return `${(bytes / (1024 * MB)).toFixed(2)} GB`;
 }
 
 function parseOverride(raw: string | null | undefined): SourceOverride | null {
@@ -89,27 +72,13 @@ function CustomizeDialog({
   const [mode, setMode] = useState<ExtractedMode | "default">(
     existing?.extracted?.mode ?? "default",
   );
-  const [minFileSizeMb, setMinFileSizeMb] = useState<string>(
-    existing?.extracted?.minFileSize != null
-      ? String(Math.round(existing.extracted.minFileSize / MB))
-      : "",
-  );
-  const [maxSizeMb, setMaxSizeMb] = useState<string>(
-    existing?.extracted?.maxSizePerSource != null
-      ? String(Math.round(existing.extracted.maxSizePerSource / MB))
-      : "",
-  );
+  const [minFileSizeMb, setMinFileSizeMb] = useState("");
+  const [maxSizeMb, setMaxSizeMb] = useState("");
   const [retain, setRetain] = useState<ThumbRetain | "default">(
     existing?.thumbnails?.retain ?? "default",
   );
-  const [maxTotalMb, setMaxTotalMb] = useState<string>(
-    existing?.thumbnails?.maxTotalSize != null
-      ? String(Math.round(existing.thumbnails.maxTotalSize / MB))
-      : "",
-  );
-  const [widthsText, setWidthsText] = useState<string>(
-    existing?.thumbnails?.widths?.join(", ") ?? "",
-  );
+  const [maxTotalMb, setMaxTotalMb] = useState("");
+  const [widthsText, setWidthsText] = useState("");
 
   useEffect(() => {
     if (!open || !stats) return;
@@ -136,10 +105,6 @@ function CustomizeDialog({
 
   if (!stats) return null;
 
-  // Validation: if the user typed text into the widths field but none of the
-  // tokens parse to a valid width (positive integer ≤ 4096), surface an
-  // explicit error and block save. Empty field = no override (inherit global)
-  // and is NOT an error.
   const widthsHasText = widthsText.trim().length > 0;
   const parsedWidths = widthsText
     .split(",")
@@ -162,184 +127,124 @@ function CustomizeDialog({
     const maxTotal = Number.parseInt(maxTotalMb, 10);
     if (Number.isFinite(maxTotal) && maxTotal > 0)
       thumbnails.maxTotalSize = maxTotal * MB;
+    if (parsedWidths.length > 0) thumbnails.widths = [...new Set(parsedWidths)];
 
-    if (parsedWidths.length > 0) {
-      thumbnails.widths = [...new Set(parsedWidths)];
-    }
-
-    const hasExtracted = Object.keys(extracted).length > 0;
-    const hasThumbs = Object.keys(thumbnails).length > 0;
-    if (!hasExtracted && !hasThumbs) return null;
     const result: SourceOverride = {};
-    if (hasExtracted) result.extracted = extracted;
-    if (hasThumbs) result.thumbnails = thumbnails;
-    return result;
+    if (Object.keys(extracted).length > 0) result.extracted = extracted;
+    if (Object.keys(thumbnails).length > 0) result.thumbnails = thumbnails;
+    return Object.keys(result).length > 0 ? result : null;
   };
 
   const preview = effectivePolicy(base, buildOverride());
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{t.cache.overridePolicy}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {stats.originPath}
-        </Typography>
-
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          {t.cache.extractedMode}
-        </Typography>
-        <Select
-          fullWidth
-          size="small"
-          value={mode}
-          onChange={(e) => setMode(e.target.value as ExtractedMode | "default")}
-          sx={{ mb: 2 }}
-        >
-          <MenuItem value="default">{t.cache.useDefault}</MenuItem>
-          <MenuItem value="no-cache">{t.cache.extractedModeNoCache}</MenuItem>
-          <MenuItem value="lru-capped">{t.cache.extractedModeLru}</MenuItem>
-          <MenuItem value="unlimited">
-            {t.cache.extractedModeUnlimited}
-          </MenuItem>
-        </Select>
-
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          {t.cache.extractedMinFileSize}
-        </Typography>
-        <TextField
-          fullWidth
-          size="small"
+    <Dialog
+      open={open}
+      title={t.cache.overridePolicy}
+      className="max-w-xl"
+      onClose={onClose}
+      actions={
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={async () => {
+              await onSave(stats.id, null);
+              onClose();
+            }}
+          >
+            {t.cache.resetToDefaults}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t.archive.cancel}
+          </Button>
+          <Button
+            type="button"
+            disabled={widthsError}
+            onClick={async () => {
+              await onSave(stats.id, buildOverride());
+              onClose();
+            }}
+          >
+            {t.cache.confirm}
+          </Button>
+        </>
+      }
+    >
+      <p className="break-all text-xs text-muted-foreground">
+        {stats.originPath}
+      </p>
+      <div className="grid gap-3">
+        <div className="grid gap-1">
+          <span className="text-sm font-medium">{t.cache.extractedMode}</span>
+          <Select
+            value={mode}
+            onChange={(event) =>
+              setMode(event.target.value as ExtractedMode | "default")
+            }
+          >
+            <option value="default">{t.cache.useDefault}</option>
+            <option value="no-cache">{t.cache.extractedModeNoCache}</option>
+            <option value="lru-capped">{t.cache.extractedModeLru}</option>
+            <option value="unlimited">{t.cache.extractedModeUnlimited}</option>
+          </Select>
+        </div>
+        <Input
           type="number"
+          min={0}
           value={minFileSizeMb}
-          onChange={(e) => setMinFileSizeMb(e.target.value)}
-          slotProps={{ htmlInput: { min: 0 } }}
-          sx={{ mb: 2 }}
+          placeholder={t.cache.extractedMinFileSize}
+          onChange={(event) => setMinFileSizeMb(event.target.value)}
         />
-
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          {t.cache.extractedMaxSizePerSource}
-        </Typography>
-        <TextField
-          fullWidth
-          size="small"
+        <Input
           type="number"
+          min={0}
           value={maxSizeMb}
-          onChange={(e) => setMaxSizeMb(e.target.value)}
-          slotProps={{ htmlInput: { min: 0 } }}
-          sx={{ mb: 2 }}
+          placeholder={t.cache.extractedMaxSizePerSource}
+          onChange={(event) => setMaxSizeMb(event.target.value)}
         />
-
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          {t.cache.thumbnailRetention}
-        </Typography>
-        <Select
-          fullWidth
-          size="small"
-          value={retain}
-          onChange={(e) => setRetain(e.target.value as ThumbRetain | "default")}
-          sx={{ mb: 2 }}
-        >
-          <MenuItem value="default">{t.cache.useDefault}</MenuItem>
-          <MenuItem value="until-source-removed">
-            {t.cache.thumbnailRetainUntilRemoved}
-          </MenuItem>
-          <MenuItem value="lru-capped">{t.cache.thumbnailRetainLru}</MenuItem>
-        </Select>
-
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          {t.cache.thumbnailMaxTotalSize}
-        </Typography>
-        <TextField
-          fullWidth
-          size="small"
+        <div className="grid gap-1">
+          <span className="text-sm font-medium">
+            {t.cache.thumbnailRetention}
+          </span>
+          <Select
+            value={retain}
+            onChange={(event) =>
+              setRetain(event.target.value as ThumbRetain | "default")
+            }
+          >
+            <option value="default">{t.cache.useDefault}</option>
+            <option value="until-source-removed">
+              {t.cache.thumbnailRetainUntilRemoved}
+            </option>
+            <option value="lru-capped">{t.cache.thumbnailRetainLru}</option>
+          </Select>
+        </div>
+        <Input
           type="number"
+          min={0}
           value={maxTotalMb}
-          onChange={(e) => setMaxTotalMb(e.target.value)}
-          slotProps={{ htmlInput: { min: 0 } }}
-          sx={{ mb: 2 }}
+          placeholder={t.cache.thumbnailMaxTotalSize}
+          onChange={(event) => setMaxTotalMb(event.target.value)}
         />
-
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          {t.cache.thumbnailSizes}
-        </Typography>
-        <TextField
-          fullWidth
-          size="small"
+        <Input
           value={widthsText}
           placeholder={t.cache.thumbnailSizesHint}
-          onChange={(e) => setWidthsText(e.target.value)}
-          error={widthsError}
-          helperText={
-            widthsError
-              ? "Enter at least one positive integer ≤ 4096, or leave empty to inherit the global default."
-              : undefined
-          }
-          sx={{ mb: 2 }}
+          onChange={(event) => setWidthsText(event.target.value)}
+          aria-invalid={widthsError}
         />
-
-        <Box
-          sx={{
-            p: 1.5,
-            bgcolor: "action.hover",
-            borderRadius: 1,
-            mt: 1,
-          }}
-        >
-          <Typography variant="caption" color="text.secondary">
-            {t.cache.effectivePolicy}
-          </Typography>
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            extracted.mode: {preview.extracted.mode}
-          </Typography>
-          {preview.extracted.minFileSize != null && (
-            <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-              extracted.minFileSize:{" "}
-              {Math.round(preview.extracted.minFileSize / MB)} MB
-            </Typography>
-          )}
-          {preview.extracted.maxSizePerSource != null && (
-            <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-              extracted.maxSizePerSource:{" "}
-              {Math.round(preview.extracted.maxSizePerSource / MB)} MB
-            </Typography>
-          )}
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            thumbnails.retain: {preview.thumbnails.retain}
-          </Typography>
-          {preview.thumbnails.maxTotalSize != null && (
-            <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-              thumbnails.maxTotalSize:{" "}
-              {Math.round(preview.thumbnails.maxTotalSize / MB)} MB
-            </Typography>
-          )}
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            thumbnailSizes: [{preview.thumbnailSizes.join(", ")}]
-          </Typography>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          color="warning"
-          onClick={async () => {
-            await onSave(stats.id, null);
-            onClose();
-          }}
-        >
-          {t.cache.resetToDefaults}
-        </Button>
-        <Button onClick={onClose}>{t.archive.cancel}</Button>
-        <Button
-          variant="contained"
-          disabled={widthsError}
-          onClick={async () => {
-            await onSave(stats.id, buildOverride());
-            onClose();
-          }}
-        >
-          {t.cache.confirm}
-        </Button>
-      </DialogActions>
+        {widthsError && (
+          <p className="text-xs text-destructive">
+            Enter at least one positive integer up to 4096, or leave empty.
+          </p>
+        )}
+        <div className="rounded-md bg-muted p-3 font-mono text-xs">
+          <p>{t.cache.effectivePolicy}</p>
+          <p>extracted.mode: {preview.extracted.mode}</p>
+          <p>thumbnails.retain: {preview.thumbnails.retain}</p>
+          <p>thumbnailSizes: [{preview.thumbnailSizes.join(", ")}]</p>
+        </div>
+      </div>
     </Dialog>
   );
 }
@@ -353,8 +258,7 @@ export default function CachePage() {
 
   const refresh = useCallback(async () => {
     if (platform.getCacheStats) {
-      const data = await platform.getCacheStats();
-      setStats(data);
+      setStats(await platform.getCacheStats());
     }
   }, [platform]);
 
@@ -387,10 +291,9 @@ export default function CachePage() {
   );
 
   const handleClearUnpinned = useCallback(async () => {
-    const unpinned = stats.filter((s) => !s.isPinned);
-    for (const s of unpinned) {
-      await platform.clearThumbnails(s.id);
-      await platform.clearExtracted(s.id);
+    for (const item of stats.filter((s) => !s.isPinned)) {
+      await platform.clearThumbnails(item.id);
+      await platform.clearExtracted(item.id);
     }
     refresh();
   }, [platform, stats, refresh]);
@@ -412,91 +315,103 @@ export default function CachePage() {
   );
 
   return (
-    <Box sx={{ p: 3, maxWidth: 800, mx: "auto" }}>
-      <Typography variant="h5" gutterBottom>
-        {t.archive.cacheManagement}
-      </Typography>
+    <div className="h-full overflow-auto p-6">
+      <main className="mx-auto max-w-4xl space-y-5">
+        <header>
+          <h1 className="text-2xl font-semibold">
+            {t.archive.cacheManagement}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t.archive.totalCacheSize}: {formatSize(totalSize)}
+          </p>
+        </header>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t.archive.totalCacheSize}: {formatSize(totalSize)}
-      </Typography>
+        {stats.length === 0 ? (
+          <p className="text-muted-foreground">{t.archive.noCache}</p>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearUnpinned}
+              >
+                {t.archive.clearUnpinned}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleClearAll}
+              >
+                {t.archive.clearAll}
+              </Button>
+            </div>
 
-      {stats.length === 0 ? (
-        <Typography color="text.secondary">{t.archive.noCache}</Typography>
-      ) : (
-        <>
-          <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleClearUnpinned}
-            >
-              {t.archive.clearUnpinned}
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              color="error"
-              onClick={handleClearAll}
-            >
-              {t.archive.clearAll}
-            </Button>
-          </Box>
-
-          <List>
-            {stats.map((item) => {
-              const hasOverride = !!parseOverride(item.policyOverride);
-              return (
-                <ListItem
-                  key={item.id}
-                  secondaryAction={
-                    <Box>
-                      <IconButton
-                        onClick={() => setCustomizeFor(item)}
-                        size="small"
+            <div className="grid gap-2">
+              {stats.map((item) => {
+                const hasOverride = !!parseOverride(item.policyOverride);
+                return (
+                  <article
+                    key={item.id}
+                    className="grid gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground md:grid-cols-[1fr_auto]"
+                  >
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-semibold">
+                        [{item.kind}] {item.originPath}
+                      </h2>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t.cache.thumbCache}: {formatSize(item.thumbCacheSize)}{" "}
+                        | {t.cache.extractedCache}:{" "}
+                        {formatSize(item.extractedCacheSize)} |{" "}
+                        {item.entryCount ?? 0} {t.archive.entries}
+                        {item.lastAccessed
+                          ? ` | ${t.archive.lastAccessed}: ${item.lastAccessed}`
+                          : ""}
+                        {hasOverride ? " | custom" : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant={hasOverride ? "default" : "ghost"}
+                        size="icon"
                         title={t.cache.customize}
-                        color={hasOverride ? "primary" : "default"}
+                        onClick={() => setCustomizeFor(item)}
                       >
-                        <SettingsIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
+                        <Settings />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleTogglePin(item.id, item.isPinned)}
-                        size="small"
                       >
-                        {item.isPinned ? (
-                          <PushPinIcon fontSize="small" />
-                        ) : (
-                          <PushPinOutlinedIcon fontSize="small" />
-                        )}
-                      </IconButton>
-                      <IconButton
+                        {item.isPinned ? <Pin /> : <PinOff />}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleDelete(item.id)}
-                        size="small"
-                        color="error"
                       >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  }
-                >
-                  <ListItemText
-                    primary={`[${item.kind}] ${item.originPath}`}
-                    secondary={`${t.cache.thumbCache}: ${formatSize(item.thumbCacheSize)} | ${t.cache.extractedCache}: ${formatSize(item.extractedCacheSize)} | ${item.entryCount ?? 0} ${t.archive.entries}${item.lastAccessed ? ` | ${t.archive.lastAccessed}: ${item.lastAccessed}` : ""}${hasOverride ? ` | ⚙` : ""}`}
-                  />
-                </ListItem>
-              );
-            })}
-          </List>
-        </>
-      )}
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
 
-      <CustomizeDialog
-        open={customizeFor !== null}
-        stats={customizeFor}
-        base={basePolicy}
-        onClose={() => setCustomizeFor(null)}
-        onSave={handleSaveOverride}
-      />
-    </Box>
+        <CustomizeDialog
+          open={customizeFor !== null}
+          stats={customizeFor}
+          base={basePolicy}
+          onClose={() => setCustomizeFor(null)}
+          onSave={handleSaveOverride}
+        />
+      </main>
+    </div>
   );
 }

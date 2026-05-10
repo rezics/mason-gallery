@@ -1,20 +1,8 @@
-import FolderIcon from "@mui/icons-material/Folder";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import SettingsIcon from "@mui/icons-material/Settings";
-import {
-  AppBar,
-  Box,
-  Button,
-  Divider,
-  IconButton,
-  Menu,
-  MenuItem,
-  Toolbar,
-  Tooltip,
-} from "@mui/material";
+import { Folder, RefreshCw, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import {
@@ -23,6 +11,7 @@ import {
   resetToDropZone,
   startArchiveScan,
 } from "@/lib/scanActions";
+import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/appStore";
 
 interface MenuBarProps {
@@ -32,6 +21,8 @@ interface MenuBarProps {
   draggable?: boolean;
 }
 
+type MenuName = "file" | "window" | "help" | null;
+
 export default function MenuBar({
   onQuit,
   onDevTools,
@@ -40,179 +31,174 @@ export default function MenuBar({
 }: MenuBarProps) {
   const t = useI18n();
   const platform = usePlatform();
-  const toggleSettings = useAppStore((s) => s.toggleSettings);
+  const toggleQuickPanel = useAppStore((s) => s.toggleQuickPanel);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const [, navigate] = useLocation();
+  const [openMenu, setOpenMenu] = useState<MenuName>(null);
 
-  const [fileAnchor, setFileAnchor] = useState<null | HTMLElement>(null);
-  const [windowAnchor, setWindowAnchor] = useState<null | HTMLElement>(null);
-  const [helpAnchor, setHelpAnchor] = useState<null | HTMLElement>(null);
-
-  const menuButtonSx = {
-    textTransform: "none",
-    fontSize: 13,
-    minWidth: "auto",
-    px: 1,
-  } as const;
+  const itemClass =
+    "block w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground";
 
   return (
-    <AppBar
-      position="fixed"
-      sx={{
-        zIndex: (theme) => theme.zIndex.drawer + 1,
-        height: 36,
-        bgcolor: "background.paper",
-        color: "text.primary",
-        boxShadow: 1,
-      }}
+    <header
+      className="fixed left-0 right-0 top-0 z-50 flex h-9 items-center border-b border-border bg-popover/95 px-2 text-popover-foreground shadow-sm backdrop-blur"
+      {...(draggable ? { "data-tauri-drag-region": true } : {})}
     >
-      <Toolbar
-        variant="dense"
-        sx={{ minHeight: 36, px: 1, gap: 0 }}
-        {...(draggable ? { "data-tauri-drag-region": true } : {})}
-      >
-        {/* App Logo */}
-        <Box
-          component="img"
-          src="/logo/logo.svg"
-          alt="MasonGallery"
-          sx={{ width: 20, height: 20, mr: 0.5, flexShrink: 0 }}
-        />
+      <img
+        src="/logo/logo.svg"
+        alt="MasonGallery"
+        className="mr-1 size-5 shrink-0"
+      />
 
-        {/* File Menu */}
+      <div className="relative">
         <Button
-          size="small"
-          onClick={(e) => setFileAnchor(e.currentTarget)}
-          sx={menuButtonSx}
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setOpenMenu(openMenu === "file" ? null : "file")}
         >
           {t.menu.file}
         </Button>
-        <Menu
-          anchorEl={fileAnchor}
-          open={!!fileAnchor}
-          onClose={() => setFileAnchor(null)}
-        >
-          <MenuItem
-            onClick={() => {
-              setFileAnchor(null);
-              openFolderAndScan();
-            }}
-          >
-            {t.menu.openFolder}
-          </MenuItem>
-          {platform.capabilities.canBrowseArchives && platform.pickArchive && (
-            <MenuItem
-              onClick={async () => {
-                setFileAnchor(null);
-                if (platform.pickArchive) {
-                  const path = await platform.pickArchive();
-                  if (path) startArchiveScan(path);
-                }
-              }}
-            >
-              {t.archive.openArchive}
-            </MenuItem>
-          )}
-          <MenuItem
-            onClick={() => {
-              setFileAnchor(null);
-              resetToDropZone();
-              navigate("/");
-            }}
-          >
-            {t.menu.reset}
-          </MenuItem>
-          {onQuit && <Divider />}
-          {onQuit && (
-            <MenuItem
+        {openMenu === "file" && (
+          <div className="absolute left-0 top-8 z-50 min-w-44 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-lg">
+            <button
+              type="button"
+              className={itemClass}
               onClick={() => {
-                setFileAnchor(null);
-                onQuit();
+                setOpenMenu(null);
+                openFolderAndScan();
               }}
             >
-              {t.menu.quit}
-            </MenuItem>
-          )}
-        </Menu>
-
-        {/* Window Menu (desktop only) */}
-        {onDevTools && (
-          <>
-            <Button
-              size="small"
-              onClick={(e) => setWindowAnchor(e.currentTarget)}
-              sx={menuButtonSx}
+              {t.menu.openFolder}
+            </button>
+            {platform.capabilities.canBrowseArchives &&
+              platform.pickArchive && (
+                <button
+                  type="button"
+                  className={itemClass}
+                  onClick={async () => {
+                    setOpenMenu(null);
+                    const path = await platform.pickArchive?.();
+                    if (path) startArchiveScan(path);
+                  }}
+                >
+                  {t.archive.openArchive}
+                </button>
+              )}
+            <button
+              type="button"
+              className={itemClass}
+              onClick={() => {
+                setOpenMenu(null);
+                resetToDropZone();
+                navigate("/");
+              }}
             >
-              {t.menu.window}
-            </Button>
-            <Menu
-              anchorEl={windowAnchor}
-              open={!!windowAnchor}
-              onClose={() => setWindowAnchor(null)}
-            >
-              <MenuItem
+              {t.menu.reset}
+            </button>
+            {onQuit && <div className="my-1 border-t border-border" />}
+            {onQuit && (
+              <button
+                type="button"
+                className={itemClass}
                 onClick={() => {
-                  setWindowAnchor(null);
+                  setOpenMenu(null);
+                  onQuit();
+                }}
+              >
+                {t.menu.quit}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {onDevTools && (
+        <div className="relative">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpenMenu(openMenu === "window" ? null : "window")}
+          >
+            {t.menu.window}
+          </Button>
+          {openMenu === "window" && (
+            <div className="absolute left-0 top-8 z-50 min-w-36 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-lg">
+              <button
+                type="button"
+                className={itemClass}
+                onClick={() => {
+                  setOpenMenu(null);
                   onDevTools();
                 }}
               >
                 {t.menu.devTools}
-              </MenuItem>
-            </Menu>
-          </>
-        )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Help Menu */}
+      <div className="relative">
         <Button
-          size="small"
-          onClick={(e) => setHelpAnchor(e.currentTarget)}
-          sx={menuButtonSx}
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setOpenMenu(openMenu === "help" ? null : "help")}
         >
           {t.menu.help}
         </Button>
-        <Menu
-          anchorEl={helpAnchor}
-          open={!!helpAnchor}
-          onClose={() => setHelpAnchor(null)}
-        >
-          <MenuItem
-            onClick={() => {
-              setHelpAnchor(null);
-              navigate("/about");
-            }}
-          >
-            {t.menu.about}
-          </MenuItem>
-        </Menu>
+        {openMenu === "help" && (
+          <div className="absolute left-0 top-8 z-50 min-w-36 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-lg">
+            <button
+              type="button"
+              className={itemClass}
+              onClick={() => {
+                setOpenMenu(null);
+                navigate("/about");
+              }}
+            >
+              {t.menu.about}
+            </button>
+          </div>
+        )}
+      </div>
 
-        <Box
-          sx={{ flex: 1 }}
-          {...(draggable ? { "data-tauri-drag-region": true } : {})}
-        />
+      <div
+        className="min-w-4 flex-1"
+        {...(draggable ? { "data-tauri-drag-region": true } : {})}
+      />
 
-        {/* Top-level action buttons */}
-        <Tooltip title={t.sidebar.folders}>
-          <IconButton size="small" onClick={toggleSidebar} sx={{ mx: 0.25 }}>
-            <FolderIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t.actions.refresh}>
-          <IconButton
-            size="small"
-            onClick={() => incrementalRefresh()}
-            sx={{ mx: 0.25 }}
-          >
-            <RefreshIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t.actions.settings}>
-          <IconButton size="small" onClick={toggleSettings} sx={{ mx: 0.25 }}>
-            <SettingsIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Tooltip>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        title={t.sidebar.folders}
+        onClick={toggleSidebar}
+      >
+        <Folder />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        title={t.actions.refresh}
+        onClick={() => incrementalRefresh()}
+      >
+        <RefreshCw />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        title={t.actions.settings}
+        onClick={toggleQuickPanel}
+      >
+        <Settings />
+      </Button>
 
-        {trailing}
-      </Toolbar>
-    </AppBar>
+      <div className={cn("ml-1 flex h-9 items-center")}>{trailing}</div>
+    </header>
   );
 }

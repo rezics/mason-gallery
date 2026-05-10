@@ -6,10 +6,6 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "peerDependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.9",
-    "@mui/material": "^7.3.9",
     "masonic": "^4.1.0",
     "react": "^19",
     "react-dom": "^19",
@@ -19,7 +15,12 @@
     "zustand": "^5.0.12"
   },
   "dependencies": {
+    "@base-ui-components/react": "^1.0.0-rc.0",
     "@tailwindcss/vite": "^4.2.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "tailwind-merge": "^2.6.0",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

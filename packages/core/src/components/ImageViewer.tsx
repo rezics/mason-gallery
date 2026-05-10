@@ -1,24 +1,13 @@
-import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
-import FolderOpenOutlined from "@mui/icons-material/FolderOpenOutlined";
-import InfoOutlined from "@mui/icons-material/InfoOutlined";
-import {
-  Alert,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogTitle,
-  IconButton,
-  Popover,
-  Snackbar,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { FolderOpen, Info, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import Counter from "yet-another-react-lightbox/plugins/counter";
 import "yet-another-react-lightbox/plugins/counter.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -29,7 +18,27 @@ function getFileName(source: string): string {
   return source.substring(sep + 1);
 }
 
-const toolbarButtonSx = { color: "rgba(255,255,255,0.8)" } as const;
+function ViewerButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className="yarl__button inline-flex items-center justify-center text-white/85 transition-colors hover:text-white"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function ImageViewer() {
   const platform = usePlatform();
@@ -44,8 +53,8 @@ export default function ImageViewer() {
   const showDeleteToast = useSettingsStore((s) => s.showDeleteToast);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [snackOpen, setSnackOpen] = useState(false);
-  const [infoAnchor, setInfoAnchor] = useState<HTMLElement | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const currentImage = images[currentIndex];
 
@@ -62,14 +71,10 @@ export default function ImageViewer() {
     try {
       await platform.deleteFile(img.source);
       removeImage(currentIndex);
-      if (showDeleteToast) {
-        setSnackOpen(true);
-      }
-      if (images.length <= 1) {
-        closeViewer();
-      }
-    } catch (e) {
-      console.error("Failed to delete:", e);
+      if (showDeleteToast) setToastOpen(true);
+      if (images.length <= 1) closeViewer();
+    } catch (error) {
+      console.error("Failed to delete:", error);
     }
   }, [
     platform,
@@ -94,8 +99,8 @@ export default function ImageViewer() {
   ]);
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Delete" && platform.capabilities.canDeleteFiles) {
+    (event: KeyboardEvent) => {
+      if (event.key === "Delete" && platform.capabilities.canDeleteFiles) {
         requestDelete();
       }
     },
@@ -108,49 +113,48 @@ export default function ImageViewer() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isViewerOpen, handleKeyDown]);
 
+  useEffect(() => {
+    if (!toastOpen) return;
+    const id = window.setTimeout(() => setToastOpen(false), 3000);
+    return () => window.clearTimeout(id);
+  }, [toastOpen]);
+
   if (!isViewerOpen) return null;
 
-  const toolbarButtons: (string | React.ReactNode)[] = [];
+  const toolbarButtons: (string | ReactNode)[] = [];
 
   if (currentImage) {
     toolbarButtons.push(
-      <Tooltip key="info" title={t.viewer.info}>
-        <IconButton
-          className="yarl__button"
-          sx={toolbarButtonSx}
-          onMouseEnter={(e) => setInfoAnchor(e.currentTarget)}
-          onMouseLeave={() => setInfoAnchor(null)}
-        >
-          <InfoOutlined />
-        </IconButton>
-      </Tooltip>,
+      <ViewerButton
+        key="info"
+        title={t.viewer.info}
+        onClick={() => setInfoOpen((open) => !open)}
+      >
+        <Info />
+      </ViewerButton>,
     );
 
     if (platform.capabilities.canRevealFile) {
       toolbarButtons.push(
-        <Tooltip key="folder" title={t.viewer.revealInFolder}>
-          <IconButton
-            className="yarl__button"
-            sx={toolbarButtonSx}
-            onClick={() => platform.revealFile(currentImage.source)}
-          >
-            <FolderOpenOutlined />
-          </IconButton>
-        </Tooltip>,
+        <ViewerButton
+          key="folder"
+          title={t.viewer.revealInFolder}
+          onClick={() => platform.revealFile(currentImage.source)}
+        >
+          <FolderOpen />
+        </ViewerButton>,
       );
     }
 
     if (platform.capabilities.canDeleteFiles) {
       toolbarButtons.push(
-        <Tooltip key="delete" title={t.viewer.deleteConfirm}>
-          <IconButton
-            className="yarl__button"
-            sx={toolbarButtonSx}
-            onClick={requestDelete}
-          >
-            <DeleteOutlined />
-          </IconButton>
-        </Tooltip>,
+        <ViewerButton
+          key="delete"
+          title={t.viewer.deleteConfirm}
+          onClick={requestDelete}
+        >
+          <Trash2 />
+        </ViewerButton>,
       );
     }
   }
@@ -168,87 +172,59 @@ export default function ImageViewer() {
           view: ({ index }) => setCurrentIndex(index),
         }}
         plugins={[Counter, Zoom]}
-        zoom={{
-          scrollToZoom: true,
-        }}
-        controller={{
-          closeOnBackdropClick: true,
-        }}
-        toolbar={{
-          buttons: toolbarButtons,
-        }}
+        zoom={{ scrollToZoom: true }}
+        controller={{ closeOnBackdropClick: true }}
+        toolbar={{ buttons: toolbarButtons }}
       />
 
-      {/* Info popover */}
-      <Popover
-        open={Boolean(infoAnchor)}
-        anchorEl={infoAnchor}
-        onClose={() => setInfoAnchor(null)}
-        disableRestoreFocus
-        sx={{ pointerEvents: "none", zIndex: 10000 }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        transformOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        {currentImage && (
-          <div style={{ padding: 12, maxWidth: 400, pointerEvents: "auto" }}>
-            <Typography variant="body2">
-              {t.viewer.fileName}: {getFileName(currentImage.source)}
-            </Typography>
-            {currentImage.width && currentImage.height && (
-              <Typography variant="body2">
-                {t.viewer.dimensions}: {currentImage.width} x{" "}
-                {currentImage.height}
-              </Typography>
-            )}
-            <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
-              {t.viewer.filePath}: {currentImage.source}
-            </Typography>
+      {infoOpen && currentImage && (
+        <div className="fixed right-4 top-16 z-[10000] max-w-md rounded-lg border border-border bg-popover p-4 text-sm text-popover-foreground shadow-xl">
+          <div className="mb-2 flex items-center justify-between gap-4">
+            <h2 className="font-semibold">{t.viewer.info}</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setInfoOpen(false)}
+            >
+              {t.actions.close}
+            </Button>
           </div>
-        )}
-      </Popover>
+          <p>
+            {t.viewer.fileName}: {getFileName(currentImage.source)}
+          </p>
+          {currentImage.width && currentImage.height && (
+            <p>
+              {t.viewer.dimensions}: {currentImage.width} x{" "}
+              {currentImage.height}
+            </p>
+          )}
+          <p className="break-all text-muted-foreground">
+            {t.viewer.filePath}: {currentImage.source}
+          </p>
+        </div>
+      )}
 
-      {/* Delete confirmation dialog */}
-      <Dialog
+      <ConfirmDialog
         open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        sx={{ zIndex: 10000 }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
+        title={t.viewer.deleteConfirm}
+        cancelLabel={t.actions.close}
+        confirmLabel="OK"
+        destructive
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          executeDelete();
+        }}
       >
-        <DialogTitle>{t.viewer.deleteConfirm}</DialogTitle>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>
-            {t.actions.close}
-          </Button>
-          <Button
-            color="error"
-            autoFocus
-            onClick={() => {
-              setConfirmOpen(false);
-              executeDelete();
-            }}
-          >
-            OK
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <p>{getFileName(currentImage?.source ?? "")}</p>
+      </ConfirmDialog>
 
-      {/* Delete success toast */}
-      <Snackbar
-        open={snackOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackOpen(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        sx={{ zIndex: 10000 }}
-      >
-        <Alert
-          severity="success"
-          variant="filled"
-          onClose={() => setSnackOpen(false)}
-        >
+      {toastOpen && (
+        <div className="fixed bottom-4 right-4 z-[10000] rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg">
           {t.viewer.deleteSuccess}
-        </Alert>
-      </Snackbar>
+        </div>
+      )}
     </>
   );
 }

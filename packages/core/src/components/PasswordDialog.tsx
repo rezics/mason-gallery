@@ -1,15 +1,7 @@
-import {
-  Button,
-  Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  TextField,
-  Typography,
-} from "@mui/material";
 import { useCallback, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Checkbox, Input } from "@/components/ui/field";
 import { useI18n } from "@/i18n";
 
 interface PasswordDialogProps {
@@ -39,44 +31,43 @@ export default function PasswordDialog({
   }, [password, remember, onSubmit]);
 
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
-      <DialogTitle>{t.archive.passwordRequired}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {archivePath.split(/[\\/]/).pop()}
-        </Typography>
-        <TextField
-          autoFocus
-          fullWidth
-          type="password"
-          placeholder={t.archive.passwordPlaceholder}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSubmit();
-          }}
-          error={!!error}
-          helperText={error}
-          size="small"
+    <Dialog
+      open={open}
+      title={t.archive.passwordRequired}
+      onClose={onCancel}
+      actions={
+        <>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t.archive.cancel}
+          </Button>
+          <Button type="button" disabled={!password} onClick={handleSubmit}>
+            {t.archive.submit}
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm text-muted-foreground">
+        {archivePath.split(/[\\/]/).pop()}
+      </p>
+      <Input
+        autoFocus
+        type="password"
+        placeholder={t.archive.passwordPlaceholder}
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") handleSubmit();
+        }}
+        aria-invalid={!!error}
+      />
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      <div className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={remember}
+          onChange={(event) => setRemember(event.currentTarget.checked)}
         />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-              size="small"
-            />
-          }
-          label={t.archive.rememberPassword}
-          sx={{ mt: 1 }}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel}>{t.archive.cancel}</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!password}>
-          {t.archive.submit}
-        </Button>
-      </DialogActions>
+        {t.archive.rememberPassword}
+      </div>
     </Dialog>
   );
 }

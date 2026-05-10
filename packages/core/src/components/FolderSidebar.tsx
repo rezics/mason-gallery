@@ -1,18 +1,7 @@
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import FolderIcon from "@mui/icons-material/Folder";
-import {
-  Box,
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Typography,
-  useMediaQuery,
-} from "@mui/material";
-import { useMemo } from "react";
+import { ChevronDown, ChevronRight, Folder } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/i18n";
+import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/appStore";
 
 interface TreeNode {
@@ -47,6 +36,16 @@ function buildTree(paths: string[]): TreeNode[] {
 
 export const SIDEBAR_WIDTH = 260;
 
+function useSmallScreen() {
+  const [isSmall, setIsSmall] = useState(() => window.innerWidth <= 768);
+  useEffect(() => {
+    const update = () => setIsSmall(window.innerWidth <= 768);
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return isSmall;
+}
+
 function FolderTreeNode({ node, depth }: { node: TreeNode; depth: number }) {
   const selectedFolder = useAppStore((s) => s.selectedFolder);
   const expandedFolders = useAppStore((s) => s.expandedFolders);
@@ -61,49 +60,52 @@ function FolderTreeNode({ node, depth }: { node: TreeNode; depth: number }) {
 
   return (
     <>
-      <ListItemButton
-        selected={isSelected}
+      <button
+        type="button"
+        className={cn(
+          "flex min-h-8 w-full items-center gap-1 px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+          isSelected && "bg-accent text-accent-foreground",
+        )}
+        style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => setSelectedFolder(node.path)}
-        sx={{ pl: 1 + depth * 2, py: 0.25, minHeight: 32 }}
       >
         {hasChildren ? (
-          <ListItemIcon
-            sx={{ minWidth: 24, cursor: "pointer" }}
-            onClick={(e) => {
-              e.stopPropagation();
+          <button
+            type="button"
+            className="flex size-5 items-center justify-center"
+            onClick={(event) => {
+              event.stopPropagation();
               toggleExpandedFolder(node.path);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                event.stopPropagation();
+                toggleExpandedFolder(node.path);
+              }
             }}
           >
             {isExpanded ? (
-              <ExpandMoreIcon fontSize="small" />
+              <ChevronDown className="size-4" />
             ) : (
-              <ChevronRightIcon fontSize="small" />
+              <ChevronRight className="size-4" />
             )}
-          </ListItemIcon>
+          </button>
         ) : (
-          <ListItemIcon sx={{ minWidth: 24 }}>
-            <Box sx={{ width: 20 }} />
-          </ListItemIcon>
+          <span className="size-5" />
         )}
-        <ListItemIcon sx={{ minWidth: 28 }}>
-          <FolderIcon fontSize="small" />
-        </ListItemIcon>
-        <ListItemText
-          primary={node.name}
-          primaryTypographyProps={{ variant: "body2", noWrap: true }}
-        />
+        <Folder className="size-4 shrink-0" />
+        <span className="truncate">{node.name}</span>
         {count > 0 && (
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-            {count}
-          </Typography>
+          <span className="ml-auto text-xs text-muted-foreground">{count}</span>
         )}
-      </ListItemButton>
+      </button>
       {hasChildren && isExpanded && (
-        <List disablePadding>
+        <div>
           {node.children.map((child) => (
             <FolderTreeNode key={child.path} node={child} depth={depth + 1} />
           ))}
-        </List>
+        </div>
       )}
     </>
   );
@@ -116,76 +118,66 @@ export default function FolderSidebar() {
   const directoryTree = useAppStore((s) => s.directoryTree);
   const selectedFolder = useAppStore((s) => s.selectedFolder);
   const setSelectedFolder = useAppStore((s) => s.setSelectedFolder);
-
-  const isSmallScreen = useMediaQuery("(max-width:768px)");
+  const isSmallScreen = useSmallScreen();
 
   const tree = useMemo(() => buildTree(directoryTree), [directoryTree]);
 
   const drawerContent = (
-    <Box sx={{ width: SIDEBAR_WIDTH, height: "100%", overflow: "auto" }}>
-      <Typography variant="subtitle2" sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+    <div className="h-full overflow-auto">
+      <h2 className="px-4 pb-2 pt-3 text-sm font-semibold">
         {t.sidebar.folders}
-      </Typography>
-      <List disablePadding dense>
-        <ListItemButton
-          selected={selectedFolder === null}
-          onClick={() => setSelectedFolder(null)}
-          sx={{ pl: 1, py: 0.25, minHeight: 32 }}
-        >
-          <ListItemIcon sx={{ minWidth: 24 }}>
-            <Box sx={{ width: 20 }} />
-          </ListItemIcon>
-          <ListItemIcon sx={{ minWidth: 28 }}>
-            <FolderIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText
-            primary={t.sidebar.showAll}
-            primaryTypographyProps={{ variant: "body2" }}
-          />
-        </ListItemButton>
-        {tree.map((node) => (
-          <FolderTreeNode key={node.path} node={node} depth={0} />
-        ))}
-      </List>
+      </h2>
+      <button
+        type="button"
+        className={cn(
+          "flex min-h-8 w-full items-center gap-1 px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+          selectedFolder === null && "bg-accent text-accent-foreground",
+        )}
+        onClick={() => setSelectedFolder(null)}
+      >
+        <span className="size-5" />
+        <Folder className="size-4 shrink-0" />
+        <span>{t.sidebar.showAll}</span>
+      </button>
+      {tree.map((node) => (
+        <FolderTreeNode key={node.path} node={node} depth={0} />
+      ))}
       {tree.length === 0 && (
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ px: 2, py: 1 }}
-        >
+        <p className="px-4 py-2 text-sm text-muted-foreground">
           {t.sidebar.noSubfolders}
-        </Typography>
+        </p>
       )}
-    </Box>
+    </div>
   );
 
   if (isSmallScreen) {
     return (
-      <Drawer
-        variant="temporary"
-        open={isSidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        sx={{ "& .MuiDrawer-paper": { width: SIDEBAR_WIDTH } }}
-      >
-        {drawerContent}
-      </Drawer>
+      <>
+        {isSidebarOpen && (
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/25"
+            aria-label={t.actions.close}
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        <aside
+          className={cn(
+            "fixed bottom-0 left-0 top-9 z-50 w-[260px] border-r border-border bg-popover text-popover-foreground shadow-xl transition-transform",
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          {drawerContent}
+        </aside>
+      </>
     );
   }
 
   if (!isSidebarOpen) return null;
 
   return (
-    <Box
-      sx={{
-        width: SIDEBAR_WIDTH,
-        flexShrink: 0,
-        borderRight: 1,
-        borderColor: "divider",
-        height: "100%",
-        overflow: "hidden",
-      }}
-    >
+    <aside className="h-full w-[260px] shrink-0 overflow-hidden border-r border-border bg-background">
       {drawerContent}
-    </Box>
+    </aside>
   );
 }

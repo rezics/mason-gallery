@@ -9,7 +9,7 @@ export default defineConfig(async () => ({
   publicDir: path.resolve(__dirname, "../../public"),
   plugins: [react(), tailwindcss()],
   resolve: {
-    dedupe: ["react", "react-dom", "@emotion/react", "@emotion/styled"],
+    dedupe: ["react", "react-dom"],
     alias: {
       "@/": path.resolve(__dirname, "../core/src") + "/",
     },

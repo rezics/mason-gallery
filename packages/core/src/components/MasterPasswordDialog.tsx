@@ -1,13 +1,7 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Typography,
-} from "@mui/material";
 import { useCallback, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/field";
 import { useI18n } from "@/i18n";
 
 interface MasterPasswordDialogProps {
@@ -29,11 +23,9 @@ export default function MasterPasswordDialog({
   const [error, setError] = useState("");
 
   const handleSubmit = useCallback(() => {
-    if (mode === "set") {
-      if (password !== confirmPassword) {
-        setError(t.archive.masterPasswordMismatch);
-        return;
-      }
+    if (mode === "set" && password !== confirmPassword) {
+      setError(t.archive.masterPasswordMismatch);
+      return;
     }
     if (password) {
       onSubmit(password);
@@ -49,45 +41,44 @@ export default function MasterPasswordDialog({
       : t.archive.enterMasterPassword;
 
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          fullWidth
+    <Dialog
+      open={open}
+      title={title}
+      onClose={onCancel}
+      actions={
+        <>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t.archive.cancel}
+          </Button>
+          <Button type="button" disabled={!password} onClick={handleSubmit}>
+            {t.archive.submit}
+          </Button>
+        </>
+      }
+    >
+      <Input
+        autoFocus
+        type="password"
+        placeholder={t.archive.enterMasterPassword}
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && mode === "enter") handleSubmit();
+        }}
+      />
+      {mode === "set" && (
+        <Input
           type="password"
-          placeholder={t.archive.enterMasterPassword}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && mode === "enter") handleSubmit();
+          placeholder={t.archive.confirmMasterPassword}
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") handleSubmit();
           }}
-          size="small"
-          sx={{ mt: 1 }}
+          aria-invalid={!!error}
         />
-        {mode === "set" && (
-          <TextField
-            fullWidth
-            type="password"
-            placeholder={t.archive.confirmMasterPassword}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
-            }}
-            error={!!error}
-            helperText={error}
-            size="small"
-            sx={{ mt: 2 }}
-          />
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel}>{t.archive.cancel}</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!password}>
-          {t.archive.submit}
-        </Button>
-      </DialogActions>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </Dialog>
   );
 }
