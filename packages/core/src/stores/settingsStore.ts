@@ -212,7 +212,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         // the policy so subsequent scans pick it up.
         const basePolicy = settings.cachePolicy ?? DEFAULTS.cachePolicy;
         const sizes =
-          basePolicy.thumbnailSizes ??
+          settings.cachePolicy?.thumbnailSizes ??
           settings.thumbnailSizes ??
           DEFAULTS.thumbnailSizes;
         return { ...basePolicy, thumbnailSizes: sizes };

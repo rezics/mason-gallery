@@ -94,6 +94,8 @@ export interface Settings {
   showGridPosition: boolean;
   confirmDelete: boolean;
   showDeleteToast: boolean;
+  cacheCleanupStrategy: CacheCleanupStrategy;
+  passwordStorageMode: PasswordStorageMode;
   cachePolicy: CachePolicy;
   thumbnailSizes: number[];
   folderThumbnails: FolderThumbnailsMode;

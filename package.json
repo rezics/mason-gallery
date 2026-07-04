@@ -16,7 +16,8 @@
     "build:cli": "bun run --filter @mason-gallery/web build && bun run --filter mason-gallery build",
     "publish:npm": "bun run build:cli && cd packages/cli && npm publish",
     "check": "biome ci . && tsc --build",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "test": "bun run --filter @mason-gallery/core test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.9",

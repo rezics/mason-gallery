@@ -43,7 +43,7 @@ The intended outcome is a complete product-shell refactor, not a patch. The app 
 
 ## 2. Preferences Information Architecture
 
-- [ ] 2.1 Split the current `packages/core/src/pages/SettingsPage.tsx` into smaller category sections or components so appearance, gallery, files, archive/password, cache defaults, and advanced settings have distinct ownership.
+- [x] 2.1 Split the current `packages/core/src/pages/SettingsPage.tsx` into smaller category sections or components so appearance, gallery, files, archive/password, cache defaults, and advanced settings have distinct ownership.
 - [x] 2.2 Rename user-facing "Settings" surfaces so quick gallery controls, preferences, and management are visually and semantically distinct.
 - [x] 2.3 Replace the placeholder advanced section with useful, platform-aware controls or remove it until it has real purpose.
 - [x] 2.4 Move cache-management entry points out of archive-only wording and make storage/cache management discoverable from the primary manage area.
@@ -77,7 +77,7 @@ The intended outcome is a complete product-shell refactor, not a patch. The app 
 ## 6. Core Viewer Regression Protection
 
 - [x] 6.1 Verify `packages/core/src/pages/HomePage.tsx`, `WaterfallGrid.tsx`, `ImageViewer.tsx`, `FolderSidebar.tsx`, and `scanActions.ts` still work with the new shell and routes.
-- [ ] 6.2 Add focused tests around settings hydration/fallback, theme token resolution, route accessibility, and platform capability gating.
+- [x] 6.2 Add focused tests around settings hydration/fallback, theme token resolution, route accessibility, and platform capability gating.
 - [x] 6.3 Run `bun run check` and fix any type, lint, or build issues introduced by the refactor.
 - [ ] 6.4 Manually verify the web target and desktop target where available: first-run drop zone, folder scan, archive entry on desktop, preferences navigation, manage/cache navigation, dark theme, custom accent, and direct route reload.
 
@@ -91,5 +91,5 @@ The intended outcome is a complete product-shell refactor, not a patch. The app 
 
 ## Implementation notes
 
-- 2026-07-04: Product shell navigation, preferences/back routes, theme presets/custom accent, cache management routing/confirmations, desktop settings hydration, startup cache cleanup, and web/manual browser verification are implemented.
+- 2026-07-04 follow-up: SettingsPage was split into focused section components under `packages/core/src/pages/settings/`; Bun tests now cover theme token fallback/application, settings hydration including legacy `thumbnailSizes`, and route/platform gating. Web rendered QA passed for preferences, custom accent, direct route fallback, manage/cache, and mobile overflow. Desktop Vite and Rust release compilation passed and produced `mason-gallery.exe`; MSI bundling remained blocked by external WiX download timeout, so full desktop manual flow verification stays open.- 2026-07-04: Product shell navigation, preferences/back routes, theme presets/custom accent, cache management routing/confirmations, desktop settings hydration, startup cache cleanup, and web/manual browser verification are implemented.
 - Remaining unchecked items are follow-up hardening rather than blockers for the current product refactor: extracting SettingsPage into smaller components and adding a formal automated test harness to this repo.
