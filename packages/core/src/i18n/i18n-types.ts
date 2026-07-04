@@ -27,6 +27,12 @@ export type TranslationKeys = {
   };
   settings: {
     title: string;
+    preferences: string;
+    appearance: string;
+    gallery: string;
+    files: string;
+    advanced: string;
+    backToGallery: string;
     formats: string;
     formatsHint: string;
     addFormat: string;
@@ -37,6 +43,24 @@ export type TranslationKeys = {
     timeDesc: string;
     pageSize: string;
     language: string;
+    themeMode: string;
+    themePreset: string;
+    accentColor: string;
+    customAccent: string;
+    preview: string;
+    resetTheme: string;
+    modeSystem: string;
+    modeLight: string;
+    modeDark: string;
+    presetMason: string;
+    presetGraphite: string;
+    presetMidnight: string;
+    presetPaper: string;
+    accentRose: string;
+    accentBlue: string;
+    accentAmber: string;
+    accentEmerald: string;
+    accentViolet: string;
     columns: string;
     showGridPosition: string;
     confirmDelete: string;
@@ -60,6 +84,10 @@ export type TranslationKeys = {
   actions: {
     refresh: string;
     settings: string;
+    preferences: string;
+    manage: string;
+    gallery: string;
+    quickControls: string;
     close: string;
   };
   sidebar: {

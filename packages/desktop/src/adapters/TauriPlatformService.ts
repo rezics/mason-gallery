@@ -166,10 +166,23 @@ export const tauriPlatformService: PlatformService = {
     const sortMethod = await store.get<Settings["sortMethod"]>("sortMethod");
     const pageSize = await store.get<number>("pageSize");
     const language = await store.get<Settings["language"]>("language");
+    const theme = await store.get<Settings["theme"]>("theme");
+    const themePreset = await store.get<Settings["themePreset"]>("themePreset");
+    const accentPreset =
+      await store.get<Settings["accentPreset"]>("accentPreset");
+    const customAccent =
+      await store.get<Settings["customAccent"]>("customAccent");
+    const customTheme = await store.get<Settings["customTheme"]>("customTheme");
     const breakpoints = await store.get<Settings["breakpoints"]>("breakpoints");
     const showGridPosition = await store.get<boolean>("showGridPosition");
     const confirmDelete = await store.get<boolean>("confirmDelete");
     const showDeleteToast = await store.get<boolean>("showDeleteToast");
+    const cacheCleanupStrategy = await store.get<CacheCleanupStrategy>(
+      "cacheCleanupStrategy",
+    );
+    const passwordStorageMode = await store.get<PasswordStorageMode>(
+      "passwordStorageMode",
+    );
     const cachePolicy = await store.get<CachePolicy>("cachePolicy");
     const thumbnailSizes = await store.get<number[]>("thumbnailSizes");
     const folderThumbnails =
@@ -180,10 +193,17 @@ export const tauriPlatformService: PlatformService = {
       ...(sortMethod != null && { sortMethod }),
       ...(pageSize != null && { pageSize }),
       ...(language != null && { language }),
+      ...(theme != null && { theme }),
+      ...(themePreset != null && { themePreset }),
+      ...(accentPreset != null && { accentPreset }),
+      ...(customAccent != null && { customAccent }),
+      ...(customTheme != null && { customTheme }),
       ...(breakpoints != null && { breakpoints }),
       ...(showGridPosition != null && { showGridPosition }),
       ...(confirmDelete != null && { confirmDelete }),
       ...(showDeleteToast != null && { showDeleteToast }),
+      ...(cacheCleanupStrategy != null && { cacheCleanupStrategy }),
+      ...(passwordStorageMode != null && { passwordStorageMode }),
       ...(cachePolicy != null && { cachePolicy }),
       ...(thumbnailSizes != null && { thumbnailSizes }),
       ...(folderThumbnails != null && { folderThumbnails }),

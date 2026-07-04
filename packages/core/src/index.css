@@ -55,25 +55,25 @@
 
 .dark {
   color-scheme: dark;
-  --background: 224 28% 8%;
-  --foreground: 214 32% 92%;
-  --card: 224 24% 12%;
-  --card-foreground: 214 32% 92%;
-  --popover: 224 24% 12%;
-  --popover-foreground: 214 32% 92%;
-  --primary: 355 87% 67%;
+  --background: 222 18% 9%;
+  --foreground: 218 24% 92%;
+  --card: 222 14% 13%;
+  --card-foreground: 218 24% 92%;
+  --popover: 222 14% 12%;
+  --popover-foreground: 218 24% 92%;
+  --primary: 355 82% 66%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 224 18% 18%;
-  --secondary-foreground: 214 32% 92%;
-  --muted: 224 18% 18%;
-  --muted-foreground: 214 15% 66%;
-  --accent: 355 42% 22%;
-  --accent-foreground: 355 96% 84%;
+  --secondary: 220 12% 18%;
+  --secondary-foreground: 218 22% 90%;
+  --muted: 220 12% 17%;
+  --muted-foreground: 218 12% 66%;
+  --accent: 355 40% 22%;
+  --accent-foreground: 355 94% 84%;
   --destructive: 0 72% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 224 18% 22%;
-  --input: 224 18% 24%;
-  --ring: 355 87% 67%;
+  --border: 220 10% 23%;
+  --input: 220 10% 26%;
+  --ring: 355 82% 66%;
 }
 
 * {

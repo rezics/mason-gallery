@@ -1,4 +1,11 @@
-import { Folder, RefreshCw, Settings } from "lucide-react";
+import {
+  Database,
+  Folder,
+  Home,
+  RefreshCw,
+  Settings,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -165,6 +172,45 @@ export default function MenuBar({
         )}
       </div>
 
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        title={t.actions.gallery}
+        onClick={() => {
+          setOpenMenu(null);
+          navigate("/");
+        }}
+      >
+        <Home />
+      </Button>
+      {platform.capabilities.canBrowseArchives && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          title={t.actions.manage}
+          onClick={() => {
+            setOpenMenu(null);
+            navigate("/manage/cache");
+          }}
+        >
+          <Database />
+        </Button>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        title={t.actions.preferences}
+        onClick={() => {
+          setOpenMenu(null);
+          navigate("/settings/appearance");
+        }}
+      >
+        <SlidersHorizontal />
+      </Button>
+
       <div
         className="min-w-4 flex-1"
         {...(draggable ? { "data-tauri-drag-region": true } : {})}
@@ -192,7 +238,7 @@ export default function MenuBar({
         type="button"
         variant="ghost"
         size="icon"
-        title={t.actions.settings}
+        title={t.actions.quickControls}
         onClick={toggleQuickPanel}
       >
         <Settings />

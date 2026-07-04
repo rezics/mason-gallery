@@ -48,7 +48,9 @@ export default function QuickGalleryPanel() {
           <header className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
               <Columns3 className="size-4 text-primary" />
-              <h2 className="text-sm font-semibold">{t.settings.title}</h2>
+              <h2 className="text-sm font-semibold">
+                {t.actions.quickControls}
+              </h2>
             </div>
             <Button
               type="button"
@@ -130,7 +132,7 @@ export default function QuickGalleryPanel() {
               onClick={() => openSettingsRoute("/settings/gallery")}
             >
               <Settings />
-              {t.settings.title}
+              {t.settings.preferences}
             </Button>
             <Button
               type="button"

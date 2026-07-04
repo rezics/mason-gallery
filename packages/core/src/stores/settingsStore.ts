@@ -1,12 +1,20 @@
 import { create } from "zustand";
 import { getPlatform } from "@/context/PlatformContext";
+import {
+  isAccentPreset,
+  isThemePreset,
+  normalizeCustomAccent,
+} from "@/lib/theme";
 import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
 import type {
+  AccentPreset,
   CacheCleanupStrategy,
   CachePolicy,
   FolderThumbnailsMode,
   PasswordStorageMode,
   ThemePreference,
+  ThemePreset,
+  ThemeTokenOverrides,
 } from "@/types/platform";
 import {
   DEFAULT_CACHE_POLICY,
@@ -19,6 +27,10 @@ interface SettingsState {
   pageSize: number;
   language: Locale;
   theme: ThemePreference;
+  themePreset: ThemePreset;
+  accentPreset: AccentPreset;
+  customAccent: string;
+  customTheme: { light?: ThemeTokenOverrides; dark?: ThemeTokenOverrides };
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
   confirmDelete: boolean;
@@ -35,6 +47,10 @@ interface SettingsState {
   setPageSize: (size: number) => void;
   setLanguage: (lang: Locale) => void;
   setTheme: (theme: ThemePreference) => void;
+  setThemePreset: (preset: ThemePreset) => void;
+  setAccentPreset: (preset: AccentPreset) => void;
+  setCustomAccent: (accent: string) => void;
+  setCustomTheme: (theme: SettingsState["customTheme"]) => void;
   setBreakpoints: (bp: ColumnBreakpoints) => void;
   setShowGridPosition: (show: boolean) => void;
   setConfirmDelete: (v: boolean) => void;
@@ -53,6 +69,10 @@ const DEFAULTS = {
   pageSize: 50,
   language: "en" as Locale,
   theme: "system" as ThemePreference,
+  themePreset: "mason" as ThemePreset,
+  accentPreset: "rose" as AccentPreset,
+  customAccent: "#e75b73",
+  customTheme: {},
   breakpoints: {
     0: 1,
     500: 2,
@@ -104,6 +124,24 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setTheme: (theme) => {
     set({ theme });
     persist("theme", theme);
+  },
+  setThemePreset: (themePreset) => {
+    set({ themePreset });
+    persist("themePreset", themePreset);
+  },
+  setAccentPreset: (accentPreset) => {
+    set({ accentPreset });
+    persist("accentPreset", accentPreset);
+  },
+  setCustomAccent: (customAccent) => {
+    const normalized = normalizeCustomAccent(customAccent);
+    set({ customAccent: normalized });
+    persist("customAccent", normalized);
+  },
+  setCustomTheme: (customTheme) => {
+    // Custom tokens stay deliberately narrow; presets remain the reliable path.
+    set({ customTheme });
+    persist("customTheme", customTheme);
   },
   setBreakpoints: (breakpoints) => {
     set({ breakpoints });
@@ -166,6 +204,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       const platform = getPlatform();
       const settings = await Promise.race([platform.loadSettings(), timeout]);
+      const rawSettings = settings as Record<string, unknown>;
+      const hydratedCachePolicy = (() => {
+        // Unify the two fields: `thumbnailSizes` (top-level, pre-existing)
+        // and `cachePolicy.thumbnailSizes` (new, authoritative for Rust).
+        // If a legacy install persisted only the flat field, fold it into
+        // the policy so subsequent scans pick it up.
+        const basePolicy = settings.cachePolicy ?? DEFAULTS.cachePolicy;
+        const sizes =
+          basePolicy.thumbnailSizes ??
+          settings.thumbnailSizes ??
+          DEFAULTS.thumbnailSizes;
+        return { ...basePolicy, thumbnailSizes: sizes };
+      })();
 
       set({
         formats: settings.formats ?? DEFAULTS.formats,
@@ -173,41 +224,48 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         pageSize: settings.pageSize ?? DEFAULTS.pageSize,
         language: settings.language ?? DEFAULTS.language,
         theme:
-          ((settings as Record<string, unknown>).theme as ThemePreference) ??
-          DEFAULTS.theme,
+          (rawSettings.theme as ThemePreference | undefined) ?? DEFAULTS.theme,
+        themePreset: isThemePreset(rawSettings.themePreset)
+          ? rawSettings.themePreset
+          : DEFAULTS.themePreset,
+        accentPreset: isAccentPreset(rawSettings.accentPreset)
+          ? rawSettings.accentPreset
+          : DEFAULTS.accentPreset,
+        customAccent: normalizeCustomAccent(
+          typeof rawSettings.customAccent === "string"
+            ? rawSettings.customAccent
+            : DEFAULTS.customAccent,
+        ),
+        customTheme:
+          (rawSettings.customTheme as
+            | SettingsState["customTheme"]
+            | undefined) ?? DEFAULTS.customTheme,
         breakpoints: settings.breakpoints ?? DEFAULTS.breakpoints,
         showGridPosition:
           settings.showGridPosition ?? DEFAULTS.showGridPosition,
         confirmDelete: settings.confirmDelete ?? DEFAULTS.confirmDelete,
         showDeleteToast: settings.showDeleteToast ?? DEFAULTS.showDeleteToast,
         cacheCleanupStrategy:
-          ((settings as Record<string, unknown>)
-            .cacheCleanupStrategy as CacheCleanupStrategy) ??
-          DEFAULTS.cacheCleanupStrategy,
+          (rawSettings.cacheCleanupStrategy as
+            | CacheCleanupStrategy
+            | undefined) ?? DEFAULTS.cacheCleanupStrategy,
         passwordStorageMode:
-          ((settings as Record<string, unknown>)
-            .passwordStorageMode as PasswordStorageMode) ??
-          DEFAULTS.passwordStorageMode,
-        cachePolicy: (() => {
-          // Unify the two fields: `thumbnailSizes` (top-level, pre-existing)
-          // and `cachePolicy.thumbnailSizes` (new, authoritative for Rust).
-          // If a legacy install persisted only the flat field, fold it into
-          // the policy so subsequent scans pick it up.
-          const basePolicy = settings.cachePolicy ?? DEFAULTS.cachePolicy;
-          const sizes =
-            basePolicy.thumbnailSizes ??
-            settings.thumbnailSizes ??
-            DEFAULTS.thumbnailSizes;
-          return { ...basePolicy, thumbnailSizes: sizes };
-        })(),
+          (rawSettings.passwordStorageMode as
+            | PasswordStorageMode
+            | undefined) ?? DEFAULTS.passwordStorageMode,
+        cachePolicy: hydratedCachePolicy,
         thumbnailSizes:
-          settings.cachePolicy?.thumbnailSizes ??
-          settings.thumbnailSizes ??
-          DEFAULTS.thumbnailSizes,
+          hydratedCachePolicy.thumbnailSizes ?? DEFAULTS.thumbnailSizes,
         folderThumbnails:
           settings.folderThumbnails ?? DEFAULTS.folderThumbnails,
         _hydrated: true,
       });
+
+      platform
+        .setCachePolicy?.(hydratedCachePolicy)
+        .catch((e) =>
+          console.error("Failed to sync cachePolicy to backend:", e),
+        );
     } catch (e) {
       console.error("Failed to hydrate settings:", e);
       set({ _hydrated: true });

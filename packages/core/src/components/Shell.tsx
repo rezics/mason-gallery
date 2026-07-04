@@ -1,10 +1,15 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Route, Router, Switch } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import QuickGalleryPanel from "@/components/QuickGalleryPanel";
 import { usePlatform } from "@/context/PlatformContext";
 import { getTranslations, I18nContext } from "@/i18n";
+import {
+  applyThemeTokens,
+  resolveThemeMode,
+  resolveThemeTokens,
+} from "@/lib/theme";
 import AboutPage from "@/pages/AboutPage";
 import CachePage from "@/pages/CachePage";
 import HomePage from "@/pages/HomePage";
@@ -20,9 +25,15 @@ interface ShellProps {
 export default function Shell({ titlebar, updateChecker }: ShellProps) {
   const language = useSettingsStore((s) => s.language);
   const theme = useSettingsStore((s) => s.theme);
+  const themePreset = useSettingsStore((s) => s.themePreset);
+  const accentPreset = useSettingsStore((s) => s.accentPreset);
+  const customAccent = useSettingsStore((s) => s.customAccent);
+  const customTheme = useSettingsStore((s) => s.customTheme);
+  const cacheCleanupStrategy = useSettingsStore((s) => s.cacheCleanupStrategy);
   const hydrate = useSettingsStore((s) => s.hydrate);
   const hydrated = useSettingsStore((s) => s._hydrated);
   const platform = usePlatform();
+  const startupCleanupStartedRef = useRef(false);
 
   useEffect(() => {
     hydrate();
@@ -43,17 +54,36 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const applyTheme = () => {
-      const shouldUseDark =
-        theme === "dark" || (theme === "system" && media.matches);
-      document.documentElement.classList.toggle("dark", shouldUseDark);
-      document.documentElement.dataset.theme = theme;
+    const applyResolvedTheme = () => {
+      const mode = resolveThemeMode(theme, media.matches);
+      const tokens = resolveThemeTokens({
+        mode,
+        preset: themePreset,
+        accentPreset,
+        customAccent,
+        customTheme,
+      });
+      applyThemeTokens(
+        document.documentElement,
+        tokens,
+        mode,
+        themePreset,
+        accentPreset,
+      );
     };
 
-    applyTheme();
-    media.addEventListener("change", applyTheme);
-    return () => media.removeEventListener("change", applyTheme);
-  }, [theme]);
+    applyResolvedTheme();
+    media.addEventListener("change", applyResolvedTheme);
+    return () => media.removeEventListener("change", applyResolvedTheme);
+  }, [theme, themePreset, accentPreset, customAccent, customTheme]);
+
+  useEffect(() => {
+    if (!hydrated || startupCleanupStartedRef.current) return;
+    startupCleanupStartedRef.current = true;
+    platform
+      .startupCacheCleanup?.(cacheCleanupStrategy)
+      .catch((e) => console.error("Startup cache cleanup failed:", e));
+  }, [hydrated, platform, cacheCleanupStrategy]);
 
   if (!hydrated) return null;
 
@@ -71,6 +101,7 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
             <Route path="/" component={HomePage} />
             <Route path="/about" component={AboutPage} />
             <Route path="/cache" component={CachePage} />
+            <Route path="/manage/cache" component={CachePage} />
             <Route path="/settings" component={SettingsPage} />
             <Route path="/settings/:category" component={SettingsPage} />
             <Route>

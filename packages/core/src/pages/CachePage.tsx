@@ -1,7 +1,8 @@
-import { Pin, PinOff, Settings, Trash2 } from "lucide-react";
+import { ArrowLeft, Pin, PinOff, Settings, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
@@ -252,8 +253,15 @@ function CustomizeDialog({
 export default function CachePage() {
   const t = useI18n();
   const platform = usePlatform();
+  const [, navigate] = useLocation();
   const [stats, setStats] = useState<CacheStats[]>([]);
   const [customizeFor, setCustomizeFor] = useState<CacheStats | null>(null);
+  const [confirmAction, setConfirmAction] = useState<
+    | null
+    | { type: "source"; id: number }
+    | { type: "unpinned" }
+    | { type: "all" }
+  >(null);
   const basePolicy = useSettingsStore((s) => s.cachePolicy);
 
   const refresh = useCallback(async () => {
@@ -317,13 +325,25 @@ export default function CachePage() {
   return (
     <div className="h-full overflow-auto p-6">
       <main className="mx-auto max-w-4xl space-y-5">
-        <header>
-          <h1 className="text-2xl font-semibold">
-            {t.archive.cacheManagement}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t.archive.totalCacheSize}: {formatSize(totalSize)}
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mb-2 -ml-2 justify-start px-2"
+              onClick={() => navigate("/")}
+            >
+              <ArrowLeft />
+              {t.settings.backToGallery}
+            </Button>
+            <h1 className="text-2xl font-semibold">
+              {t.archive.cacheManagement}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t.archive.totalCacheSize}: {formatSize(totalSize)}
+            </p>
+          </div>
         </header>
 
         {stats.length === 0 ? (
@@ -334,14 +354,14 @@ export default function CachePage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleClearUnpinned}
+                onClick={() => setConfirmAction({ type: "unpinned" })}
               >
                 {t.archive.clearUnpinned}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
-                onClick={handleClearAll}
+                onClick={() => setConfirmAction({ type: "all" })}
               >
                 {t.archive.clearAll}
               </Button>
@@ -392,7 +412,9 @@ export default function CachePage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() =>
+                          setConfirmAction({ type: "source", id: item.id })
+                        }
                       >
                         <Trash2 />
                       </Button>
@@ -403,6 +425,37 @@ export default function CachePage() {
             </div>
           </>
         )}
+
+        <ConfirmDialog
+          open={confirmAction !== null}
+          title={
+            confirmAction?.type === "all"
+              ? t.archive.clearAll
+              : confirmAction?.type === "unpinned"
+                ? t.archive.clearUnpinned
+                : t.cache.clearExtracted
+          }
+          cancelLabel={t.archive.cancel}
+          confirmLabel={t.cache.confirm}
+          destructive
+          onCancel={() => setConfirmAction(null)}
+          onConfirm={async () => {
+            const action = confirmAction;
+            setConfirmAction(null);
+            if (!action) return;
+            if (action.type === "all") await handleClearAll();
+            if (action.type === "unpinned") await handleClearUnpinned();
+            if (action.type === "source") await handleDelete(action.id);
+          }}
+        >
+          <p>
+            {confirmAction?.type === "all"
+              ? t.cache.clearExtractedConfirm
+              : confirmAction?.type === "unpinned"
+                ? t.archive.clearUnpinned
+                : t.cache.clearThumbsConfirm}
+          </p>
+        </ConfirmDialog>
 
         <CustomizeDialog
           open={customizeFor !== null}

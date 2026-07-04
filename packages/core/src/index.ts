@@ -48,6 +48,7 @@ export type {
   WImage,
 } from "./types/index";
 export type {
+  AccentPreset,
   ArchiveInfo,
   CacheCleanupStrategy,
   CachePolicy,
@@ -67,6 +68,8 @@ export type {
   Settings,
   SourceOverride,
   ThemePreference,
+  ThemePreset,
+  ThemeTokenOverrides,
   ThumbnailPolicy,
   ThumbRetain,
 } from "./types/platform";

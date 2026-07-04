@@ -1,21 +1,25 @@
+import { ArrowLeft, Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { Checkbox, Input, Select, Switch } from "@/components/ui/field";
+import { Input, Select, Switch } from "@/components/ui/field";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import { ACCENT_PRESET_IDS, THEME_PRESET_IDS } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { Locale, SortMethod } from "@/types";
 import type {
+  AccentPreset,
   CacheCleanupStrategy,
   CachePolicy,
   ExtractedMode,
   FolderThumbnailsMode,
   PasswordStorageMode,
   ThemePreference,
+  ThemePreset,
   ThumbRetain,
 } from "@/types/platform";
 
@@ -27,10 +31,19 @@ const categories = [
   "files",
   "archive",
   "cache",
-  "advanced",
 ] as const;
 
 type Category = (typeof categories)[number];
+
+type BuiltInAccent = Exclude<AccentPreset, "custom">;
+
+const accentSwatches: Record<BuiltInAccent, string> = {
+  rose: "#e75b73",
+  blue: "#3b82f6",
+  amber: "#f59e0b",
+  emerald: "#10b981",
+  violet: "#8b5cf6",
+};
 
 function getCategory(path: string): Category {
   const segment = path.split("/")[2] as Category | undefined;
@@ -76,6 +89,12 @@ export default function SettingsPage() {
   const setLanguage = useSettingsStore((s) => s.setLanguage);
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const themePreset = useSettingsStore((s) => s.themePreset);
+  const setThemePreset = useSettingsStore((s) => s.setThemePreset);
+  const accentPreset = useSettingsStore((s) => s.accentPreset);
+  const setAccentPreset = useSettingsStore((s) => s.setAccentPreset);
+  const customAccent = useSettingsStore((s) => s.customAccent);
+  const setCustomAccent = useSettingsStore((s) => s.setCustomAccent);
   const sortMethod = useSettingsStore((s) => s.sortMethod);
   const setSortMethod = useSettingsStore((s) => s.setSortMethod);
   const pageSize = useSettingsStore((s) => s.pageSize);
@@ -137,12 +156,28 @@ export default function SettingsPage() {
   };
 
   const categoryLabels: Record<Category, string> = {
-    appearance: "Appearance",
-    gallery: "Gallery",
-    files: "Files",
+    appearance: t.settings.appearance,
+    gallery: t.settings.gallery,
+    files: t.settings.files,
     archive: t.archive.settingsSection,
     cache: t.cache.section,
-    advanced: "Advanced",
+  };
+
+  const themePresetLabels: Record<ThemePreset, string> = {
+    mason: t.settings.presetMason,
+    graphite: t.settings.presetGraphite,
+    midnight: t.settings.presetMidnight,
+    paper: t.settings.presetPaper,
+    custom: t.settings.customAccent,
+  };
+
+  const accentLabels: Record<AccentPreset, string> = {
+    rose: t.settings.accentRose,
+    blue: t.settings.accentBlue,
+    amber: t.settings.accentAmber,
+    emerald: t.settings.accentEmerald,
+    violet: t.settings.accentViolet,
+    custom: t.settings.customAccent,
   };
 
   const supportedCategories = categories.filter((item) => {
@@ -155,7 +190,17 @@ export default function SettingsPage() {
   return (
     <div className="flex h-full overflow-hidden bg-background">
       <nav className="w-56 shrink-0 border-r border-border p-4">
-        <h1 className="mb-4 text-lg font-semibold">{t.settings.title}</h1>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mb-3 justify-start px-2"
+          onClick={() => navigate("/")}
+        >
+          <ArrowLeft />
+          {t.settings.backToGallery}
+        </Button>
+        <h1 className="mb-4 text-lg font-semibold">{t.settings.preferences}</h1>
         <div className="grid gap-1">
           {supportedCategories.map((item) => (
             <Link
@@ -182,18 +227,90 @@ export default function SettingsPage() {
 
           {category === "appearance" && (
             <section className="grid gap-5 rounded-lg border border-border bg-card p-5 text-card-foreground">
-              <Field label="Theme">
+              <Field label={t.settings.themeMode}>
                 <Select
                   value={theme}
                   onChange={(event) =>
                     setTheme(event.target.value as ThemePreference)
                   }
                 >
-                  <option value="system">System</option>
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
+                  <option value="system">{t.settings.modeSystem}</option>
+                  <option value="light">{t.settings.modeLight}</option>
+                  <option value="dark">{t.settings.modeDark}</option>
                 </Select>
               </Field>
+
+              <Field label={t.settings.themePreset}>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {THEME_PRESET_IDS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={cn(
+                        "flex min-h-20 items-start justify-between rounded-md border border-border bg-background p-3 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                        themePreset === preset &&
+                          "border-primary bg-accent text-accent-foreground",
+                      )}
+                      onClick={() => setThemePreset(preset)}
+                    >
+                      <span className="font-medium">
+                        {themePresetLabels[preset]}
+                      </span>
+                      {themePreset === preset && <Check className="size-4" />}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label={t.settings.accentColor}>
+                <div className="flex flex-wrap gap-2">
+                  {ACCENT_PRESET_IDS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      title={accentLabels[preset]}
+                      className={cn(
+                        "flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2 text-sm hover:bg-accent hover:text-accent-foreground",
+                        accentPreset === preset && "border-primary",
+                      )}
+                      onClick={() => setAccentPreset(preset)}
+                    >
+                      <span
+                        className="size-5 rounded-full border border-black/10"
+                        style={{ backgroundColor: accentSwatches[preset] }}
+                      />
+                      {accentLabels[preset]}
+                      {accentPreset === preset && <Check className="size-4" />}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2 text-sm hover:bg-accent hover:text-accent-foreground",
+                      accentPreset === "custom" && "border-primary",
+                    )}
+                    onClick={() => setAccentPreset("custom")}
+                  >
+                    <span
+                      className="size-5 rounded-full border border-black/10"
+                      style={{ backgroundColor: customAccent }}
+                    />
+                    {t.settings.customAccent}
+                    {accentPreset === "custom" && <Check className="size-4" />}
+                  </button>
+                </div>
+              </Field>
+
+              {accentPreset === "custom" && (
+                <Field label={t.settings.customAccent}>
+                  <Input
+                    type="color"
+                    value={customAccent}
+                    onChange={(event) => setCustomAccent(event.target.value)}
+                  />
+                </Field>
+              )}
+
               <Field label={t.settings.language}>
                 <Select
                   value={language}
@@ -205,6 +322,49 @@ export default function SettingsPage() {
                   <option value="zh">简体中文</option>
                 </Select>
               </Field>
+
+              <div className="rounded-md border border-border bg-background p-4">
+                <div className="mb-3 text-sm font-medium">
+                  {t.settings.preview}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+                  <div className="rounded-md border border-border bg-card p-3 text-sm">
+                    <div className="mb-2 h-2 w-16 rounded bg-primary" />
+                    <div className="space-y-1">
+                      <div className="h-2 rounded bg-muted" />
+                      <div className="h-2 w-2/3 rounded bg-muted" />
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border bg-card p-3">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-sm font-medium">Mason Gallery</span>
+                      <Button type="button" size="sm">
+                        {accentLabels[accentPreset]}
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="aspect-[3/4] rounded bg-muted" />
+                      <div className="aspect-square rounded bg-accent" />
+                      <div className="aspect-[4/5] rounded bg-muted" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setTheme("system");
+                    setThemePreset("mason");
+                    setAccentPreset("rose");
+                    setCustomAccent("#e75b73");
+                  }}
+                >
+                  {t.settings.resetTheme}
+                </Button>
+              </div>
             </section>
           )}
 
@@ -343,7 +503,7 @@ export default function SettingsPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate("/cache")}
+                  onClick={() => navigate("/manage/cache")}
                 >
                   {t.archive.manageCache}
                 </Button>
@@ -505,15 +665,6 @@ export default function SettingsPage() {
                 >
                   {t.cache.clearExtracted}
                 </Button>
-              </div>
-            </section>
-          )}
-
-          {category === "advanced" && (
-            <section className="grid gap-4 rounded-lg border border-border bg-card p-5 text-card-foreground">
-              <div className="flex items-center gap-3 text-sm">
-                <Checkbox checked readOnly />
-                <span>Existing persisted setting keys are preserved.</span>
               </div>
             </section>
           )}
