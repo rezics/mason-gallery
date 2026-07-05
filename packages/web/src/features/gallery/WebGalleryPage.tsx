@@ -21,6 +21,8 @@ type PreviewImage = {
   className: string;
 };
 
+const previewAssetUrl = (name: string) => `/r2/${name}`;
+
 const previewColumns: Array<{
   id: string;
   direction: "up" | "down";
@@ -35,28 +37,28 @@ const previewColumns: Array<{
     offset: "pt-10",
     images: [
       {
-        src: "/local-preview/masonry/interior.webp",
+        src: previewAssetUrl("interior.webp"),
         width: 480,
         height: 640,
         alt: "Soft interior detail",
         className: "h-[230px]",
       },
       {
-        src: "/local-preview/masonry/lake.webp",
+        src: previewAssetUrl("lake.webp"),
         width: 640,
         height: 420,
         alt: "Misty lake shoreline",
         className: "h-[155px]",
       },
       {
-        src: "/local-preview/masonry/flowers.webp",
+        src: previewAssetUrl("flowers.webp"),
         width: 500,
         height: 500,
         alt: "Pale flowers close-up",
         className: "h-[190px]",
       },
       {
-        src: "/local-preview/masonry/desk.webp",
+        src: previewAssetUrl("desk.webp"),
         width: 640,
         height: 430,
         alt: "Warm desk still life",
@@ -71,21 +73,21 @@ const previewColumns: Array<{
     offset: "pt-0",
     images: [
       {
-        src: "/local-preview/masonry/stairwell.webp",
+        src: previewAssetUrl("stairwell.webp"),
         width: 420,
         height: 700,
         alt: "Architectural stairwell shadows",
         className: "h-[350px]",
       },
       {
-        src: "/local-preview/masonry/glass.webp",
+        src: previewAssetUrl("glass.webp"),
         width: 480,
         height: 600,
         alt: "Glass prism light",
         className: "h-[220px]",
       },
       {
-        src: "/local-preview/masonry/coast.webp",
+        src: previewAssetUrl("coast.webp"),
         width: 680,
         height: 420,
         alt: "Coastal grass and ocean",
@@ -100,21 +102,21 @@ const previewColumns: Array<{
     offset: "pt-14",
     images: [
       {
-        src: "/local-preview/masonry/glass.webp",
+        src: previewAssetUrl("glass.webp"),
         width: 480,
         height: 600,
         alt: "Glass prism light repeated",
         className: "h-[235px]",
       },
       {
-        src: "/local-preview/masonry/street.webp",
+        src: previewAssetUrl("street.webp"),
         width: 480,
         height: 620,
         alt: "Quiet street texture",
         className: "h-[285px]",
       },
       {
-        src: "/local-preview/masonry/interior.webp",
+        src: previewAssetUrl("interior.webp"),
         width: 480,
         height: 640,
         alt: "Soft interior detail repeated",
@@ -129,28 +131,28 @@ const previewColumns: Array<{
     offset: "pt-6",
     images: [
       {
-        src: "/local-preview/masonry/coast.webp",
+        src: previewAssetUrl("coast.webp"),
         width: 680,
         height: 420,
         alt: "Coastal grass and ocean repeated",
         className: "h-[165px]",
       },
       {
-        src: "/local-preview/masonry/flowers.webp",
+        src: previewAssetUrl("flowers.webp"),
         width: 500,
         height: 500,
         alt: "Pale flowers close-up repeated",
         className: "h-[205px]",
       },
       {
-        src: "/local-preview/masonry/lake.webp",
+        src: previewAssetUrl("lake.webp"),
         width: 640,
         height: 420,
         alt: "Misty lake shoreline repeated",
         className: "h-[165px]",
       },
       {
-        src: "/local-preview/masonry/street.webp",
+        src: previewAssetUrl("street.webp"),
         width: 480,
         height: 620,
         alt: "Quiet street texture repeated",

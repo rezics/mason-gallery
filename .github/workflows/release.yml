@@ -74,8 +74,7 @@ jobs:
   web-deploy:
     runs-on: ubuntu-22.04
     permissions:
-      contents: write
-      pages: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -93,9 +92,9 @@ jobs:
       - name: Build web
         run: bun run build:web
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: packages/web/dist
-          cname: ${{ vars.CUSTOM_DOMAIN }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --minify

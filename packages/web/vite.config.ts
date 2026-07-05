@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const coreSrc = path.resolve(__dirname, "../core/src");
+const r2ProxyOrigin =
+  process.env.MASON_GALLERY_R2_PROXY_ORIGIN ?? "https://mason-gallery.rezics.com";
 
 export default defineConfig({
   publicDir: path.resolve(__dirname, "../../public"),
@@ -30,8 +32,15 @@ export default defineConfig({
     ],
   },
   base: "./",
+  server: {
+    proxy: {
+      "/r2": {
+        target: r2ProxyOrigin,
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: "dist",
   },
 });
-

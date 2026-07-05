@@ -1,0 +1,49 @@
+name: Deploy Web Worker
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/deploy-web-worker.yml"
+      - "packages/core/**"
+      - "packages/i18n/**"
+      - "packages/web/**"
+      - "public/**"
+      - "worker/**"
+      - "package.json"
+      - "bun.lock"
+      - "wrangler.jsonc"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-worker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build web
+        run: bun run build:web
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --minify
