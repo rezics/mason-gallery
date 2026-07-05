@@ -373,7 +373,7 @@ export function WebGalleryPage() {
               Back home
             </button>
           </div>
-          <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 overflow-hidden">
             <WebFolderRail />
             <div
               ref={scrollContainerRef}

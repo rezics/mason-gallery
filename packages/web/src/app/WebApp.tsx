@@ -7,7 +7,14 @@ import {
   useI18n,
   useViewerStore,
 } from "@mason-gallery/core";
-import { Home, Info, Palette, RefreshCcw, Settings } from "lucide-react";
+import {
+  Home,
+  Info,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RefreshCcw,
+  Settings,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Route, Router, Switch, useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
@@ -42,8 +49,10 @@ function WebHeaderButton({
 function WebTopBar() {
   const t = useI18n();
   const [, navigate] = useLocation();
-  const toggleQuickPanel = useAppStore((s) => s.toggleQuickPanel);
+  const isSidebarOpen = useAppStore((s) => s.isSidebarOpen);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const hasGallery = useViewerStore((s) => s.images.length > 0);
+  const isScanning = useViewerStore((s) => s.isScanning);
 
   const goHome = () => {
     resetToDropZone();
@@ -75,17 +84,23 @@ function WebTopBar() {
               </WebHeaderButton>
               <WebHeaderButton
                 title={t("actions:refresh")}
+                disabled={isScanning}
                 onClick={() => incrementalRefresh()}
               >
                 <RefreshCcw className="size-5" />
                 <span className="hidden sm:inline">Refresh</span>
               </WebHeaderButton>
+              <WebHeaderButton title="Folders" onClick={toggleSidebar}>
+                {isSidebarOpen ? (
+                  <PanelLeftClose className="size-5" />
+                ) : (
+                  <PanelLeftOpen className="size-5" />
+                )}
+                <span className="hidden sm:inline">Folders</span>
+              </WebHeaderButton>
             </>
           )}
-          <WebHeaderButton title="Appearance" onClick={toggleQuickPanel}>
-            <Palette className="size-5" />
-            <span className="hidden sm:inline">Appearance</span>
-          </WebHeaderButton>
+
           <WebHeaderButton
             title={t("settings:preferences")}
             onClick={() => navigate("/settings/appearance")}

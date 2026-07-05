@@ -15,18 +15,56 @@ interface FileEntry {
 
 class FileHandleRegistry implements WebFileRegistry {
   private entries = new Map<string, FileEntry>();
-  private nextId = 0;
+  private pendingEntries: Map<string, FileEntry> | null = null;
 
-  register(handle: FileSystemFileHandle, blobUrl: string): string {
-    const id = `web-file-${this.nextId++}`;
-    this.entries.set(id, { handle, blobUrl });
+  beginScan(preserveExistingUrls: boolean): void {
+    this.abortScan();
+    if (preserveExistingUrls) {
+      this.pendingEntries = new Map();
+      return;
+    }
+    this.clear();
+  }
+
+  register(id: string, handle: FileSystemFileHandle, blobUrl: string): string {
+    const entry = { handle, blobUrl };
+
+    if (this.pendingEntries) {
+      this.pendingEntries.set(id, entry);
+      return id;
+    }
+
+    const previous = this.entries.get(id);
+    if (previous) URL.revokeObjectURL(previous.blobUrl);
+    this.entries.set(id, entry);
     return id;
   }
 
+  completeScan(): void {
+    if (!this.pendingEntries) return;
+
+    for (const [id, entry] of this.entries) {
+      const replacement = this.pendingEntries.get(id);
+      if (!replacement || replacement.blobUrl !== entry.blobUrl) {
+        URL.revokeObjectURL(entry.blobUrl);
+      }
+    }
+
+    this.entries = this.pendingEntries;
+    this.pendingEntries = null;
+  }
+
+  abortScan(): void {
+    if (!this.pendingEntries) return;
+    for (const entry of this.pendingEntries.values()) {
+      URL.revokeObjectURL(entry.blobUrl);
+    }
+    this.pendingEntries = null;
+  }
+
   getBlobUrl(id: string): string {
-    const entry = this.entries.get(id);
-    if (!entry) return id;
-    return entry.blobUrl;
+    const entry = this.entries.get(id) ?? this.pendingEntries?.get(id);
+    return entry?.blobUrl ?? id;
   }
 
   revoke(id: string): void {
@@ -35,9 +73,16 @@ class FileHandleRegistry implements WebFileRegistry {
       URL.revokeObjectURL(entry.blobUrl);
       this.entries.delete(id);
     }
+
+    const pendingEntry = this.pendingEntries?.get(id);
+    if (pendingEntry) {
+      URL.revokeObjectURL(pendingEntry.blobUrl);
+      this.pendingEntries?.delete(id);
+    }
   }
 
   clear(): void {
+    this.abortScan();
     for (const entry of this.entries.values()) {
       URL.revokeObjectURL(entry.blobUrl);
     }
@@ -48,6 +93,13 @@ class FileHandleRegistry implements WebFileRegistry {
 function getExtension(name: string): string {
   const dot = name.lastIndexOf(".");
   return dot >= 0 ? name.slice(dot).toLowerCase() : "";
+}
+
+export function getWebImageSource(
+  rootIndex: number,
+  relativePath: string,
+): string {
+  return `web-file://${rootIndex}/${relativePath}`;
 }
 
 async function* walkDirectory(
@@ -117,47 +169,62 @@ export const webPlatformService: PlatformService = {
     onComplete: () => void,
     onCount?: (total: number) => void,
   ): Promise<void> {
-    registry.clear();
+    registry.beginScan(params.preserveExistingUrls === true);
 
-    const formats = new Set(params.formats.map((f) => f.toLowerCase()));
-    const batchSize = params.page_size;
+    try {
+      const formats = new Set(params.formats.map((f) => f.toLowerCase()));
+      const batchSize = params.page_size;
 
-    const fileHandles: {
-      name: string;
-      path: string;
-      handle: FileSystemFileHandle;
-    }[] = [];
-    for (const dirHandle of storedDirHandles) {
-      for await (const entry of walkDirectory(dirHandle, formats)) {
-        fileHandles.push(entry);
+      const fileHandles: {
+        rootIndex: number;
+        name: string;
+        path: string;
+        handle: FileSystemFileHandle;
+      }[] = [];
+
+      for (
+        let rootIndex = 0;
+        rootIndex < storedDirHandles.length;
+        rootIndex++
+      ) {
+        const dirHandle = storedDirHandles[rootIndex];
+        if (!dirHandle) continue;
+        for await (const entry of walkDirectory(dirHandle, formats)) {
+          fileHandles.push({ rootIndex, ...entry });
+        }
       }
-    }
 
-    onCount?.(fileHandles.length);
+      onCount?.(fileHandles.length);
 
-    let batch: ImageBatch["images"] = [];
+      let batch: ImageBatch["images"] = [];
 
-    for (const entry of fileHandles) {
-      const file = await entry.handle.getFile();
-      const blobUrl = URL.createObjectURL(file);
-      const id = registry.register(entry.handle, blobUrl);
-      const dims = await getImageDimensions(file);
+      for (const entry of fileHandles) {
+        const file = await entry.handle.getFile();
+        const blobUrl = URL.createObjectURL(file);
+        const source = getWebImageSource(entry.rootIndex, entry.path);
+        const id = registry.register(source, entry.handle, blobUrl);
+        const dims = await getImageDimensions(file);
 
-      batch.push({
-        source: id,
-        relativePath: entry.path,
-        width: dims?.width ?? null,
-        height: dims?.height ?? null,
-      });
+        batch.push({
+          source: id,
+          relativePath: entry.path,
+          width: dims?.width ?? null,
+          height: dims?.height ?? null,
+        });
 
-      if (batch.length >= batchSize) {
-        onBatch({ images: batch, done: false });
-        batch = [];
+        if (batch.length >= batchSize) {
+          onBatch({ images: batch, done: false });
+          batch = [];
+        }
       }
-    }
 
-    onBatch({ images: batch, done: true });
-    onComplete();
+      onBatch({ images: batch, done: true });
+      registry.completeScan();
+      onComplete();
+    } catch (e) {
+      registry.abortScan();
+      throw e;
+    }
   },
 
   getImageUrl(source: string): string {

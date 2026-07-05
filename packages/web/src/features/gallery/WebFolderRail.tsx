@@ -1,4 +1,4 @@
-import { useAppStore, useI18n } from "@mason-gallery/core";
+import { useAppStore, useI18n, useViewerStore } from "@mason-gallery/core";
 import { ChevronDown, ChevronRight, Folder } from "lucide-react";
 import { useMemo } from "react";
 
@@ -98,25 +98,24 @@ function FolderRow({ node, depth }: { node: TreeNode; depth: number }) {
 export function WebFolderRail() {
   const t = useI18n();
   const directoryTree = useAppStore((s) => s.directoryTree);
+  const isSidebarOpen = useAppStore((s) => s.isSidebarOpen);
   const selectedFolder = useAppStore((s) => s.selectedFolder);
   const setSelectedFolder = useAppStore((s) => s.setSelectedFolder);
-  const images = useAppStore((s) => s.folderImageCounts);
+  const totalImageCount = useViewerStore((s) => s.images.length);
 
   const tree = useMemo(() => buildTree(directoryTree), [directoryTree]);
-  const totalNestedCount = Object.values(images).reduce(
-    (sum, count) => sum + count,
-    0,
-  );
+
+  if (!isSidebarOpen) return null;
 
   return (
-    <aside className="hidden w-72 shrink-0 border-r border-border bg-background/80 p-4 backdrop-blur md:block">
+    <aside className="absolute inset-y-0 left-0 z-20 w-72 shrink-0 border-r border-border bg-background/95 p-4 shadow-xl backdrop-blur md:relative md:z-auto md:bg-background/80 md:shadow-none">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">
           {t("sidebar:folders")}
         </h2>
-        {totalNestedCount > 0 && (
+        {totalImageCount > 0 && (
           <span className="text-xs text-muted-foreground">
-            {totalNestedCount}
+            {totalImageCount}
           </span>
         )}
       </div>
@@ -132,6 +131,11 @@ export function WebFolderRail() {
         >
           <Folder className="size-4" />
           <span>{t("sidebar:showAll")}</span>
+          {totalImageCount > 0 && (
+            <span className="ml-auto rounded bg-background/70 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+              {totalImageCount}
+            </span>
+          )}
         </button>
         {tree.map((node) => (
           <FolderRow key={node.path} node={node} depth={0} />

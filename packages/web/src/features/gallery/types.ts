@@ -6,7 +6,7 @@ export interface WebGallerySource {
 }
 
 export interface WebFileRegistry {
-  register(handle: FileSystemFileHandle, blobUrl: string): string;
+  register(id: string, handle: FileSystemFileHandle, blobUrl: string): string;
   getBlobUrl(id: string): string;
   revoke(id: string): void;
   clear(): void;

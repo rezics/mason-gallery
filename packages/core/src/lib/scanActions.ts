@@ -83,6 +83,7 @@ export async function startScan(paths: string[], isRescan = false) {
     formats,
     page_size: pageSize,
     sort_method: sortMethod,
+    preserveExistingUrls: false,
   };
 
   const platform = getPlatform();
@@ -137,10 +138,10 @@ export function refresh() {
 
 export async function incrementalRefresh() {
   const { folders } = useAppStore.getState();
-  if (folders.length === 0) return;
+  const viewerState = useViewerStore.getState();
+  if (folders.length === 0 || viewerState.isScanning) return;
 
-  const { relayout, getCurrentPaths, mergeImages, setScanning } =
-    useViewerStore.getState();
+  const { relayout, getCurrentPaths, mergeImages, setScanning } = viewerState;
   const { setDirectoryTree } = useAppStore.getState();
   const { formats, sortMethod, pageSize } = useSettingsStore.getState();
 
@@ -159,6 +160,7 @@ export async function incrementalRefresh() {
     formats,
     page_size: pageSize,
     sort_method: sortMethod,
+    preserveExistingUrls: true,
   };
 
   const platform = getPlatform();

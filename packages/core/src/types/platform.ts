@@ -116,6 +116,12 @@ export interface ScanParams {
   formats: string[];
   page_size: number;
   sort_method: SortMethod;
+  /**
+   * Preserve currently displayed image URLs until a refresh scan completes.
+   * Platforms with revocable object URLs can use this to avoid breaking the
+   * rendered grid while they rescan the same source.
+   */
+  preserveExistingUrls?: boolean;
 }
 
 export interface ImageBatch {
