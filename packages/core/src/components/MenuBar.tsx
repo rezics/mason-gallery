@@ -269,7 +269,7 @@ export default function MenuBar({
               icon={<SlidersHorizontal />}
               onClick={() => {
                 setOpenMenu(null);
-                navigate("/settings/appearance");
+                navigate("/settings/gallery");
               }}
             >
               {t("actions:preferences")}

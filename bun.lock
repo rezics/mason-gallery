@@ -91,6 +91,7 @@
       "version": "2.0.0",
       "dependencies": {
         "@mason-gallery/core": "workspace:*",
+        "@mason-gallery/i18n": "workspace:*",
         "image-dimensions": "^2.3.0",
         "lucide-react": "^0.468.0",
         "masonic": "^4.1.0",

@@ -13,5 +13,13 @@
   "noFavorites": "為最近開啟的圖庫加上星號後會顯示在這裡。",
   "noRecent": "開啟資料夾或壓縮檔後會顯示在這裡。",
   "addFavorite": "加入收藏",
-  "removeFavorite": "從收藏移除"
+  "removeFavorite": "從收藏移除",
+  "webOpenFolder": "開啟資料夾",
+  "webEmptyTitle": "圖庫是空的",
+  "webDropHint": "我們會掃描並顯示你的圖片",
+  "webPrivacy": "檔案會留在你的裝置上，不會上傳。",
+  "webDropDivider": "或",
+  "webDropTitle": "將資料夾拖到任意位置",
+  "webEmptyHint": "開啟一個資料夾，或將資料夾拖到這裡，就能開始瀏覽照片。",
+  "webBackHome": "返回首頁"
 }

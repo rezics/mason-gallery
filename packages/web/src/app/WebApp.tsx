@@ -7,6 +7,7 @@ import {
   useAppStore,
   useCoreRuntime,
   useI18n,
+  useSettingsStore,
   useViewerStore,
 } from "@mason-gallery/core";
 import {
@@ -19,9 +20,13 @@ import {
   Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { Route, Router, Switch, useLocation } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
 import { WebGalleryPage } from "../features/gallery/WebGalleryPage";
+import {
+  getLocalizedWebPath,
+  getWebLocaleFromPathname,
+} from "../features/i18n/webLocaleRoutes";
 import { WebSettingsPage } from "../features/settings/WebSettingsPage";
 
 const GITHUB_URL = "https://github.com/Edge-coordinates/mason-gallery";
@@ -53,7 +58,8 @@ function WebHeaderButton({
 
 function WebTopBar() {
   const t = useI18n();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const locale = getWebLocaleFromPathname(location);
   const isSidebarOpen = useAppStore((s) => s.isSidebarOpen);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const hasGallery = useViewerStore((s) => s.images.length > 0);
@@ -61,7 +67,7 @@ function WebTopBar() {
 
   const goHome = () => {
     resetToDropZone();
-    navigate("/");
+    navigate(getLocalizedWebPath("/", locale));
   };
 
   return (
@@ -85,7 +91,7 @@ function WebTopBar() {
             <>
               <WebHeaderButton title="Home" onClick={goHome}>
                 <Home className="size-5" />
-                <span className="hidden sm:inline">Home</span>
+                <span className="hidden sm:inline">{t("actions:gallery")}</span>
               </WebHeaderButton>
               <WebHeaderButton
                 title={t("actions:refresh")}
@@ -93,7 +99,7 @@ function WebTopBar() {
                 onClick={() => incrementalRefresh()}
               >
                 <RefreshCcw className="size-5" />
-                <span className="hidden sm:inline">Refresh</span>
+                <span className="hidden sm:inline">{t("actions:refresh")}</span>
               </WebHeaderButton>
               <WebHeaderButton title="Folders" onClick={toggleSidebar}>
                 {isSidebarOpen ? (
@@ -101,24 +107,26 @@ function WebTopBar() {
                 ) : (
                   <PanelLeftOpen className="size-5" />
                 )}
-                <span className="hidden sm:inline">Folders</span>
+                <span className="hidden sm:inline">{t("sidebar:folders")}</span>
               </WebHeaderButton>
             </>
           )}
 
           <WebHeaderButton
             title={t("settings:preferences")}
-            onClick={() => navigate("/settings/appearance")}
+            onClick={() => navigate("/settings/gallery")}
           >
             <Settings className="size-5" />
-            <span className="hidden sm:inline">Settings</span>
+            <span className="hidden sm:inline">
+              {t("settings:preferences")}
+            </span>
           </WebHeaderButton>
           <WebHeaderButton
             title={t("menu:about")}
-            onClick={() => navigate("/about")}
+            onClick={() => navigate(getLocalizedWebPath("/about", locale))}
           >
             <Info className="size-5" />
-            <span className="hidden sm:inline">About</span>
+            <span className="hidden sm:inline">{t("menu:about")}</span>
           </WebHeaderButton>
         </nav>
       </div>
@@ -128,11 +136,14 @@ function WebTopBar() {
 
 function WebAboutPage() {
   const t = useI18n();
+  const [location] = useLocation();
+  const locale = getWebLocaleFromPathname(location);
 
   return (
     <div className="h-full overflow-auto bg-background p-6 text-foreground">
       <div className="mx-auto max-w-2xl space-y-6">
         <BackButton
+          to={getLocalizedWebPath("/", locale)}
           variant="ghost"
           size="sm"
           className="-ml-2 justify-start px-2"
@@ -159,6 +170,34 @@ function WebAboutPage() {
   );
 }
 
+function LocaleGalleryRoute() {
+  return <WebGalleryPage />;
+}
+
+function LocaleAboutRoute() {
+  const [location] = useLocation();
+  return getWebLocaleFromPathname(location) ? (
+    <WebAboutPage />
+  ) : (
+    <WebGalleryPage />
+  );
+}
+
+function WebRuntimeLanguageSync() {
+  const [location] = useLocation();
+  const language = useSettingsStore((s) => s.language);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const locale = getWebLocaleFromPathname(location);
+
+  useEffect(() => {
+    if (locale && locale !== language) {
+      setLanguage(locale);
+    }
+  }, [language, locale, setLanguage]);
+
+  return null;
+}
+
 export function WebApp() {
   const { hydrated } = useCoreRuntime({
     enableStartupCacheCleanup: false,
@@ -168,15 +207,20 @@ export function WebApp() {
   if (!hydrated) return null;
 
   return (
-    <Router hook={useHashLocation}>
+    <Router>
+      <WebRuntimeLanguageSync />
       <div className="flex h-screen flex-col bg-background text-foreground">
         <WebTopBar />
         <main className="min-h-0 flex-1 overflow-hidden">
           <Switch>
-            <Route path="/" component={WebGalleryPage} />
-            <Route path="/about" component={WebAboutPage} />
             <Route path="/settings" component={WebSettingsPage} />
             <Route path="/settings/:category" component={WebSettingsPage} />
+            <Route path="/about" component={WebAboutPage} />
+            <Route path="/:locale/about" component={LocaleAboutRoute} />
+            <Route path="/:locale/about/" component={LocaleAboutRoute} />
+            <Route path="/" component={WebGalleryPage} />
+            <Route path="/:locale" component={LocaleGalleryRoute} />
+            <Route path="/:locale/" component={LocaleGalleryRoute} />
             <Route>
               <WebGalleryPage />
             </Route>

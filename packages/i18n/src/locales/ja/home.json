@@ -13,5 +13,13 @@
   "noFavorites": "最近使ったギャラリーにスターを付けると、ここに表示されます。",
   "noRecent": "フォルダーまたはアーカイブを開くと、ここに表示されます。",
   "addFavorite": "お気に入りに追加",
-  "removeFavorite": "お気に入りから削除"
+  "removeFavorite": "お気に入りから削除",
+  "webOpenFolder": "フォルダーを開く",
+  "webEmptyTitle": "ギャラリーは空です",
+  "webDropHint": "スキャンして画像を表示します",
+  "webPrivacy": "ファイルは端末内に残り、アップロードされません。",
+  "webDropDivider": "または",
+  "webDropTitle": "フォルダーをどこにでもドロップ",
+  "webEmptyHint": "フォルダーを開くか、ここにドロップすると写真を閲覧できます。",
+  "webBackHome": "ホームに戻る"
 }

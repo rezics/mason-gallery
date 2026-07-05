@@ -1,8 +1,8 @@
 import type { PlatformCapabilities } from "@/types/platform";
 
 export const SETTINGS_CATEGORIES = [
-  "appearance",
   "gallery",
+  "appearance",
   "files",
   "archive",
   "cache",
@@ -10,11 +10,13 @@ export const SETTINGS_CATEGORIES = [
 
 export type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number];
 
+const DEFAULT_SETTINGS_CATEGORY: SettingsCategory = "gallery";
+
 export function getSettingsCategory(path: string): SettingsCategory {
   const segment = path.split("/")[2] as SettingsCategory | undefined;
   return segment && SETTINGS_CATEGORIES.includes(segment)
     ? segment
-    : "appearance";
+    : DEFAULT_SETTINGS_CATEGORY;
 }
 
 export function getSupportedSettingsCategories(
@@ -35,5 +37,5 @@ export function getVisibleSettingsCategory(
   const category = getSettingsCategory(path);
   return getSupportedSettingsCategories(capabilities).includes(category)
     ? category
-    : "appearance";
+    : DEFAULT_SETTINGS_CATEGORY;
 }

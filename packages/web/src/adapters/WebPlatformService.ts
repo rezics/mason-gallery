@@ -4,7 +4,8 @@ import type {
   ScanParams,
   Settings,
 } from "@mason-gallery/core";
-import type { WebFileRegistry } from "@/features/gallery/types";
+import type { WebFileRegistry } from "../features/gallery/types";
+import { getInitialWebLanguage } from "../features/i18n/webLocaleRoutes";
 
 const SETTINGS_KEY = "mason-gallery-settings";
 
@@ -284,13 +285,19 @@ export const webPlatformService: PlatformService = {
   async loadSettings(): Promise<Partial<Settings>> {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) {
-        return JSON.parse(raw) as Partial<Settings>;
-      }
+      const settings = raw ? (JSON.parse(raw) as Partial<Settings>) : {};
+      return {
+        ...settings,
+        language: getInitialWebLanguage(
+          window.location.pathname,
+          settings.language,
+        ),
+      };
     } catch {
-      // ignore
+      return {
+        language: getInitialWebLanguage(window.location.pathname, undefined),
+      };
     }
-    return {};
   },
 
   async saveSettings(key: string, value: unknown): Promise<void> {

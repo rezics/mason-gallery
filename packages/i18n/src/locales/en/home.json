@@ -13,5 +13,13 @@
   "noFavorites": "Star a recent gallery to keep it here.",
   "noRecent": "Open a folder or archive and it will appear here.",
   "addFavorite": "Add to favorites",
-  "removeFavorite": "Remove from favorites"
+  "removeFavorite": "Remove from favorites",
+  "webOpenFolder": "Open folder",
+  "webEmptyTitle": "Your gallery is empty",
+  "webDropHint": "We'll scan it and show your images",
+  "webPrivacy": "Your files stay on your device. Nothing is uploaded.",
+  "webDropDivider": "or",
+  "webDropTitle": "Drop a folder anywhere",
+  "webEmptyHint": "Open a folder or drop one here to start browsing your photos.",
+  "webBackHome": "Back home"
 }

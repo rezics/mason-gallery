@@ -13,5 +13,13 @@
   "noFavorites": "给最近打开的图库加星标后会显示在这里。",
   "noRecent": "打开文件夹或压缩包后会显示在这里。",
   "addFavorite": "添加到收藏",
-  "removeFavorite": "从收藏中移除"
+  "removeFavorite": "从收藏中移除",
+  "webOpenFolder": "打开文件夹",
+  "webEmptyTitle": "图库为空",
+  "webDropHint": "我们会扫描并显示你的图片",
+  "webPrivacy": "文件会留在你的设备上，不会上传。",
+  "webDropDivider": "或",
+  "webDropTitle": "把文件夹拖到任意位置",
+  "webEmptyHint": "打开一个文件夹，或把文件夹拖到这里，就可以开始浏览照片。",
+  "webBackHome": "返回首页"
 }

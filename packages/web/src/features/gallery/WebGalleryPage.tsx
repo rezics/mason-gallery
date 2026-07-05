@@ -249,6 +249,7 @@ function PreviewMasonry() {
 }
 
 function WebEmptyGallery() {
+  const t = useI18n();
   const platform = usePlatform();
   const showPreview = useLargePreview();
 
@@ -272,10 +273,10 @@ function WebEmptyGallery() {
       <section className="relative mx-auto grid h-full max-w-[1440px] grid-cols-1 items-center gap-14 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(360px,0.78fr)_minmax(640px,1.22fr)] lg:px-16">
         <div className="max-w-[520px]">
           <h1 className="max-w-lg text-5xl font-semibold leading-[1.04] tracking-normal text-foreground md:text-[58px]">
-            Your gallery is empty
+            {t("home:webEmptyTitle")}
           </h1>
           <p className="mt-5 max-w-md text-xl leading-8 text-muted-foreground">
-            Open a folder or drop one here to start browsing your photos.
+            {t("home:webEmptyHint")}
           </p>
 
           <div className="mt-8 max-w-[420px]">
@@ -285,12 +286,12 @@ function WebEmptyGallery() {
               onClick={openFolderAndScan}
             >
               <FolderOpen className="size-6" />
-              Open folder
+              {t("home:webOpenFolder")}
             </button>
 
             <div className="my-9 flex items-center gap-7 text-base font-medium text-muted-foreground">
               <span className="h-px flex-1 bg-border" />
-              or
+              {t("home:webDropDivider")}
               <span className="h-px flex-1 bg-border" />
             </div>
 
@@ -300,16 +301,16 @@ function WebEmptyGallery() {
             >
               <UploadCloud className="size-11 text-primary" strokeWidth={1.8} />
               <p className="mt-5 text-xl font-semibold text-foreground">
-                Drop a folder anywhere
+                {t("home:webDropTitle")}
               </p>
               <p className="mt-2 text-base leading-6 text-muted-foreground">
-                We'll scan it and show your images
+                {t("home:webDropHint")}
               </p>
             </div>
 
             <div className="mt-7 flex items-center justify-center gap-3 text-base text-muted-foreground">
               <LockKeyhole className="size-5 text-muted-foreground" />
-              <span>Your files stay on your device. Nothing is uploaded.</span>
+              <span>{t("home:webPrivacy")}</span>
             </div>
           </div>
         </div>
@@ -370,7 +371,7 @@ export function WebGalleryPage() {
               className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
               onClick={resetToDropZone}
             >
-              Back home
+              {t("home:webBackHome")}
             </button>
           </div>
           <div className="relative flex min-h-0 flex-1 overflow-hidden">

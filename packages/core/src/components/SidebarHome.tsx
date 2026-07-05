@@ -58,16 +58,16 @@ export default function SidebarHome() {
             {t("settings:preferences")}
           </h2>
           <HomeNavLink
-            href="/settings/appearance"
-            icon={<Palette />}
-            label={t("settings:appearance")}
-            active={location.startsWith("/settings/appearance")}
-          />
-          <HomeNavLink
             href="/settings/gallery"
             icon={<Settings />}
             label={t("settings:gallery")}
             active={location.startsWith("/settings/gallery")}
+          />
+          <HomeNavLink
+            href="/settings/appearance"
+            icon={<Palette />}
+            label={t("settings:appearance")}
+            active={location.startsWith("/settings/appearance")}
           />
           {canBrowseArchives && (
             <HomeNavLink

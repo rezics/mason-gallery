@@ -74,13 +74,41 @@ export const languageLabels: Record<SupportedLanguage, string> = {
 };
 
 const supportedLanguageSet = new Set<string>(supportedLanguages);
+
+export function isSupportedLanguage(
+  value: unknown,
+): value is SupportedLanguage {
+  return typeof value === "string" && supportedLanguageSet.has(value);
+}
+
+export function resolvePreferredLanguage(
+  values: Iterable<unknown>,
+  defaultLanguage: SupportedLanguage = fallbackLanguage,
+): SupportedLanguage {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+
+    const normalized = value.toLowerCase().replace("_", "-");
+    if (isSupportedLanguage(normalized)) return normalized;
+
+    const [language, region] = normalized.split("-");
+    if (language === "zh") {
+      return region === "tw" || region === "hk" || region === "mo"
+        ? "zh-hant"
+        : "zh-hans";
+    }
+    if (language === "ja") return "ja";
+    if (language === "en") return "en";
+  }
+
+  return defaultLanguage;
+}
+
 export function resolveSupportedLanguage(
   value: unknown,
   defaultLanguage: SupportedLanguage = fallbackLanguage,
 ): SupportedLanguage {
-  return typeof value === "string" && supportedLanguageSet.has(value)
-    ? (value as SupportedLanguage)
-    : defaultLanguage;
+  return isSupportedLanguage(value) ? value : defaultLanguage;
 }
 
 export const resources: Record<SupportedLanguage, TranslationResource> = {
