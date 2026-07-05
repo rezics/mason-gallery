@@ -92,6 +92,7 @@
       "dependencies": {
         "@mason-gallery/core": "workspace:*",
         "image-dimensions": "^2.3.0",
+        "lucide-react": "^0.468.0",
         "masonic": "^4.1.0",
         "react": "^19",
         "react-dom": "^19",

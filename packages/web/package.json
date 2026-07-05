@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "bun test tests"
   },
   "dependencies": {
     "@mason-gallery/core": "workspace:*",
     "image-dimensions": "^2.3.0",
+    "lucide-react": "^0.468.0",
     "masonic": "^4.1.0",
     "react": "^19",
     "react-dom": "^19",
@@ -28,3 +30,5 @@
     "typescript": "^6.0.2"
   }
 }
+
+

@@ -57,6 +57,10 @@ export default function ImageViewer() {
   const [infoOpen, setInfoOpen] = useState(false);
 
   const currentImage = images[currentIndex];
+  const canDelete =
+    platform.capabilities.canDeleteFiles && !!platform.deleteFile;
+  const canReveal =
+    platform.capabilities.canRevealFile && !!platform.revealFile;
 
   const slides = images.map((img) => ({
     src: platform.getImageUrl(img.source),
@@ -65,7 +69,7 @@ export default function ImageViewer() {
   }));
 
   const executeDelete = useCallback(async () => {
-    if (!platform.capabilities.canDeleteFiles) return;
+    if (!canDelete || !platform.deleteFile) return;
     const img = images[currentIndex];
     if (!img) return;
     try {
@@ -77,7 +81,8 @@ export default function ImageViewer() {
       console.error("Failed to delete:", error);
     }
   }, [
-    platform,
+    canDelete,
+    platform.deleteFile,
     images,
     currentIndex,
     removeImage,
@@ -86,25 +91,21 @@ export default function ImageViewer() {
   ]);
 
   const requestDelete = useCallback(() => {
-    if (!platform.capabilities.canDeleteFiles) return;
+    if (!canDelete) return;
     if (confirmDeleteSetting) {
       setConfirmOpen(true);
     } else {
       executeDelete();
     }
-  }, [
-    platform.capabilities.canDeleteFiles,
-    confirmDeleteSetting,
-    executeDelete,
-  ]);
+  }, [canDelete, confirmDeleteSetting, executeDelete]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "Delete" && platform.capabilities.canDeleteFiles) {
+      if (event.key === "Delete" && canDelete) {
         requestDelete();
       }
     },
-    [platform.capabilities.canDeleteFiles, requestDelete],
+    [canDelete, requestDelete],
   );
 
   useEffect(() => {
@@ -134,19 +135,19 @@ export default function ImageViewer() {
       </ViewerButton>,
     );
 
-    if (platform.capabilities.canRevealFile) {
+    if (canReveal) {
       toolbarButtons.push(
         <ViewerButton
           key="folder"
           title={t("viewer:revealInFolder")}
-          onClick={() => platform.revealFile(currentImage.source)}
+          onClick={() => platform.revealFile?.(currentImage.source)}
         >
           <FolderOpen />
         </ViewerButton>,
       );
     }
 
-    if (platform.capabilities.canDeleteFiles) {
+    if (canDelete) {
       toolbarButtons.push(
         <ViewerButton
           key="delete"

@@ -220,9 +220,9 @@ export interface PlatformService {
    */
   getThumbUrl(thumbId: string): string;
 
-  deleteFile(path: string): Promise<void>;
+  deleteFile?(path: string): Promise<void>;
 
-  revealFile(path: string): Promise<void>;
+  revealFile?(path: string): Promise<void>;
 
   pickFolders(): Promise<string[] | null>;
 
@@ -246,8 +246,8 @@ export interface PlatformService {
   ): Promise<void>;
   getArchiveInfo?(path: string): Promise<ArchiveInfo>;
   getCacheStats?(): Promise<CacheStats[]>;
-  clearThumbnails(sourceId?: number): Promise<void>;
-  clearExtracted(sourceId?: number): Promise<void>;
+  clearThumbnails?(sourceId?: number): Promise<void>;
+  clearExtracted?(sourceId?: number): Promise<void>;
   pinCache?(sourceId: number, pinned: boolean): Promise<void>;
   unlockArchive?(
     path: string,
@@ -271,7 +271,7 @@ export interface PlatformService {
    * the entry is already cached or already queued, and `{ skipped: true }` if
    * the file is below the minFileSize threshold (no thumbs will ever arrive).
    */
-  requestThumbnail(
+  requestThumbnail?(
     sourceId: number,
     entryPath: string,
     widths?: number[],
@@ -281,13 +281,13 @@ export interface PlatformService {
    * Cancel a pending or in-flight thumbnail request. Safe to call even if no
    * request is outstanding.
    */
-  cancelThumbnail(sourceId: number, entryPath: string): Promise<void>;
+  cancelThumbnail?(sourceId: number, entryPath: string): Promise<void>;
 
   /**
    * Subscribe to thumbnail-ready events. Returns an unsubscribe function.
    * On the web platform this is a no-op that returns a no-op unsubscribe.
    */
-  onThumbnailsReady(
+  onThumbnailsReady?(
     callback: (event: {
       sourceId: number;
       entryPath: string;

@@ -1,8 +1,4 @@
-import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { Route, Router, Switch } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
-import QuickGalleryPanel from "@/components/QuickGalleryPanel";
 import { usePlatform } from "@/context/PlatformContext";
 import { setI18nLanguage } from "@/i18n";
 import {
@@ -10,19 +6,22 @@ import {
   resolveThemeMode,
   resolveThemeTokens,
 } from "@/lib/theme";
-import AboutPage from "@/pages/AboutPage";
-import CachePage from "@/pages/CachePage";
-import HomePage from "@/pages/HomePage";
-import SettingsPage from "@/pages/SettingsPage";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 
-interface ShellProps {
-  titlebar: ReactNode;
-  updateChecker: ReactNode;
+interface CoreRuntimeOptions {
+  enableStartupCacheCleanup?: boolean;
+  enableThumbnailEvents?: boolean;
 }
 
-export default function Shell({ titlebar, updateChecker }: ShellProps) {
+/**
+ * Wires shared runtime concerns without owning the product shell.
+ * Target apps decide routes and chrome; this hook only applies shared state.
+ */
+export function useCoreRuntime({
+  enableStartupCacheCleanup = false,
+  enableThumbnailEvents = true,
+}: CoreRuntimeOptions = {}) {
   const language = useSettingsStore((s) => s.language);
   const theme = useSettingsStore((s) => s.theme);
   const themePreset = useSettingsStore((s) => s.themePreset);
@@ -44,8 +43,7 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
   }, [language]);
 
   useEffect(() => {
-    if (!platform.onThumbnailsReady) return;
-
+    if (!enableThumbnailEvents || !platform.onThumbnailsReady) return;
     const unsubscribe = platform.onThumbnailsReady(
       ({ sourceId, entryPath, thumbnails }) => {
         useViewerStore
@@ -56,7 +54,7 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
     return () => {
       unsubscribe();
     };
-  }, [platform]);
+  }, [enableThumbnailEvents, platform]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -84,36 +82,18 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
   }, [theme, themePreset, accentPreset, customAccent, customTheme]);
 
   useEffect(() => {
-    if (!hydrated || startupCleanupStartedRef.current) return;
+    if (
+      !enableStartupCacheCleanup ||
+      !hydrated ||
+      startupCleanupStartedRef.current
+    ) {
+      return;
+    }
     startupCleanupStartedRef.current = true;
     platform
       .startupCacheCleanup?.(cacheCleanupStrategy)
       .catch((e) => console.error("Startup cache cleanup failed:", e));
-  }, [hydrated, platform, cacheCleanupStrategy]);
+  }, [enableStartupCacheCleanup, hydrated, platform, cacheCleanupStrategy]);
 
-  if (!hydrated) return null;
-
-  return (
-    <Router hook={useHashLocation}>
-      {titlebar}
-      <main
-        className="h-screen overflow-hidden bg-background text-foreground"
-        style={{ paddingTop: titlebar ? 36 : 0 }}
-      >
-        <Switch>
-          <Route path="/" component={HomePage} />
-          <Route path="/about" component={AboutPage} />
-          <Route path="/cache" component={CachePage} />
-          <Route path="/manage/cache" component={CachePage} />
-          <Route path="/settings" component={SettingsPage} />
-          <Route path="/settings/:category" component={SettingsPage} />
-          <Route>
-            <HomePage />
-          </Route>
-        </Switch>
-      </main>
-      <QuickGalleryPanel />
-      {updateChecker}
-    </Router>
-  );
+  return { hydrated };
 }

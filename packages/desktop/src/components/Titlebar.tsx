@@ -1,4 +1,4 @@
-import { MenuBar } from "@mason-gallery/core";
+import MenuBar from "@mason-gallery/core/components/MenuBar";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Maximize2, Minus, X } from "lucide-react";

@@ -4,6 +4,7 @@ import type {
   ScanParams,
   Settings,
 } from "@mason-gallery/core";
+import type { WebFileRegistry } from "@/features/gallery/types";
 
 const SETTINGS_KEY = "mason-gallery-settings";
 
@@ -12,7 +13,7 @@ interface FileEntry {
   blobUrl: string;
 }
 
-class FileHandleRegistry {
+class FileHandleRegistry implements WebFileRegistry {
   private entries = new Map<string, FileEntry>();
   private nextId = 0;
 
@@ -97,7 +98,6 @@ async function getImageDimensions(
 
 const registry = new FileHandleRegistry();
 
-// Store directory handles for scanning
 let storedDirHandles: FileSystemDirectoryHandle[] = [];
 
 export const webPlatformService: PlatformService = {
@@ -116,17 +116,12 @@ export const webPlatformService: PlatformService = {
     onBatch: (batch: ImageBatch) => void,
     onComplete: () => void,
     onCount?: (total: number) => void,
-    // Web has no backend-streamed scan progress — accepted for interface
-    // parity, never invoked.
-    _onInfoProgress?: unknown,
-    _onThumbProgress?: unknown,
   ): Promise<void> {
     registry.clear();
 
     const formats = new Set(params.formats.map((f) => f.toLowerCase()));
     const batchSize = params.page_size;
 
-    // Phase 1: Collect all file handles (fast, no dimension extraction)
     const fileHandles: {
       name: string;
       path: string;
@@ -138,12 +133,8 @@ export const webPlatformService: PlatformService = {
       }
     }
 
-    // Emit total count immediately
-    if (onCount) {
-      onCount(fileHandles.length);
-    }
+    onCount?.(fileHandles.length);
 
-    // Phase 2: Process dimensions in batches
     let batch: ImageBatch["images"] = [];
 
     for (const entry of fileHandles) {
@@ -165,11 +156,7 @@ export const webPlatformService: PlatformService = {
       }
     }
 
-    if (batch.length > 0) {
-      onBatch({ images: batch, done: true });
-    } else {
-      onBatch({ images: [], done: true });
-    }
+    onBatch({ images: batch, done: true });
     onComplete();
   },
 
@@ -178,24 +165,7 @@ export const webPlatformService: PlatformService = {
   },
 
   getThumbUrl(): string {
-    // Web platform has no thumbnail cache — waterfall fallbacks to <img src>.
     return "";
-  },
-
-  async clearThumbnails(): Promise<void> {
-    // No-op: web has no local cache.
-  },
-
-  async clearExtracted(): Promise<void> {
-    // No-op: web has no local cache.
-  },
-
-  async deleteFile(): Promise<void> {
-    throw new Error("Delete is not supported in the web version");
-  },
-
-  async revealFile(): Promise<void> {
-    throw new Error("Reveal in folder is not supported in the web version");
   },
 
   async pickFolders(): Promise<string[] | null> {
@@ -265,18 +235,6 @@ export const webPlatformService: PlatformService = {
     } catch {
       // ignore
     }
-  },
-
-  async requestThumbnail(): Promise<{ enqueued: boolean; skipped: boolean }> {
-    return { enqueued: false, skipped: true };
-  },
-
-  async cancelThumbnail(): Promise<void> {
-    // No-op on web.
-  },
-
-  onThumbnailsReady(): () => void {
-    return () => {};
   },
 
   async listDirectoryTree(): Promise<string[]> {

@@ -1,10 +1,11 @@
-import { MenuBar, PlatformContext, Shell } from "@mason-gallery/core";
+import { PlatformContext } from "@mason-gallery/core";
 import { webPlatformService } from "./adapters/WebPlatformService";
+import { WebApp } from "./app/WebApp";
 
 export default function App() {
   return (
     <PlatformContext.Provider value={webPlatformService}>
-      <Shell titlebar={<MenuBar />} updateChecker={null} />
+      <WebApp />
     </PlatformContext.Provider>
   );
 }

@@ -285,8 +285,8 @@ export default function CachePage() {
 
   const handleDelete = useCallback(
     async (id: number) => {
-      await platform.clearThumbnails(id);
-      await platform.clearExtracted(id);
+      await platform.clearThumbnails?.(id);
+      await platform.clearExtracted?.(id);
       refresh();
     },
     [platform, refresh],
@@ -304,15 +304,15 @@ export default function CachePage() {
 
   const handleClearUnpinned = useCallback(async () => {
     for (const item of stats.filter((s) => !s.isPinned)) {
-      await platform.clearThumbnails(item.id);
-      await platform.clearExtracted(item.id);
+      await platform.clearThumbnails?.(item.id);
+      await platform.clearExtracted?.(item.id);
     }
     refresh();
   }, [platform, stats, refresh]);
 
   const handleClearAll = useCallback(async () => {
-    await platform.clearThumbnails();
-    await platform.clearExtracted();
+    await platform.clearThumbnails?.();
+    await platform.clearExtracted?.();
     refresh();
   }, [platform, refresh]);
 

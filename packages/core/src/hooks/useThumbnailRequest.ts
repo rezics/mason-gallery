@@ -28,11 +28,19 @@ export function useThumbnailRequest(
   const entryPath = entry.relativePath;
 
   useEffect(() => {
-    if (!enabled || sourceId === undefined) {
+    if (
+      !enabled ||
+      sourceId === undefined ||
+      !platform.requestThumbnail ||
+      !platform.cancelThumbnail
+    ) {
       return;
     }
     const el = elementRef.current;
     if (!el) return;
+
+    const requestThumbnail = platform.requestThumbnail;
+    const cancelThumbnail = platform.cancelThumbnail;
 
     const clearDwell = () => {
       if (dwellTimeoutRef.current) {
@@ -58,8 +66,7 @@ export function useThumbnailRequest(
               }
               store.markRequested(sourceId, entryPath);
               hasRequestedRef.current = true;
-              platform
-                .requestThumbnail(sourceId, entryPath)
+              requestThumbnail(sourceId, entryPath)
                 .then((result) => {
                   if (result.skipped) {
                     useViewerStore.getState().markSkipped(sourceId, entryPath);
@@ -83,7 +90,7 @@ export function useThumbnailRequest(
             if (hasRequestedRef.current) {
               hasRequestedRef.current = false;
               useViewerStore.getState().clearRequested(sourceId, entryPath);
-              platform.cancelThumbnail(sourceId, entryPath).catch(() => {});
+              cancelThumbnail(sourceId, entryPath).catch(() => {});
             }
           }
         }
@@ -101,7 +108,7 @@ export function useThumbnailRequest(
       if (hasRequestedRef.current) {
         hasRequestedRef.current = false;
         useViewerStore.getState().clearRequested(sourceId, entryPath);
-        platform.cancelThumbnail(sourceId, entryPath).catch(() => {});
+        cancelThumbnail(sourceId, entryPath).catch(() => {});
       }
     };
   }, [enabled, sourceId, entryPath, platform]);

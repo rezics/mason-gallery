@@ -43,3 +43,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Rust / Tauri
 packages/desktop/src-tauri/target
 packages/desktop/src-tauri/gen
+
+# local generated preview assets
+public/local-preview/

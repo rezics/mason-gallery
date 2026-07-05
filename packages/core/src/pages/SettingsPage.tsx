@@ -109,8 +109,8 @@ export default function SettingsPage() {
         onConfirm={async () => {
           const target = clearConfirm;
           setClearConfirm(null);
-          if (target === "thumbs") await platform.clearThumbnails();
-          if (target === "extracted") await platform.clearExtracted();
+          if (target === "thumbs") await platform.clearThumbnails?.();
+          if (target === "extracted") await platform.clearExtracted?.();
         }}
       >
         <p>
