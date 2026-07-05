@@ -9,7 +9,6 @@
     "masonic": "^4.1.0",
     "react": "^19",
     "react-dom": "^19",
-    "typesafe-i18n": "^5.27.1",
     "wouter": "^3.9.0",
     "yet-another-react-lightbox": "^3.30.1",
     "zustand": "^5.0.12"
@@ -21,7 +20,10 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss": "^4.2.2"
+    "tailwindcss": "^4.2.2",
+    "@mason-gallery/i18n": "workspace:*",
+    "i18next": "^25.6.3",
+    "react-i18next": "^16.4.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

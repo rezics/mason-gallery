@@ -62,16 +62,18 @@ export default function DropZone({
         </div>
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
-            {t.home.dropZoneTitle}
+            {t("home:dropZoneTitle")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {canBrowseArchives ? t.archive.dropZoneHint : t.home.dropZoneHint}
+            {canBrowseArchives
+              ? t("archive:dropZoneHint")
+              : t("home:dropZoneHint")}
           </p>
         </div>
         <div className="grid w-full max-w-md gap-3 sm:grid-cols-2">
           <Button type="button" onClick={handleSelectFolder}>
             <FolderOpen />
-            {t.home.selectFolder}
+            {t("home:selectFolder")}
           </Button>
           {canBrowseArchives && (
             <Button
@@ -80,7 +82,7 @@ export default function DropZone({
               onClick={handleSelectArchive}
             >
               <Archive />
-              {t.archive.openArchive}
+              {t("archive:openArchive")}
             </Button>
           )}
         </div>

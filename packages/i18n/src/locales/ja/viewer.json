@@ -1,0 +1,9 @@
+{
+  "deleteConfirm": "この画像をゴミ箱に移動しますか？",
+  "deleteSuccess": "画像をゴミ箱に移動しました",
+  "info": "画像情報",
+  "revealInFolder": "フォルダーで表示",
+  "fileName": "ファイル名",
+  "dimensions": "サイズ",
+  "filePath": "パス"
+}

@@ -17,9 +17,9 @@ export {
   setPlatform,
   usePlatform,
 } from "./context/PlatformContext";
-export type { Locales, TranslationKeys } from "./i18n/index";
+export type { Namespace, SupportedLanguage } from "./i18n/index";
 // i18n
-export { getTranslations, I18nContext, useI18n } from "./i18n/index";
+export { i18n, setI18nLanguage, useI18n } from "./i18n/index";
 // Lib
 export {
   executeArchiveScan,

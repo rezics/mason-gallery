@@ -25,31 +25,31 @@ export function ArchiveSettingsSection({
 
   return (
     <SettingsSection>
-      <SettingsField label={t.archive.cacheCleanup}>
+      <SettingsField label={t("archive:cacheCleanup")}>
         <Select
           value={cacheCleanupStrategy}
           onChange={(event) =>
             setCacheCleanupStrategy(event.target.value as CacheCleanupStrategy)
           }
         >
-          <option value="auto-clean">{t.archive.autoClean}</option>
-          <option value="keep-all">{t.archive.keepAll}</option>
+          <option value="auto-clean">{t("archive:autoClean")}</option>
+          <option value="keep-all">{t("archive:keepAll")}</option>
         </Select>
       </SettingsField>
-      <SettingsField label={t.archive.passwordStorage}>
+      <SettingsField label={t("archive:passwordStorage")}>
         <Select
           value={passwordStorageMode}
           onChange={(event) =>
             setPasswordStorageMode(event.target.value as PasswordStorageMode)
           }
         >
-          <option value="none">{t.archive.dontSave}</option>
-          <option value="plaintext">{t.archive.plaintext}</option>
-          <option value="master">{t.archive.masterPassword}</option>
+          <option value="none">{t("archive:dontSave")}</option>
+          <option value="plaintext">{t("archive:plaintext")}</option>
+          <option value="master">{t("archive:masterPassword")}</option>
         </Select>
       </SettingsField>
       <Button type="button" variant="outline" onClick={onManageCache}>
-        {t.archive.manageCache}
+        {t("archive:manageCache")}
       </Button>
     </SettingsSection>
   );

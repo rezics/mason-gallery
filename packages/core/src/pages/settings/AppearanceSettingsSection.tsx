@@ -1,3 +1,4 @@
+import { languageLabels, supportedLanguages } from "@mason-gallery/i18n";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
@@ -35,36 +36,36 @@ export function AppearanceSettingsSection() {
   const setCustomAccent = useSettingsStore((s) => s.setCustomAccent);
 
   const themePresetLabels: Record<ThemePreset, string> = {
-    mason: t.settings.presetMason,
-    graphite: t.settings.presetGraphite,
-    midnight: t.settings.presetMidnight,
-    paper: t.settings.presetPaper,
-    custom: t.settings.customAccent,
+    mason: t("settings:presetMason"),
+    graphite: t("settings:presetGraphite"),
+    midnight: t("settings:presetMidnight"),
+    paper: t("settings:presetPaper"),
+    custom: t("settings:customAccent"),
   };
 
   const accentLabels: Record<AccentPreset, string> = {
-    rose: t.settings.accentRose,
-    blue: t.settings.accentBlue,
-    amber: t.settings.accentAmber,
-    emerald: t.settings.accentEmerald,
-    violet: t.settings.accentViolet,
-    custom: t.settings.customAccent,
+    rose: t("settings:accentRose"),
+    blue: t("settings:accentBlue"),
+    amber: t("settings:accentAmber"),
+    emerald: t("settings:accentEmerald"),
+    violet: t("settings:accentViolet"),
+    custom: t("settings:customAccent"),
   };
 
   return (
     <SettingsSection>
-      <SettingsField label={t.settings.themeMode}>
+      <SettingsField label={t("settings:themeMode")}>
         <Select
           value={theme}
           onChange={(event) => setTheme(event.target.value as ThemePreference)}
         >
-          <option value="system">{t.settings.modeSystem}</option>
-          <option value="light">{t.settings.modeLight}</option>
-          <option value="dark">{t.settings.modeDark}</option>
+          <option value="system">{t("settings:modeSystem")}</option>
+          <option value="light">{t("settings:modeLight")}</option>
+          <option value="dark">{t("settings:modeDark")}</option>
         </Select>
       </SettingsField>
 
-      <SettingsField label={t.settings.themePreset}>
+      <SettingsField label={t("settings:themePreset")}>
         <div className="grid gap-2 sm:grid-cols-2">
           {THEME_PRESET_IDS.map((preset) => (
             <button
@@ -84,7 +85,7 @@ export function AppearanceSettingsSection() {
         </div>
       </SettingsField>
 
-      <SettingsField label={t.settings.accentColor}>
+      <SettingsField label={t("settings:accentColor")}>
         <div className="flex flex-wrap gap-2">
           {ACCENT_PRESET_IDS.map((preset) => (
             <button
@@ -117,14 +118,14 @@ export function AppearanceSettingsSection() {
               className="size-5 rounded-full border border-black/10"
               style={{ backgroundColor: customAccent }}
             />
-            {t.settings.customAccent}
+            {t("settings:customAccent")}
             {accentPreset === "custom" && <Check className="size-4" />}
           </button>
         </div>
       </SettingsField>
 
       {accentPreset === "custom" && (
-        <SettingsField label={t.settings.customAccent}>
+        <SettingsField label={t("settings:customAccent")}>
           <Input
             type="color"
             value={customAccent}
@@ -133,18 +134,21 @@ export function AppearanceSettingsSection() {
         </SettingsField>
       )}
 
-      <SettingsField label={t.settings.language}>
+      <SettingsField label={t("settings:language")}>
         <Select
           value={language}
           onChange={(event) => setLanguage(event.target.value as Locale)}
         >
-          <option value="en">English</option>
-          <option value="zh">简体中文</option>
+          {supportedLanguages.map((item) => (
+            <option key={item} value={item}>
+              {languageLabels[item]}
+            </option>
+          ))}
         </Select>
       </SettingsField>
 
       <div className="rounded-md border border-border bg-background p-4">
-        <div className="mb-3 text-sm font-medium">{t.settings.preview}</div>
+        <div className="mb-3 text-sm font-medium">{t("settings:preview")}</div>
         <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
           <div className="rounded-md border border-border bg-card p-3 text-sm">
             <div className="mb-2 h-2 w-16 rounded bg-primary" />
@@ -180,7 +184,7 @@ export function AppearanceSettingsSection() {
             setCustomAccent("#e75b73");
           }}
         >
-          {t.settings.resetTheme}
+          {t("settings:resetTheme")}
         </Button>
       </div>
     </SettingsSection>

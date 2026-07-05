@@ -52,7 +52,7 @@ export function CacheSettingsSection({
 
   return (
     <SettingsSection>
-      <SettingsField label={t.cache.extractedMode}>
+      <SettingsField label={t("cache:extractedMode")}>
         <Select
           value={cachePolicy.extracted.mode}
           onChange={(event) =>
@@ -64,13 +64,13 @@ export function CacheSettingsSection({
             })
           }
         >
-          <option value="no-cache">{t.cache.extractedModeNoCache}</option>
-          <option value="lru-capped">{t.cache.extractedModeLru}</option>
-          <option value="unlimited">{t.cache.extractedModeUnlimited}</option>
+          <option value="no-cache">{t("cache:extractedModeNoCache")}</option>
+          <option value="lru-capped">{t("cache:extractedModeLru")}</option>
+          <option value="unlimited">{t("cache:extractedModeUnlimited")}</option>
         </Select>
       </SettingsField>
       {cachePolicy.extracted.mode === "lru-capped" && (
-        <SettingsField label={t.cache.extractedMaxSizePerSource}>
+        <SettingsField label={t("cache:extractedMaxSizePerSource")}>
           <Input
             type="number"
             min={0}
@@ -92,7 +92,7 @@ export function CacheSettingsSection({
         </SettingsField>
       )}
       {cachePolicy.extracted.mode !== "no-cache" && (
-        <SettingsField label={t.cache.extractedMinFileSize}>
+        <SettingsField label={t("cache:extractedMinFileSize")}>
           <Input
             type="number"
             min={0}
@@ -113,7 +113,7 @@ export function CacheSettingsSection({
           />
         </SettingsField>
       )}
-      <SettingsField label={t.cache.thumbnailRetention}>
+      <SettingsField label={t("cache:thumbnailRetention")}>
         <Select
           value={cachePolicy.thumbnails.retain}
           onChange={(event) =>
@@ -126,13 +126,13 @@ export function CacheSettingsSection({
           }
         >
           <option value="until-source-removed">
-            {t.cache.thumbnailRetainUntilRemoved}
+            {t("cache:thumbnailRetainUntilRemoved")}
           </option>
-          <option value="lru-capped">{t.cache.thumbnailRetainLru}</option>
+          <option value="lru-capped">{t("cache:thumbnailRetainLru")}</option>
         </Select>
       </SettingsField>
       {cachePolicy.thumbnails.retain === "lru-capped" && (
-        <SettingsField label={t.cache.thumbnailMaxTotalSize}>
+        <SettingsField label={t("cache:thumbnailMaxTotalSize")}>
           <Input
             type="number"
             min={0}
@@ -154,8 +154,8 @@ export function CacheSettingsSection({
         </SettingsField>
       )}
       <SettingsField
-        label={t.cache.thumbnailSizes}
-        hint={t.cache.thumbnailSizesHint}
+        label={t("cache:thumbnailSizes")}
+        hint={t("cache:thumbnailSizesHint")}
       >
         <Input
           value={thumbSizesText}
@@ -167,8 +167,8 @@ export function CacheSettingsSection({
         />
       </SettingsField>
       <SettingsField
-        label={t.cache.folderThumbnails}
-        hint={t.cache.folderThumbnailsHint}
+        label={t("cache:folderThumbnails")}
+        hint={t("cache:folderThumbnailsHint")}
       >
         <Select
           value={folderThumbnails}
@@ -176,8 +176,8 @@ export function CacheSettingsSection({
             setFolderThumbnails(event.target.value as FolderThumbnailsMode)
           }
         >
-          <option value="off">{t.cache.folderThumbnailsOff}</option>
-          <option value="lazy">{t.cache.folderThumbnailsLazy}</option>
+          <option value="off">{t("cache:folderThumbnailsOff")}</option>
+          <option value="lazy">{t("cache:folderThumbnailsLazy")}</option>
         </Select>
       </SettingsField>
       <div className="flex flex-wrap gap-2">
@@ -186,14 +186,14 @@ export function CacheSettingsSection({
           variant="destructive"
           onClick={() => onClearRequested("thumbs")}
         >
-          {t.cache.clearThumbs}
+          {t("cache:clearThumbs")}
         </Button>
         <Button
           type="button"
           variant="destructive"
           onClick={() => onClearRequested("extracted")}
         >
-          {t.cache.clearExtracted}
+          {t("cache:clearExtracted")}
         </Button>
       </div>
     </SettingsSection>

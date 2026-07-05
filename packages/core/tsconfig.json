@@ -8,8 +8,23 @@
     "declarationMap": true,
     "outDir": "dist",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@mason-gallery/i18n": [
+        "../i18n/src/index.ts"
+      ],
+      "@mason-gallery/i18n/*": [
+        "../i18n/src/*"
+      ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../i18n"
+    }
+  ]
 }

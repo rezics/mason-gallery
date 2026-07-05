@@ -1,0 +1,17 @@
+{
+  "dropZoneTitle": "Drop folders here",
+  "dropZoneHint": "or click to select folders",
+  "selectFolder": "Select Folder",
+  "scanning": "Scanning...",
+  "scanProgress": "{loaded} / {total} images",
+  "infoProgress": "Info {loaded}/{total}",
+  "thumbProgress": "Thumb {generated}/{total}",
+  "imageCount": "{count} images",
+  "goToImage": "Go to image (Ctrl+G)",
+  "favorites": "Favorites",
+  "recent": "Recent",
+  "noFavorites": "Star a recent gallery to keep it here.",
+  "noRecent": "Open a folder or archive and it will appear here.",
+  "addFavorite": "Add to favorites",
+  "removeFavorite": "Remove from favorites"
+}

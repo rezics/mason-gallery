@@ -23,18 +23,18 @@ export function GallerySettingsSection() {
 
   return (
     <SettingsSection>
-      <SettingsField label={t.settings.sortMethod}>
+      <SettingsField label={t("settings:sortMethod")}>
         <Select
           value={sortMethod}
           onChange={(event) => setSortMethod(event.target.value as SortMethod)}
         >
-          <option value="name-asc">{t.settings.nameAsc}</option>
-          <option value="name-desc">{t.settings.nameDesc}</option>
-          <option value="time-asc">{t.settings.timeAsc}</option>
-          <option value="time-desc">{t.settings.timeDesc}</option>
+          <option value="name-asc">{t("settings:nameAsc")}</option>
+          <option value="name-desc">{t("settings:nameDesc")}</option>
+          <option value="time-asc">{t("settings:timeAsc")}</option>
+          <option value="time-desc">{t("settings:timeDesc")}</option>
         </Select>
       </SettingsField>
-      <SettingsField label={t.settings.pageSize}>
+      <SettingsField label={t("settings:pageSize")}>
         <Input
           type="number"
           min={10}
@@ -45,14 +45,14 @@ export function GallerySettingsSection() {
         />
       </SettingsField>
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
-        <span>{t.settings.showGridPosition}</span>
+        <span>{t("settings:showGridPosition")}</span>
         <Switch
           checked={showGridPosition}
           onChange={(event) => setShowGridPosition(event.currentTarget.checked)}
         />
       </div>
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
-        <span>{t.settings.openGallerySidebarByDefault}</span>
+        <span>{t("settings:openGallerySidebarByDefault")}</span>
         <Switch
           checked={openGallerySidebarByDefault}
           onChange={(event) =>
@@ -60,7 +60,7 @@ export function GallerySettingsSection() {
           }
         />
       </div>
-      <SettingsField label={t.settings.columns}>
+      <SettingsField label={t("settings:columns")}>
         <div className="grid gap-2">
           {Object.keys(breakpoints)
             .map(Number)

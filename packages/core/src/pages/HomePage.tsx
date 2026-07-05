@@ -206,27 +206,30 @@ export default function HomePage() {
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span>
                   {totalCount > 0
-                    ? t.home.scanProgress
-                        .replace("{loaded}", String(allImages.length))
-                        .replace("{total}", String(totalCount))
-                    : t.home.scanning}
+                    ? t("home:scanProgress", {
+                        loaded: allImages.length,
+                        total: totalCount,
+                      })
+                    : t("home:scanning")}
                 </span>
                 {infoTotal > 0 && (
                   <span>
                     {" "}
                     -{" "}
-                    {t.home.infoProgress
-                      .replace("{loaded}", String(infoLoaded))
-                      .replace("{total}", String(infoTotal))}
+                    {t("home:infoProgress", {
+                      loaded: infoLoaded,
+                      total: infoTotal,
+                    })}
                   </span>
                 )}
                 {thumbTotal > 0 && (
                   <span>
                     {" "}
                     -{" "}
-                    {t.home.thumbProgress
-                      .replace("{generated}", String(thumbGenerated))
-                      .replace("{total}", String(thumbTotal))}
+                    {t("home:thumbProgress", {
+                      generated: thumbGenerated,
+                      total: thumbTotal,
+                    })}
                   </span>
                 )}
               </div>
@@ -262,14 +265,14 @@ export default function HomePage() {
                   type="button"
                   className="select-none text-sm text-muted-foreground hover:text-foreground"
                   onClick={() => setIsJumpInputOpen(true)}
-                  title={t.home.goToImage}
+                  title={t("home:goToImage")}
                 >
                   ~{currentIndex} / {images.length}
                 </button>
               )
             ) : (
               <span className="text-sm text-muted-foreground">
-                {t.home.imageCount.replace("{count}", String(images.length))}
+                {t("home:imageCount", { count: images.length })}
               </span>
             )}
           </div>
@@ -321,7 +324,7 @@ export default function HomePage() {
               executeArchiveScan(path, password);
             }
           } catch {
-            setPasswordError(t.archive.wrongPassword);
+            setPasswordError(t("archive:wrongPassword"));
           }
         }}
         onCancel={() => {

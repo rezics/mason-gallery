@@ -43,37 +43,37 @@ export default function SidebarHome() {
       <nav className="space-y-5">
         <section className="space-y-1">
           <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t.actions.gallery}
+            {t("actions:gallery")}
           </h2>
           <HomeNavLink
             href="/"
             icon={<Images />}
-            label={t.actions.gallery}
+            label={t("actions:gallery")}
             active={location === "/"}
           />
         </section>
 
         <section className="space-y-1">
           <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t.settings.preferences}
+            {t("settings:preferences")}
           </h2>
           <HomeNavLink
             href="/settings/appearance"
             icon={<Palette />}
-            label={t.settings.appearance}
+            label={t("settings:appearance")}
             active={location.startsWith("/settings/appearance")}
           />
           <HomeNavLink
             href="/settings/gallery"
             icon={<Settings />}
-            label={t.settings.gallery}
+            label={t("settings:gallery")}
             active={location.startsWith("/settings/gallery")}
           />
           {canBrowseArchives && (
             <HomeNavLink
               href="/manage/cache"
               icon={<Database />}
-              label={t.archive.cacheManagement}
+              label={t("archive:cacheManagement")}
               active={location.startsWith("/manage/cache")}
             />
           )}
@@ -81,19 +81,19 @@ export default function SidebarHome() {
 
         <section className="space-y-1">
           <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t.menu.help}
+            {t("menu:help")}
           </h2>
           <HomeNavLink
             href="/about"
             icon={<HelpCircle />}
-            label={t.menu.about}
+            label={t("menu:about")}
             active={location.startsWith("/about")}
           />
         </section>
       </nav>
 
       <div className="mt-auto border-t border-border pt-3 text-xs text-muted-foreground">
-        {t.about.version}: 2.0.0
+        {t("about:version")}: 2.0.0
       </div>
     </aside>
   );

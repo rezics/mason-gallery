@@ -18,20 +18,20 @@ export default function SolidArchiveWarningDialog({
   return (
     <Dialog
       open={open}
-      title={t.archive.solidWarningTitle}
+      title={t("archive:solidWarningTitle")}
       onClose={onCancel}
       actions={
         <>
           <Button type="button" variant="ghost" onClick={onCancel}>
-            {t.archive.cancel}
+            {t("archive:cancel")}
           </Button>
           <Button type="button" onClick={onContinue}>
-            {t.archive.continueAnyway}
+            {t("archive:continueAnyway")}
           </Button>
         </>
       }
     >
-      <p>{t.archive.solidWarningMessage}</p>
+      <p>{t("archive:solidWarningMessage")}</p>
     </Dialog>
   );
 }

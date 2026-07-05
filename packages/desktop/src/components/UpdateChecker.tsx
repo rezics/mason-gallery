@@ -41,14 +41,14 @@ export default function UpdateChecker() {
     return (
       <div className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-md border border-destructive bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
         <div className="flex items-center gap-3">
-          <span>{t.update.error}</span>
+          <span>{t("update:error")}</span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => setError(false)}
           >
-            {t.actions.close}
+            {t("actions:close")}
           </Button>
         </div>
       </div>
@@ -60,7 +60,9 @@ export default function UpdateChecker() {
   return (
     <div className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-md border border-border bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
       <div className="flex items-center gap-3">
-        <span>{installing ? t.update.installing : t.update.available}</span>
+        <span>
+          {installing ? t("update:installing") : t("update:available")}
+        </span>
         {installing ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
@@ -71,10 +73,10 @@ export default function UpdateChecker() {
               size="sm"
               onClick={() => setOpen(false)}
             >
-              {t.update.dismiss}
+              {t("update:dismiss")}
             </Button>
             <Button type="button" size="sm" onClick={handleInstall}>
-              {t.update.install}
+              {t("update:install")}
             </Button>
           </>
         )}

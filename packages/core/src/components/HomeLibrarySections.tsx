@@ -47,7 +47,7 @@ function SourceRow({
         type="button"
         variant="ghost"
         size="icon"
-        title={isFavorite ? t.home.removeFavorite : t.home.addFavorite}
+        title={isFavorite ? t("home:removeFavorite") : t("home:addFavorite")}
         className={cn(isFavorite && "text-primary")}
         onClick={() => onToggleFavorite(source)}
       >
@@ -121,8 +121,8 @@ export default function HomeLibrarySections() {
     <section className="px-6 py-6">
       <div className="mx-auto grid max-w-4xl gap-7">
         <SourceSection
-          title={t.home.favorites}
-          emptyText={t.home.noFavorites}
+          title={t("home:favorites")}
+          emptyText={t("home:noFavorites")}
           icon="favorites"
           items={favoriteSources}
           favorites={favoriteSources}
@@ -130,8 +130,8 @@ export default function HomeLibrarySections() {
           onToggleFavorite={toggleFavoriteSource}
         />
         <SourceSection
-          title={t.home.recent}
-          emptyText={t.home.noRecent}
+          title={t("home:recent")}
+          emptyText={t("home:noRecent")}
           icon="recent"
           items={recentSources}
           favorites={favoriteSources}

@@ -33,7 +33,10 @@ export function FilesSettingsSection() {
 
   return (
     <SettingsSection>
-      <SettingsField label={t.settings.formats} hint={t.settings.formatsHint}>
+      <SettingsField
+        label={t("settings:formats")}
+        hint={t("settings:formatsHint")}
+      >
         <Input
           value={formatsText}
           onChange={(event) => setFormatsText(event.target.value)}
@@ -44,14 +47,14 @@ export function FilesSettingsSection() {
         />
       </SettingsField>
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
-        <span>{t.settings.confirmDelete}</span>
+        <span>{t("settings:confirmDelete")}</span>
         <Switch
           checked={confirmDelete}
           onChange={(event) => setConfirmDelete(event.currentTarget.checked)}
         />
       </div>
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
-        <span>{t.settings.showDeleteToast}</span>
+        <span>{t("settings:showDeleteToast")}</span>
         <Switch
           checked={showDeleteToast}
           onChange={(event) => setShowDeleteToast(event.currentTarget.checked)}

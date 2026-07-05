@@ -1,0 +1,9 @@
+{
+  "deleteConfirm": "将此图片移至回收站？",
+  "deleteSuccess": "图片已移至回收站",
+  "info": "图片信息",
+  "revealInFolder": "在文件夹中显示",
+  "fileName": "文件名",
+  "dimensions": "尺寸",
+  "filePath": "路径"
+}

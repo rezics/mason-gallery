@@ -22,20 +22,20 @@ export default function MigrationConfirmDialog({
   return (
     <Dialog
       open={open}
-      title={t.archive.migrationTitle}
+      title={t("archive:migrationTitle")}
       className="max-w-lg"
       actions={
         <>
           <Button type="button" variant="ghost" onClick={onScanFresh}>
-            {t.archive.scanFresh}
+            {t("archive:scanFresh")}
           </Button>
           <Button type="button" onClick={onUseCache}>
-            {t.archive.useCache}
+            {t("archive:useCache")}
           </Button>
         </>
       }
     >
-      <p>{t.archive.migrationMessage}</p>
+      <p>{t("archive:migrationMessage")}</p>
       <p className="break-all text-xs text-muted-foreground">{oldPath}</p>
       <p className="break-all text-xs text-muted-foreground">{newPath}</p>
     </Dialog>

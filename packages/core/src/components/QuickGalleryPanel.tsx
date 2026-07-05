@@ -33,7 +33,7 @@ export default function QuickGalleryPanel() {
       {isOpen && (
         <button
           type="button"
-          aria-label={t.actions.close}
+          aria-label={t("actions:close")}
           className="fixed inset-0 z-40 cursor-default bg-black/25"
           onClick={() => setOpen(false)}
         />
@@ -49,14 +49,14 @@ export default function QuickGalleryPanel() {
             <div className="flex items-center gap-2">
               <Columns3 className="size-4 text-primary" />
               <h2 className="text-sm font-semibold">
-                {t.actions.quickControls}
+                {t("actions:quickControls")}
               </h2>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              aria-label={t.actions.close}
+              aria-label={t("actions:close")}
               onClick={() => setOpen(false)}
             >
               <X />
@@ -66,7 +66,7 @@ export default function QuickGalleryPanel() {
           <div className="flex-1 space-y-5 overflow-auto p-4">
             <section className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground">
-                {t.settings.sortMethod}
+                {t("settings:sortMethod")}
               </div>
               <Select
                 value={sortMethod}
@@ -74,16 +74,16 @@ export default function QuickGalleryPanel() {
                   setSortMethod(event.target.value as SortMethod)
                 }
               >
-                <option value="name-asc">{t.settings.nameAsc}</option>
-                <option value="name-desc">{t.settings.nameDesc}</option>
-                <option value="time-asc">{t.settings.timeAsc}</option>
-                <option value="time-desc">{t.settings.timeDesc}</option>
+                <option value="name-asc">{t("settings:nameAsc")}</option>
+                <option value="name-desc">{t("settings:nameDesc")}</option>
+                <option value="time-asc">{t("settings:timeAsc")}</option>
+                <option value="time-desc">{t("settings:timeDesc")}</option>
               </Select>
             </section>
 
             <section className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground">
-                {t.settings.pageSize}
+                {t("settings:pageSize")}
               </div>
               <Input
                 type="number"
@@ -96,7 +96,7 @@ export default function QuickGalleryPanel() {
             </section>
 
             <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
-              <span>{t.settings.showGridPosition}</span>
+              <span>{t("settings:showGridPosition")}</span>
               <Switch
                 checked={showGridPosition}
                 onChange={(event) =>
@@ -107,7 +107,7 @@ export default function QuickGalleryPanel() {
 
             <section className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground">
-                {t.settings.columns}
+                {t("settings:columns")}
               </div>
               <Input
                 type="number"
@@ -132,7 +132,7 @@ export default function QuickGalleryPanel() {
               onClick={() => openSettingsRoute("/settings/gallery")}
             >
               <Settings />
-              {t.settings.preferences}
+              {t("settings:preferences")}
             </Button>
             <Button
               type="button"
@@ -140,7 +140,7 @@ export default function QuickGalleryPanel() {
               className="w-full"
               onClick={() => openSettingsRoute("/settings/appearance")}
             >
-              {t.settings.language}
+              {t("settings:language")}
             </Button>
           </footer>
         </div>

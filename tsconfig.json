@@ -1,9 +1,20 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/core" },
-    { "path": "packages/desktop" },
-    { "path": "packages/web" },
-    { "path": "packages/cli" }
+    {
+      "path": "packages/i18n"
+    },
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/desktop"
+    },
+    {
+      "path": "packages/web"
+    },
+    {
+      "path": "packages/cli"
+    }
   ]
 }

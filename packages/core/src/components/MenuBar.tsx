@@ -148,7 +148,7 @@ export default function MenuBar({
           onClick={() => setOpenMenu(openMenu === "file" ? null : "file")}
           onPointerEnter={() => openMenu && setOpenMenu("file")}
         >
-          {t.menu.file}
+          {t("menu:file")}
         </Button>
         {openMenu === "file" && (
           <MenuPanel>
@@ -159,7 +159,7 @@ export default function MenuBar({
                 openFolderAndScan();
               }}
             >
-              {t.menu.openFolder}
+              {t("menu:openFolder")}
             </MenuItem>
             {platform.capabilities.canBrowseArchives &&
               platform.pickArchive && (
@@ -170,7 +170,7 @@ export default function MenuBar({
                     await openArchive();
                   }}
                 >
-                  {t.archive.openArchive}
+                  {t("archive:openArchive")}
                 </MenuItem>
               )}
             <MenuSeparator />
@@ -182,7 +182,7 @@ export default function MenuBar({
                 navigate("/");
               }}
             >
-              {t.menu.reset}
+              {t("menu:reset")}
             </MenuItem>
             {onQuit && (
               <>
@@ -195,7 +195,7 @@ export default function MenuBar({
                     onQuit();
                   }}
                 >
-                  {t.menu.quit}
+                  {t("menu:quit")}
                 </MenuItem>
               </>
             )}
@@ -211,7 +211,7 @@ export default function MenuBar({
           onClick={() => setOpenMenu(openMenu === "view" ? null : "view")}
           onPointerEnter={() => openMenu && setOpenMenu("view")}
         >
-          {t.menu.view}
+          {t("menu:view")}
         </Button>
         {openMenu === "view" && (
           <MenuPanel>
@@ -222,7 +222,7 @@ export default function MenuBar({
                 navigate("/");
               }}
             >
-              {t.actions.gallery}
+              {t("actions:gallery")}
             </MenuItem>
             <MenuItem
               icon={<Folder />}
@@ -233,7 +233,7 @@ export default function MenuBar({
                 toggleSidebar();
               }}
             >
-              {t.sidebar.folders}
+              {t("sidebar:folders")}
             </MenuItem>
             <MenuItem
               icon={<Settings />}
@@ -242,7 +242,7 @@ export default function MenuBar({
                 toggleQuickPanel();
               }}
             >
-              {t.actions.quickControls}
+              {t("actions:quickControls")}
             </MenuItem>
             <MenuItem
               icon={<RefreshCw />}
@@ -251,7 +251,7 @@ export default function MenuBar({
                 incrementalRefresh();
               }}
             >
-              {t.actions.refresh}
+              {t("actions:refresh")}
             </MenuItem>
             {platform.capabilities.canBrowseArchives && (
               <MenuItem
@@ -261,7 +261,7 @@ export default function MenuBar({
                   navigate("/manage/cache");
                 }}
               >
-                {t.archive.manageCache}
+                {t("archive:manageCache")}
               </MenuItem>
             )}
             <MenuSeparator />
@@ -272,7 +272,7 @@ export default function MenuBar({
                 navigate("/settings/appearance");
               }}
             >
-              {t.actions.preferences}
+              {t("actions:preferences")}
             </MenuItem>
             {onDevTools && (
               <>
@@ -284,7 +284,7 @@ export default function MenuBar({
                     onDevTools();
                   }}
                 >
-                  {t.menu.devTools}
+                  {t("menu:devTools")}
                 </MenuItem>
               </>
             )}
@@ -300,7 +300,7 @@ export default function MenuBar({
           onClick={() => setOpenMenu(openMenu === "help" ? null : "help")}
           onPointerEnter={() => openMenu && setOpenMenu("help")}
         >
-          {t.menu.help}
+          {t("menu:help")}
         </Button>
         {openMenu === "help" && (
           <MenuPanel>
@@ -311,7 +311,7 @@ export default function MenuBar({
                 navigate("/about");
               }}
             >
-              {t.menu.about}
+              {t("menu:about")}
             </MenuItem>
           </MenuPanel>
         )}
@@ -326,7 +326,7 @@ export default function MenuBar({
         type="button"
         variant="ghost"
         size="icon"
-        title={t.sidebar.folders}
+        title={t("sidebar:folders")}
         disabled={!hasGallery}
         onClick={() => {
           if (hasGallery) toggleSidebar();
@@ -338,7 +338,7 @@ export default function MenuBar({
         type="button"
         variant="ghost"
         size="icon"
-        title={t.actions.refresh}
+        title={t("actions:refresh")}
         onClick={() => incrementalRefresh()}
       >
         <RefreshCw />
@@ -347,7 +347,7 @@ export default function MenuBar({
         type="button"
         variant="ghost"
         size="icon"
-        title={t.actions.quickControls}
+        title={t("actions:quickControls")}
         onClick={toggleQuickPanel}
       >
         <Settings />

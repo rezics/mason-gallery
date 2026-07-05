@@ -4,7 +4,7 @@ import { Route, Router, Switch } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import QuickGalleryPanel from "@/components/QuickGalleryPanel";
 import { usePlatform } from "@/context/PlatformContext";
-import { getTranslations, I18nContext } from "@/i18n";
+import { setI18nLanguage } from "@/i18n";
 import {
   applyThemeTokens,
   resolveThemeMode,
@@ -38,6 +38,10 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    setI18nLanguage(language);
+  }, [language]);
 
   useEffect(() => {
     const unsubscribe = platform.onThumbnailsReady(
@@ -87,31 +91,27 @@ export default function Shell({ titlebar, updateChecker }: ShellProps) {
 
   if (!hydrated) return null;
 
-  const translations = getTranslations(language);
-
   return (
-    <I18nContext.Provider value={translations}>
-      <Router hook={useHashLocation}>
-        {titlebar}
-        <main
-          className="h-screen overflow-hidden bg-background text-foreground"
-          style={{ paddingTop: titlebar ? 36 : 0 }}
-        >
-          <Switch>
-            <Route path="/" component={HomePage} />
-            <Route path="/about" component={AboutPage} />
-            <Route path="/cache" component={CachePage} />
-            <Route path="/manage/cache" component={CachePage} />
-            <Route path="/settings" component={SettingsPage} />
-            <Route path="/settings/:category" component={SettingsPage} />
-            <Route>
-              <HomePage />
-            </Route>
-          </Switch>
-        </main>
-        <QuickGalleryPanel />
-        {updateChecker}
-      </Router>
-    </I18nContext.Provider>
+    <Router hook={useHashLocation}>
+      {titlebar}
+      <main
+        className="h-screen overflow-hidden bg-background text-foreground"
+        style={{ paddingTop: titlebar ? 36 : 0 }}
+      >
+        <Switch>
+          <Route path="/" component={HomePage} />
+          <Route path="/about" component={AboutPage} />
+          <Route path="/cache" component={CachePage} />
+          <Route path="/manage/cache" component={CachePage} />
+          <Route path="/settings" component={SettingsPage} />
+          <Route path="/settings/:category" component={SettingsPage} />
+          <Route>
+            <HomePage />
+          </Route>
+        </Switch>
+      </main>
+      <QuickGalleryPanel />
+      {updateChecker}
+    </Router>
   );
 }

@@ -1,18 +1,43 @@
-import { createContext, useContext } from "react";
-import en from "./en";
-import type { Locales, TranslationKeys } from "./i18n-types";
-import zh from "./zh";
+import {
+  defaultNamespace,
+  fallbackLanguage,
+  namespaces,
+  resolveSupportedLanguage,
+  resources,
+  type SupportedLanguage,
+} from "@mason-gallery/i18n";
+import i18next from "i18next";
+import { initReactI18next, useTranslation } from "react-i18next";
 
-const translations: Record<Locales, TranslationKeys> = { en, zh };
+void i18next.use(initReactI18next).init({
+  resources,
+  lng: fallbackLanguage,
+  fallbackLng: fallbackLanguage,
+  ns: namespaces,
+  defaultNS: defaultNamespace,
+  interpolation: {
+    escapeValue: false,
+    prefix: "{",
+    suffix: "}",
+  },
+  react: {
+    useSuspense: false,
+  },
+  returnNull: false,
+  initImmediate: false,
+});
 
-export function getTranslations(locale: Locales): TranslationKeys {
-  return translations[locale];
+export const i18n = i18next;
+
+export function setI18nLanguage(language: SupportedLanguage): void {
+  const normalized = resolveSupportedLanguage(language);
+  if (i18next.language !== normalized) {
+    void i18next.changeLanguage(normalized);
+  }
 }
 
-export const I18nContext = createContext<TranslationKeys>(en);
-
-export function useI18n(): TranslationKeys {
-  return useContext(I18nContext);
+export function useI18n() {
+  return useTranslation(namespaces).t;
 }
 
-export type { Locales, TranslationKeys };
+export type { Namespace, SupportedLanguage } from "@mason-gallery/i18n";

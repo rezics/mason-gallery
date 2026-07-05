@@ -125,7 +125,7 @@ export default function FolderSidebar() {
   const drawerContent = (
     <div className="h-full overflow-auto">
       <h2 className="px-4 pb-2 pt-3 text-sm font-semibold">
-        {t.sidebar.folders}
+        {t("sidebar:folders")}
       </h2>
       <button
         type="button"
@@ -137,14 +137,14 @@ export default function FolderSidebar() {
       >
         <span className="size-5" />
         <Folder className="size-4 shrink-0" />
-        <span>{t.sidebar.showAll}</span>
+        <span>{t("sidebar:showAll")}</span>
       </button>
       {tree.map((node) => (
         <FolderTreeNode key={node.path} node={node} depth={0} />
       ))}
       {tree.length === 0 && (
         <p className="px-4 py-2 text-sm text-muted-foreground">
-          {t.sidebar.noSubfolders}
+          {t("sidebar:noSubfolders")}
         </p>
       )}
     </div>
@@ -157,7 +157,7 @@ export default function FolderSidebar() {
           <button
             type="button"
             className="fixed inset-0 z-40 bg-black/25"
-            aria-label={t.actions.close}
+            aria-label={t("actions:close")}
             onClick={() => setSidebarOpen(false)}
           />
         )}

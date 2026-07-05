@@ -1,3 +1,4 @@
+import { resolveSupportedLanguage } from "@mason-gallery/i18n";
 import { create } from "zustand";
 import { getPlatform } from "@/context/PlatformContext";
 import {
@@ -158,8 +159,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     persist("pageSize", pageSize);
   },
   setLanguage: (language) => {
-    set({ language });
-    persist("language", language);
+    const resolvedLanguage = resolveSupportedLanguage(
+      language,
+      DEFAULTS.language,
+    );
+    set({ language: resolvedLanguage });
+    persist("language", resolvedLanguage);
   },
   setTheme: (theme) => {
     set({ theme });
@@ -289,11 +294,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         return { ...basePolicy, thumbnailSizes: sizes };
       })();
 
+      const hydratedLanguage = resolveSupportedLanguage(
+        rawSettings.language,
+        DEFAULTS.language,
+      );
+
       set({
         formats: settings.formats ?? DEFAULTS.formats,
         sortMethod: settings.sortMethod ?? DEFAULTS.sortMethod,
         pageSize: settings.pageSize ?? DEFAULTS.pageSize,
-        language: settings.language ?? DEFAULTS.language,
+        language: hydratedLanguage,
         theme:
           (rawSettings.theme as ThemePreference | undefined) ?? DEFAULTS.theme,
         themePreset: isThemePreset(rawSettings.themePreset)
@@ -340,6 +350,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         ).slice(0, MAX_FAVORITE_SOURCES),
         _hydrated: true,
       });
+
+      if (
+        rawSettings.language !== undefined &&
+        rawSettings.language !== hydratedLanguage
+      ) {
+        persist("language", hydratedLanguage);
+      }
 
       platform
         .setCachePolicy?.(hydratedCachePolicy)

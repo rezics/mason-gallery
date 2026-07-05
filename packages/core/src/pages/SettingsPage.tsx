@@ -30,11 +30,11 @@ export default function SettingsPage() {
   >(null);
 
   const categoryLabels: Record<SettingsCategory, string> = {
-    appearance: t.settings.appearance,
-    gallery: t.settings.gallery,
-    files: t.settings.files,
-    archive: t.archive.settingsSection,
-    cache: t.cache.section,
+    appearance: t("settings:appearance"),
+    gallery: t("settings:gallery"),
+    files: t("settings:files"),
+    archive: t("archive:settingsSection"),
+    cache: t("cache:section"),
   };
 
   const supportedCategories = getSupportedSettingsCategories(
@@ -52,9 +52,11 @@ export default function SettingsPage() {
           onClick={() => navigate("/")}
         >
           <ArrowLeft />
-          {t.settings.backToGallery}
+          {t("settings:backToGallery")}
         </Button>
-        <h1 className="mb-4 text-lg font-semibold">{t.settings.preferences}</h1>
+        <h1 className="mb-4 text-lg font-semibold">
+          {t("settings:preferences")}
+        </h1>
         <div className="grid gap-1">
           {supportedCategories.map((item) => (
             <Link
@@ -97,11 +99,11 @@ export default function SettingsPage() {
         open={clearConfirm !== null}
         title={
           clearConfirm === "thumbs"
-            ? t.cache.clearThumbs
-            : t.cache.clearExtracted
+            ? t("cache:clearThumbs")
+            : t("cache:clearExtracted")
         }
-        cancelLabel={t.archive.cancel}
-        confirmLabel={t.cache.confirm}
+        cancelLabel={t("archive:cancel")}
+        confirmLabel={t("cache:confirm")}
         destructive
         onCancel={() => setClearConfirm(null)}
         onConfirm={async () => {
@@ -113,8 +115,8 @@ export default function SettingsPage() {
       >
         <p>
           {clearConfirm === "thumbs"
-            ? t.cache.clearThumbsConfirm
-            : t.cache.clearExtractedConfirm}
+            ? t("cache:clearThumbsConfirm")
+            : t("cache:clearExtractedConfirm")}
         </p>
       </ConfirmDialog>
     </div>

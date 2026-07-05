@@ -22,7 +22,6 @@
     "masonic": "^4.1.0",
     "react": "^19",
     "react-dom": "^19",
-    "typesafe-i18n": "^5.27.1",
     "wouter": "^3.9.0",
     "yet-another-react-lightbox": "^3.30.1",
     "zustand": "^5.0.12"

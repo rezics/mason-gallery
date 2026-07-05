@@ -127,7 +127,7 @@ export default function ImageViewer() {
     toolbarButtons.push(
       <ViewerButton
         key="info"
-        title={t.viewer.info}
+        title={t("viewer:info")}
         onClick={() => setInfoOpen((open) => !open)}
       >
         <Info />
@@ -138,7 +138,7 @@ export default function ImageViewer() {
       toolbarButtons.push(
         <ViewerButton
           key="folder"
-          title={t.viewer.revealInFolder}
+          title={t("viewer:revealInFolder")}
           onClick={() => platform.revealFile(currentImage.source)}
         >
           <FolderOpen />
@@ -150,7 +150,7 @@ export default function ImageViewer() {
       toolbarButtons.push(
         <ViewerButton
           key="delete"
-          title={t.viewer.deleteConfirm}
+          title={t("viewer:deleteConfirm")}
           onClick={requestDelete}
         >
           <Trash2 />
@@ -180,35 +180,35 @@ export default function ImageViewer() {
       {infoOpen && currentImage && (
         <div className="fixed right-4 top-16 z-[10000] max-w-md rounded-lg border border-border bg-popover p-4 text-sm text-popover-foreground shadow-xl">
           <div className="mb-2 flex items-center justify-between gap-4">
-            <h2 className="font-semibold">{t.viewer.info}</h2>
+            <h2 className="font-semibold">{t("viewer:info")}</h2>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => setInfoOpen(false)}
             >
-              {t.actions.close}
+              {t("actions:close")}
             </Button>
           </div>
           <p>
-            {t.viewer.fileName}: {getFileName(currentImage.source)}
+            {t("viewer:fileName")}: {getFileName(currentImage.source)}
           </p>
           {currentImage.width && currentImage.height && (
             <p>
-              {t.viewer.dimensions}: {currentImage.width} x{" "}
+              {t("viewer:dimensions")}: {currentImage.width} x{" "}
               {currentImage.height}
             </p>
           )}
           <p className="break-all text-muted-foreground">
-            {t.viewer.filePath}: {currentImage.source}
+            {t("viewer:filePath")}: {currentImage.source}
           </p>
         </div>
       )}
 
       <ConfirmDialog
         open={confirmOpen}
-        title={t.viewer.deleteConfirm}
-        cancelLabel={t.actions.close}
+        title={t("viewer:deleteConfirm")}
+        cancelLabel={t("actions:close")}
         confirmLabel="OK"
         destructive
         onCancel={() => setConfirmOpen(false)}
@@ -222,7 +222,7 @@ export default function ImageViewer() {
 
       {toastOpen && (
         <div className="fixed bottom-4 right-4 z-[10000] rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg">
-          {t.viewer.deleteSuccess}
+          {t("viewer:deleteSuccess")}
         </div>
       )}
     </>

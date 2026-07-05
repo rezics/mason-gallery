@@ -1,0 +1,17 @@
+{
+  "dropZoneTitle": "將資料夾拖放到此處",
+  "dropZoneHint": "或點擊選擇資料夾",
+  "selectFolder": "選擇資料夾",
+  "scanning": "掃描中...",
+  "scanProgress": "{loaded} / {total} 張圖片",
+  "infoProgress": "資訊 {loaded}/{total}",
+  "thumbProgress": "縮圖 {generated}/{total}",
+  "imageCount": "{count} 張圖片",
+  "goToImage": "跳至圖片 (Ctrl+G)",
+  "favorites": "收藏",
+  "recent": "最近開啟",
+  "noFavorites": "為最近開啟的圖庫加上星號後會顯示在這裡。",
+  "noRecent": "開啟資料夾或壓縮檔後會顯示在這裡。",
+  "addFavorite": "加入收藏",
+  "removeFavorite": "從收藏移除"
+}

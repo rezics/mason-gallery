@@ -24,7 +24,7 @@ export default function MasterPasswordDialog({
 
   const handleSubmit = useCallback(() => {
     if (mode === "set" && password !== confirmPassword) {
-      setError(t.archive.masterPasswordMismatch);
+      setError(t("archive:masterPasswordMismatch"));
       return;
     }
     if (password) {
@@ -37,8 +37,8 @@ export default function MasterPasswordDialog({
 
   const title =
     mode === "set"
-      ? t.archive.setMasterPassword
-      : t.archive.enterMasterPassword;
+      ? t("archive:setMasterPassword")
+      : t("archive:enterMasterPassword");
 
   return (
     <Dialog
@@ -48,10 +48,10 @@ export default function MasterPasswordDialog({
       actions={
         <>
           <Button type="button" variant="ghost" onClick={onCancel}>
-            {t.archive.cancel}
+            {t("archive:cancel")}
           </Button>
           <Button type="button" disabled={!password} onClick={handleSubmit}>
-            {t.archive.submit}
+            {t("archive:submit")}
           </Button>
         </>
       }
@@ -59,7 +59,7 @@ export default function MasterPasswordDialog({
       <Input
         autoFocus
         type="password"
-        placeholder={t.archive.enterMasterPassword}
+        placeholder={t("archive:enterMasterPassword")}
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         onKeyDown={(event) => {
@@ -69,7 +69,7 @@ export default function MasterPasswordDialog({
       {mode === "set" && (
         <Input
           type="password"
-          placeholder={t.archive.confirmMasterPassword}
+          placeholder={t("archive:confirmMasterPassword")}
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
           onKeyDown={(event) => {

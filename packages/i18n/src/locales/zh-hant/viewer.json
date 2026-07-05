@@ -1,0 +1,9 @@
+{
+  "deleteConfirm": "要將此圖片移至垃圾桶嗎？",
+  "deleteSuccess": "圖片已移至垃圾桶",
+  "info": "圖片資訊",
+  "revealInFolder": "在資料夾中顯示",
+  "fileName": "檔案名稱",
+  "dimensions": "尺寸",
+  "filePath": "路徑"
+}

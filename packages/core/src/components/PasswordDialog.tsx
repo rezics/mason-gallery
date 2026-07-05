@@ -33,15 +33,15 @@ export default function PasswordDialog({
   return (
     <Dialog
       open={open}
-      title={t.archive.passwordRequired}
+      title={t("archive:passwordRequired")}
       onClose={onCancel}
       actions={
         <>
           <Button type="button" variant="ghost" onClick={onCancel}>
-            {t.archive.cancel}
+            {t("archive:cancel")}
           </Button>
           <Button type="button" disabled={!password} onClick={handleSubmit}>
-            {t.archive.submit}
+            {t("archive:submit")}
           </Button>
         </>
       }
@@ -52,7 +52,7 @@ export default function PasswordDialog({
       <Input
         autoFocus
         type="password"
-        placeholder={t.archive.passwordPlaceholder}
+        placeholder={t("archive:passwordPlaceholder")}
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         onKeyDown={(event) => {
@@ -66,7 +66,7 @@ export default function PasswordDialog({
           checked={remember}
           onChange={(event) => setRemember(event.currentTarget.checked)}
         />
-        {t.archive.rememberPassword}
+        {t("archive:rememberPassword")}
       </div>
     </Dialog>
   );

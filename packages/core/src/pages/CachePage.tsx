@@ -141,7 +141,7 @@ function CustomizeDialog({
   return (
     <Dialog
       open={open}
-      title={t.cache.overridePolicy}
+      title={t("cache:overridePolicy")}
       className="max-w-xl"
       onClose={onClose}
       actions={
@@ -154,10 +154,10 @@ function CustomizeDialog({
               onClose();
             }}
           >
-            {t.cache.resetToDefaults}
+            {t("cache:resetToDefaults")}
           </Button>
           <Button type="button" variant="ghost" onClick={onClose}>
-            {t.archive.cancel}
+            {t("archive:cancel")}
           </Button>
           <Button
             type="button"
@@ -167,7 +167,7 @@ function CustomizeDialog({
               onClose();
             }}
           >
-            {t.cache.confirm}
+            {t("cache:confirm")}
           </Button>
         </>
       }
@@ -177,36 +177,40 @@ function CustomizeDialog({
       </p>
       <div className="grid gap-3">
         <div className="grid gap-1">
-          <span className="text-sm font-medium">{t.cache.extractedMode}</span>
+          <span className="text-sm font-medium">
+            {t("cache:extractedMode")}
+          </span>
           <Select
             value={mode}
             onChange={(event) =>
               setMode(event.target.value as ExtractedMode | "default")
             }
           >
-            <option value="default">{t.cache.useDefault}</option>
-            <option value="no-cache">{t.cache.extractedModeNoCache}</option>
-            <option value="lru-capped">{t.cache.extractedModeLru}</option>
-            <option value="unlimited">{t.cache.extractedModeUnlimited}</option>
+            <option value="default">{t("cache:useDefault")}</option>
+            <option value="no-cache">{t("cache:extractedModeNoCache")}</option>
+            <option value="lru-capped">{t("cache:extractedModeLru")}</option>
+            <option value="unlimited">
+              {t("cache:extractedModeUnlimited")}
+            </option>
           </Select>
         </div>
         <Input
           type="number"
           min={0}
           value={minFileSizeMb}
-          placeholder={t.cache.extractedMinFileSize}
+          placeholder={t("cache:extractedMinFileSize")}
           onChange={(event) => setMinFileSizeMb(event.target.value)}
         />
         <Input
           type="number"
           min={0}
           value={maxSizeMb}
-          placeholder={t.cache.extractedMaxSizePerSource}
+          placeholder={t("cache:extractedMaxSizePerSource")}
           onChange={(event) => setMaxSizeMb(event.target.value)}
         />
         <div className="grid gap-1">
           <span className="text-sm font-medium">
-            {t.cache.thumbnailRetention}
+            {t("cache:thumbnailRetention")}
           </span>
           <Select
             value={retain}
@@ -214,23 +218,23 @@ function CustomizeDialog({
               setRetain(event.target.value as ThumbRetain | "default")
             }
           >
-            <option value="default">{t.cache.useDefault}</option>
+            <option value="default">{t("cache:useDefault")}</option>
             <option value="until-source-removed">
-              {t.cache.thumbnailRetainUntilRemoved}
+              {t("cache:thumbnailRetainUntilRemoved")}
             </option>
-            <option value="lru-capped">{t.cache.thumbnailRetainLru}</option>
+            <option value="lru-capped">{t("cache:thumbnailRetainLru")}</option>
           </Select>
         </div>
         <Input
           type="number"
           min={0}
           value={maxTotalMb}
-          placeholder={t.cache.thumbnailMaxTotalSize}
+          placeholder={t("cache:thumbnailMaxTotalSize")}
           onChange={(event) => setMaxTotalMb(event.target.value)}
         />
         <Input
           value={widthsText}
-          placeholder={t.cache.thumbnailSizesHint}
+          placeholder={t("cache:thumbnailSizesHint")}
           onChange={(event) => setWidthsText(event.target.value)}
           aria-invalid={widthsError}
         />
@@ -240,7 +244,7 @@ function CustomizeDialog({
           </p>
         )}
         <div className="rounded-md bg-muted p-3 font-mono text-xs">
-          <p>{t.cache.effectivePolicy}</p>
+          <p>{t("cache:effectivePolicy")}</p>
           <p>extracted.mode: {preview.extracted.mode}</p>
           <p>thumbnails.retain: {preview.thumbnails.retain}</p>
           <p>thumbnailSizes: [{preview.thumbnailSizes.join(", ")}]</p>
@@ -335,19 +339,19 @@ export default function CachePage() {
               onClick={() => navigate("/")}
             >
               <ArrowLeft />
-              {t.settings.backToGallery}
+              {t("settings:backToGallery")}
             </Button>
             <h1 className="text-2xl font-semibold">
-              {t.archive.cacheManagement}
+              {t("archive:cacheManagement")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {t.archive.totalCacheSize}: {formatSize(totalSize)}
+              {t("archive:totalCacheSize")}: {formatSize(totalSize)}
             </p>
           </div>
         </header>
 
         {stats.length === 0 ? (
-          <p className="text-muted-foreground">{t.archive.noCache}</p>
+          <p className="text-muted-foreground">{t("archive:noCache")}</p>
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
@@ -356,14 +360,14 @@ export default function CachePage() {
                 variant="outline"
                 onClick={() => setConfirmAction({ type: "unpinned" })}
               >
-                {t.archive.clearUnpinned}
+                {t("archive:clearUnpinned")}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
                 onClick={() => setConfirmAction({ type: "all" })}
               >
-                {t.archive.clearAll}
+                {t("archive:clearAll")}
               </Button>
             </div>
 
@@ -380,12 +384,13 @@ export default function CachePage() {
                         [{item.kind}] {item.originPath}
                       </h2>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {t.cache.thumbCache}: {formatSize(item.thumbCacheSize)}{" "}
-                        | {t.cache.extractedCache}:{" "}
+                        {t("cache:thumbCache")}:{" "}
+                        {formatSize(item.thumbCacheSize)} |{" "}
+                        {t("cache:extractedCache")}:{" "}
                         {formatSize(item.extractedCacheSize)} |{" "}
-                        {item.entryCount ?? 0} {t.archive.entries}
+                        {item.entryCount ?? 0} {t("archive:entries")}
                         {item.lastAccessed
-                          ? ` | ${t.archive.lastAccessed}: ${item.lastAccessed}`
+                          ? ` | ${t("archive:lastAccessed")}: ${item.lastAccessed}`
                           : ""}
                         {hasOverride ? " | custom" : ""}
                       </p>
@@ -395,7 +400,7 @@ export default function CachePage() {
                         type="button"
                         variant={hasOverride ? "default" : "ghost"}
                         size="icon"
-                        title={t.cache.customize}
+                        title={t("cache:customize")}
                         onClick={() => setCustomizeFor(item)}
                       >
                         <Settings />
@@ -430,13 +435,13 @@ export default function CachePage() {
           open={confirmAction !== null}
           title={
             confirmAction?.type === "all"
-              ? t.archive.clearAll
+              ? t("archive:clearAll")
               : confirmAction?.type === "unpinned"
-                ? t.archive.clearUnpinned
-                : t.cache.clearExtracted
+                ? t("archive:clearUnpinned")
+                : t("cache:clearExtracted")
           }
-          cancelLabel={t.archive.cancel}
-          confirmLabel={t.cache.confirm}
+          cancelLabel={t("archive:cancel")}
+          confirmLabel={t("cache:confirm")}
           destructive
           onCancel={() => setConfirmAction(null)}
           onConfirm={async () => {
@@ -450,10 +455,10 @@ export default function CachePage() {
         >
           <p>
             {confirmAction?.type === "all"
-              ? t.cache.clearExtractedConfirm
+              ? t("cache:clearExtractedConfirm")
               : confirmAction?.type === "unpinned"
-                ? t.archive.clearUnpinned
-                : t.cache.clearThumbsConfirm}
+                ? t("archive:clearUnpinned")
+                : t("cache:clearThumbsConfirm")}
           </p>
         </ConfirmDialog>
 
