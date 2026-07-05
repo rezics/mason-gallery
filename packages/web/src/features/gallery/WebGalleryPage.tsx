@@ -232,7 +232,7 @@ function PreviewMasonry() {
                       width={image.width}
                       height={image.height}
                       alt=""
-                      className={`block w-full rounded-lg bg-card object-cover shadow-[0_24px_70px_hsl(var(--foreground)/0.13)] ring-1 ring-border/80 ${image.className}`}
+                      className={`block w-full rounded-lg bg-card object-cover ring-1 ring-border/80 ${image.className}`}
                       loading="eager"
                     />
                   )),
