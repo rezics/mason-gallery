@@ -7,13 +7,7 @@ import {
   useI18n,
   useViewerStore,
 } from "@mason-gallery/core";
-import {
-  Home,
-  Info,
-  RefreshCcw,
-  Settings,
-  SlidersHorizontal,
-} from "lucide-react";
+import { Home, Info, Palette, RefreshCcw, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { Route, Router, Switch, useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
@@ -37,7 +31,7 @@ function WebHeaderButton({
       title={title}
       aria-label={title}
       disabled={disabled}
-      className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
+      className="inline-flex h-10 items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-35 sm:px-3"
       onClick={onClick}
     >
       {children}
@@ -57,64 +51,54 @@ function WebTopBar() {
   };
 
   return (
-    <header className="z-10 shrink-0 border-b border-border/70 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-6">
+    <header className="z-10 shrink-0 border-b border-border bg-background/90 shadow-sm shadow-foreground/5 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:gap-4 sm:px-10 lg:px-16">
         <button
           type="button"
           className="flex min-w-0 items-center gap-3 rounded-md pr-2 text-left"
           onClick={goHome}
         >
-          <span className="grid size-9 place-items-center rounded-md border border-border bg-card shadow-sm">
-            <img src="/logo/logo.svg" alt="" className="size-5" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold leading-5 text-foreground">
-              Mason Gallery
-            </span>
-            <span className="block text-xs leading-4 text-muted-foreground">
-              Browser gallery
-            </span>
+          <img src="/logo/logo.svg" alt="" className="size-8" />
+          <span className="block min-w-0 text-xl font-semibold leading-6 text-foreground">
+            Mason Gallery
           </span>
         </button>
 
         <div className="min-w-4 flex-1" />
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 sm:gap-4">
           {hasGallery && (
             <>
               <WebHeaderButton title="Home" onClick={goHome}>
-                <Home className="size-4" />
-                Home
+                <Home className="size-5" />
+                <span className="hidden sm:inline">Home</span>
               </WebHeaderButton>
               <WebHeaderButton
                 title={t("actions:refresh")}
                 onClick={() => incrementalRefresh()}
               >
-                <RefreshCcw className="size-4" />
-                Refresh
+                <RefreshCcw className="size-5" />
+                <span className="hidden sm:inline">Refresh</span>
               </WebHeaderButton>
             </>
           )}
-          <WebHeaderButton
-            title={t("actions:quickControls")}
-            onClick={toggleQuickPanel}
-          >
-            <SlidersHorizontal className="size-4" />
-            Tune
+          <WebHeaderButton title="Appearance" onClick={toggleQuickPanel}>
+            <Palette className="size-5" />
+            <span className="hidden sm:inline">Appearance</span>
           </WebHeaderButton>
           <WebHeaderButton
             title={t("settings:preferences")}
             onClick={() => navigate("/settings/appearance")}
           >
-            <Settings className="size-4" />
-            Settings
+            <Settings className="size-5" />
+            <span className="hidden sm:inline">Settings</span>
           </WebHeaderButton>
           <WebHeaderButton
             title={t("menu:about")}
             onClick={() => navigate("/about")}
           >
-            <Info className="size-4" />
-            About
+            <Info className="size-5" />
+            <span className="hidden sm:inline">About</span>
           </WebHeaderButton>
         </nav>
       </div>
