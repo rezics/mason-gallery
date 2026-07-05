@@ -1,3 +1,4 @@
+export { BackButton } from "./components/BackButton";
 export { default as DropZone } from "./components/DropZone";
 export { default as ImageViewer } from "./components/ImageViewer";
 export { default as QuickGalleryPanel } from "./components/QuickGalleryPanel";

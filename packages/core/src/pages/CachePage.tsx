@@ -1,6 +1,6 @@
-import { ArrowLeft, Pin, PinOff, Settings, Trash2 } from "lucide-react";
+import { Pin, PinOff, Settings, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
@@ -257,7 +257,6 @@ function CustomizeDialog({
 export default function CachePage() {
   const t = useI18n();
   const platform = usePlatform();
-  const [, navigate] = useLocation();
   const [stats, setStats] = useState<CacheStats[]>([]);
   const [customizeFor, setCustomizeFor] = useState<CacheStats | null>(null);
   const [confirmAction, setConfirmAction] = useState<
@@ -331,16 +330,11 @@ export default function CachePage() {
       <main className="mx-auto max-w-4xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Button
-              type="button"
+            <BackButton
               variant="ghost"
               size="sm"
               className="mb-2 -ml-2 justify-start px-2"
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft />
-              {t("settings:backToGallery")}
-            </Button>
+            />
             <h1 className="text-2xl font-semibold">
               {t("archive:cacheManagement")}
             </h1>

@@ -1,11 +1,10 @@
-import { ArrowLeft, Github } from "lucide-react";
-import { useLocation } from "wouter";
+import { Github } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n";
 
 export default function AboutPage() {
   const t = useI18n();
-  const [, navigate] = useLocation();
 
   return (
     <div className="flex h-full items-center justify-center p-6">
@@ -16,14 +15,16 @@ export default function AboutPage() {
           {t("about:version")}: 2.0.0
         </p>
         <div className="mt-6 flex justify-center gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate("/")}>
-            <ArrowLeft />
-            {t("settings:backToGallery")}
-          </Button>
+          <BackButton variant="outline" />
           <Button
             type="button"
             variant="outline"
-            onClick={() => window.open("https://github.com", "_blank")}
+            onClick={() =>
+              window.open(
+                "https://github.com/Edge-coordinates/mason-gallery",
+                "_blank",
+              )
+            }
           >
             <Github />
             {t("about:github")}

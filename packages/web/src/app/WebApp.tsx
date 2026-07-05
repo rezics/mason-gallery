@@ -1,4 +1,6 @@
 import {
+  BackButton,
+  Button,
   incrementalRefresh,
   QuickGalleryPanel,
   resetToDropZone,
@@ -8,6 +10,7 @@ import {
   useViewerStore,
 } from "@mason-gallery/core";
 import {
+  Github,
   Home,
   Info,
   PanelLeftClose,
@@ -20,6 +23,8 @@ import { Route, Router, Switch, useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { WebGalleryPage } from "../features/gallery/WebGalleryPage";
 import { WebSettingsPage } from "../features/settings/WebSettingsPage";
+
+const GITHUB_URL = "https://github.com/Edge-coordinates/mason-gallery";
 
 function WebHeaderButton({
   title,
@@ -123,24 +128,32 @@ function WebTopBar() {
 
 function WebAboutPage() {
   const t = useI18n();
-  const [, navigate] = useLocation();
 
   return (
     <div className="h-full overflow-auto bg-background p-6 text-foreground">
-      <div className="mx-auto max-w-2xl space-y-5">
-        <button
-          type="button"
-          className="rounded-md px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-          onClick={() => navigate("/")}
-        >
-          {t("settings:backToGallery")}
-        </button>
-        <header>
-          <h1 className="text-2xl font-semibold">Mason Gallery</h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {t("about:description")}
-          </p>
-        </header>
+      <div className="mx-auto max-w-2xl space-y-6">
+        <BackButton
+          variant="ghost"
+          size="sm"
+          className="-ml-2 justify-start px-2"
+        />
+        <section className="space-y-5">
+          <header>
+            <h1 className="text-2xl font-semibold">Mason Gallery</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {t("about:description")}
+            </p>
+          </header>
+          <Button
+            type="button"
+            variant="outline"
+            className="justify-start"
+            onClick={() => window.open(GITHUB_URL, "_blank")}
+          >
+            <Github />
+            {t("about:github")}
+          </Button>
+        </section>
       </div>
     </div>
   );

@@ -1,8 +1,7 @@
-import { Button, useI18n } from "@mason-gallery/core";
+import { BackButton, useI18n } from "@mason-gallery/core";
 import { cn } from "@mason-gallery/core/lib/utils";
 import { AppearanceSettingsSection } from "@mason-gallery/core/pages/settings/AppearanceSettingsSection";
 import { GallerySettingsSection } from "@mason-gallery/core/pages/settings/GallerySettingsSection";
-import { ArrowLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   getWebSettingsCategory,
@@ -12,7 +11,7 @@ import {
 
 export function WebSettingsPage() {
   const t = useI18n();
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const visibleCategory = getWebSettingsCategory(location);
 
   const categoryLabels: Record<WebSettingsCategory, string> = {
@@ -23,16 +22,11 @@ export function WebSettingsPage() {
   return (
     <div className="flex h-full overflow-hidden bg-background">
       <nav className="w-56 shrink-0 border-r border-border p-4">
-        <Button
-          type="button"
+        <BackButton
           variant="ghost"
           size="sm"
           className="mb-3 justify-start px-2"
-          onClick={() => navigate("/")}
-        >
-          <ArrowLeft />
-          {t("settings:backToGallery")}
-        </Button>
+        />
         <h1 className="mb-4 text-lg font-semibold">
           {t("settings:preferences")}
         </h1>
