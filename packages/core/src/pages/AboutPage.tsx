@@ -18,7 +18,7 @@ export default function AboutPage() {
         <div className="mt-6 flex justify-center gap-2">
           <Button type="button" variant="outline" onClick={() => navigate("/")}>
             <ArrowLeft />
-            Back
+            {t.settings.backToGallery}
           </Button>
           <Button
             type="button"

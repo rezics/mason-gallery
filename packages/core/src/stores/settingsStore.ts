@@ -11,6 +11,7 @@ import type {
   CacheCleanupStrategy,
   CachePolicy,
   FolderThumbnailsMode,
+  GallerySourceShortcut,
   PasswordStorageMode,
   ThemePreference,
   ThemePreset,
@@ -33,6 +34,7 @@ interface SettingsState {
   customTheme: { light?: ThemeTokenOverrides; dark?: ThemeTokenOverrides };
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
+  openGallerySidebarByDefault: boolean;
   confirmDelete: boolean;
   showDeleteToast: boolean;
   cacheCleanupStrategy: CacheCleanupStrategy;
@@ -40,6 +42,8 @@ interface SettingsState {
   cachePolicy: CachePolicy;
   thumbnailSizes: number[];
   folderThumbnails: FolderThumbnailsMode;
+  recentSources: GallerySourceShortcut[];
+  favoriteSources: GallerySourceShortcut[];
   _hydrated: boolean;
 
   setFormats: (formats: string[]) => void;
@@ -53,6 +57,7 @@ interface SettingsState {
   setCustomTheme: (theme: SettingsState["customTheme"]) => void;
   setBreakpoints: (bp: ColumnBreakpoints) => void;
   setShowGridPosition: (show: boolean) => void;
+  setOpenGallerySidebarByDefault: (open: boolean) => void;
   setConfirmDelete: (v: boolean) => void;
   setShowDeleteToast: (v: boolean) => void;
   setCacheCleanupStrategy: (strategy: CacheCleanupStrategy) => void;
@@ -60,6 +65,8 @@ interface SettingsState {
   setCachePolicy: (policy: CachePolicy) => void;
   setThumbnailSizes: (sizes: number[]) => void;
   setFolderThumbnails: (mode: FolderThumbnailsMode) => void;
+  addRecentSource: (source: GallerySourceShortcut) => void;
+  toggleFavoriteSource: (source: GallerySourceShortcut) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -83,6 +90,7 @@ const DEFAULTS = {
     2560: 7,
   } as ColumnBreakpoints,
   showGridPosition: true,
+  openGallerySidebarByDefault: false,
   confirmDelete: true,
   showDeleteToast: true,
   cacheCleanupStrategy: "auto-clean" as CacheCleanupStrategy,
@@ -90,8 +98,40 @@ const DEFAULTS = {
   cachePolicy: DEFAULT_CACHE_POLICY,
   thumbnailSizes: DEFAULT_THUMBNAIL_SIZES,
   folderThumbnails: "off" as FolderThumbnailsMode,
+  recentSources: [] as GallerySourceShortcut[],
+  favoriteSources: [] as GallerySourceShortcut[],
 };
 
+const MAX_RECENT_SOURCES = 8;
+const MAX_FAVORITE_SOURCES = 24;
+
+function isGallerySourceShortcut(
+  value: unknown,
+): value is GallerySourceShortcut {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    (item.kind === "folder" || item.kind === "archive") &&
+    typeof item.path === "string" &&
+    item.path.length > 0 &&
+    typeof item.label === "string" &&
+    item.label.length > 0 &&
+    typeof item.lastOpenedAt === "string"
+  );
+}
+
+function normalizeGallerySourceShortcuts(
+  value: unknown,
+): GallerySourceShortcut[] {
+  return Array.isArray(value) ? value.filter(isGallerySourceShortcut) : [];
+}
+
+function sameGallerySource(
+  a: GallerySourceShortcut,
+  b: GallerySourceShortcut,
+): boolean {
+  return a.kind === b.kind && a.path === b.path;
+}
 async function persist(key: string, value: unknown) {
   try {
     const platform = getPlatform();
@@ -151,6 +191,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ showGridPosition });
     persist("showGridPosition", showGridPosition);
   },
+  setOpenGallerySidebarByDefault: (openGallerySidebarByDefault) => {
+    set({ openGallerySidebarByDefault });
+    persist("openGallerySidebarByDefault", openGallerySidebarByDefault);
+  },
   setConfirmDelete: (confirmDelete) => {
     set({ confirmDelete });
     persist("confirmDelete", confirmDelete);
@@ -194,6 +238,33 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setFolderThumbnails: (folderThumbnails) => {
     set({ folderThumbnails });
     persist("folderThumbnails", folderThumbnails);
+  },
+  addRecentSource: (source) => {
+    const nextSource = {
+      ...source,
+      lastOpenedAt: source.lastOpenedAt || new Date().toISOString(),
+    };
+    const recentSources = [
+      nextSource,
+      ...get().recentSources.filter((item) => !sameGallerySource(item, source)),
+    ].slice(0, MAX_RECENT_SOURCES);
+    set({ recentSources });
+    persist("recentSources", recentSources);
+  },
+  toggleFavoriteSource: (source) => {
+    const favoriteSources = get().favoriteSources.some((item) =>
+      sameGallerySource(item, source),
+    )
+      ? get().favoriteSources.filter((item) => !sameGallerySource(item, source))
+      : [
+          {
+            ...source,
+            lastOpenedAt: source.lastOpenedAt || new Date().toISOString(),
+          },
+          ...get().favoriteSources,
+        ].slice(0, MAX_FAVORITE_SOURCES);
+    set({ favoriteSources });
+    persist("favoriteSources", favoriteSources);
   },
 
   hydrate: async () => {
@@ -243,6 +314,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         breakpoints: settings.breakpoints ?? DEFAULTS.breakpoints,
         showGridPosition:
           settings.showGridPosition ?? DEFAULTS.showGridPosition,
+        openGallerySidebarByDefault:
+          settings.openGallerySidebarByDefault ??
+          DEFAULTS.openGallerySidebarByDefault,
         confirmDelete: settings.confirmDelete ?? DEFAULTS.confirmDelete,
         showDeleteToast: settings.showDeleteToast ?? DEFAULTS.showDeleteToast,
         cacheCleanupStrategy:
@@ -258,6 +332,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           hydratedCachePolicy.thumbnailSizes ?? DEFAULTS.thumbnailSizes,
         folderThumbnails:
           settings.folderThumbnails ?? DEFAULTS.folderThumbnails,
+        recentSources: normalizeGallerySourceShortcuts(
+          settings.recentSources,
+        ).slice(0, MAX_RECENT_SOURCES),
+        favoriteSources: normalizeGallerySourceShortcuts(
+          settings.favoriteSources,
+        ).slice(0, MAX_FAVORITE_SOURCES),
         _hydrated: true,
       });
 

@@ -55,26 +55,36 @@ export default function DropZone({
     platform.capabilities.canBrowseArchives && onArchiveSelected;
 
   return (
-    <div className="m-8 flex h-[calc(100%-4rem)] flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-background text-center">
-      <UploadCloud className="mb-4 size-16 text-muted-foreground" />
-      <h1 className="text-xl font-semibold text-muted-foreground">
-        {t.home.dropZoneTitle}
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {canBrowseArchives ? t.archive.dropZoneHint : t.home.dropZoneHint}
-      </p>
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Button type="button" variant="outline" onClick={handleSelectFolder}>
-          <FolderOpen />
-          {t.home.selectFolder}
-        </Button>
-        {canBrowseArchives && (
-          <Button type="button" variant="outline" onClick={handleSelectArchive}>
-            <Archive />
-            {t.archive.openArchive}
+    <section className="border-b border-border bg-background px-6 py-8">
+      <div className="mx-auto flex max-w-4xl flex-col items-center gap-5 rounded-md border border-dashed border-border bg-muted/20 px-6 py-8 text-center">
+        <div className="flex size-14 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm">
+          <UploadCloud className="size-8" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {t.home.dropZoneTitle}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {canBrowseArchives ? t.archive.dropZoneHint : t.home.dropZoneHint}
+          </p>
+        </div>
+        <div className="grid w-full max-w-md gap-3 sm:grid-cols-2">
+          <Button type="button" onClick={handleSelectFolder}>
+            <FolderOpen />
+            {t.home.selectFolder}
           </Button>
-        )}
+          {canBrowseArchives && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSelectArchive}
+            >
+              <Archive />
+              {t.archive.openArchive}
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -4,6 +4,27 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ScanParams, WImage } from "@/types";
 
+function getSourceLabel(path: string): string {
+  const normalized = path.replace(/\\/g, "/").replace(/\/+$/g, "");
+  return normalized.split("/").pop() || path;
+}
+
+function rememberRecentSources(
+  paths: string[],
+  kind: "folder" | "archive",
+): void {
+  const addRecentSource = useSettingsStore.getState().addRecentSource;
+  const lastOpenedAt = new Date().toISOString();
+  for (const path of paths) {
+    addRecentSource({
+      kind,
+      path,
+      label: getSourceLabel(path),
+      lastOpenedAt,
+    });
+  }
+}
+
 function computeBatchFolderCounts(
   images: { relativePath: string }[],
 ): Record<string, number> {
@@ -37,7 +58,8 @@ export async function startScan(paths: string[], isRescan = false) {
     setDirectoryTree,
     updateFolderCounts,
   } = appState;
-  const { formats, sortMethod, pageSize } = useSettingsStore.getState();
+  const { formats, sortMethod, pageSize, openGallerySidebarByDefault } =
+    useSettingsStore.getState();
 
   resetAndScan();
 
@@ -53,6 +75,8 @@ export async function startScan(paths: string[], isRescan = false) {
     resetDirectoryState();
   }
   setFolders(paths);
+  if (!isRescan) rememberRecentSources(paths, "folder");
+  useAppStore.setState({ isSidebarOpen: openGallerySidebarByDefault });
 
   const params: ScanParams = {
     paths,
@@ -199,7 +223,8 @@ export async function startArchiveScan(archivePath: string, password?: string) {
   resetAndScan();
   resetDirectoryState();
   setFolders([archivePath]);
-  useAppStore.setState({ archivePath });
+  rememberRecentSources([archivePath], "archive");
+  useAppStore.setState({ archivePath, isSidebarOpen: false });
 
   const platform = getPlatform();
   if (!platform.scanArchive) {
@@ -305,6 +330,7 @@ export async function executeArchiveScan(
 export function resetToDropZone() {
   useViewerStore.getState().reset();
   useAppStore.getState().setFolders([]);
+  useAppStore.setState({ isSidebarOpen: false });
 }
 
 /**

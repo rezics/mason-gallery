@@ -14,6 +14,12 @@ export function GallerySettingsSection() {
   const setBreakpoints = useSettingsStore((s) => s.setBreakpoints);
   const showGridPosition = useSettingsStore((s) => s.showGridPosition);
   const setShowGridPosition = useSettingsStore((s) => s.setShowGridPosition);
+  const openGallerySidebarByDefault = useSettingsStore(
+    (s) => s.openGallerySidebarByDefault,
+  );
+  const setOpenGallerySidebarByDefault = useSettingsStore(
+    (s) => s.setOpenGallerySidebarByDefault,
+  );
 
   return (
     <SettingsSection>
@@ -43,6 +49,15 @@ export function GallerySettingsSection() {
         <Switch
           checked={showGridPosition}
           onChange={(event) => setShowGridPosition(event.currentTarget.checked)}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+        <span>{t.settings.openGallerySidebarByDefault}</span>
+        <Switch
+          checked={openGallerySidebarByDefault}
+          onChange={(event) =>
+            setOpenGallerySidebarByDefault(event.currentTarget.checked)
+          }
         />
       </div>
       <SettingsField label={t.settings.columns}>

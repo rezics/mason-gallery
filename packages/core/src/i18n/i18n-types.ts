@@ -24,6 +24,12 @@ export type TranslationKeys = {
     thumbProgress: string;
     imageCount: string;
     goToImage: string;
+    favorites: string;
+    recent: string;
+    noFavorites: string;
+    noRecent: string;
+    addFavorite: string;
+    removeFavorite: string;
   };
   settings: {
     title: string;
@@ -63,6 +69,7 @@ export type TranslationKeys = {
     accentViolet: string;
     columns: string;
     showGridPosition: string;
+    openGallerySidebarByDefault: string;
     confirmDelete: string;
     showDeleteToast: string;
   };

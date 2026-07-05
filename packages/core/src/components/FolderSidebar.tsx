@@ -163,7 +163,7 @@ export default function FolderSidebar() {
         )}
         <aside
           className={cn(
-            "fixed bottom-0 left-0 top-9 z-50 w-[260px] border-r border-border bg-popover text-popover-foreground shadow-xl transition-transform",
+            "sidebar-gallery fixed bottom-0 left-0 top-9 z-50 w-[260px] border-r border-border bg-popover text-popover-foreground shadow-xl transition-transform",
             isSidebarOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -176,7 +176,7 @@ export default function FolderSidebar() {
   if (!isSidebarOpen) return null;
 
   return (
-    <aside className="h-full w-[260px] shrink-0 overflow-hidden border-r border-border bg-background">
+    <aside className="sidebar-gallery h-full w-[260px] shrink-0 overflow-hidden border-r border-border bg-background">
       {drawerContent}
     </aside>
   );

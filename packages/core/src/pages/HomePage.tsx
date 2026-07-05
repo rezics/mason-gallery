@@ -3,9 +3,11 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DropZone from "@/components/DropZone";
 import FolderSidebar from "@/components/FolderSidebar";
+import HomeLibrarySections from "@/components/HomeLibrarySections";
 import ImageViewer from "@/components/ImageViewer";
 import MigrationConfirmDialog from "@/components/MigrationConfirmDialog";
 import PasswordDialog from "@/components/PasswordDialog";
+import SidebarHome from "@/components/SidebarHome";
 import SolidArchiveWarningDialog from "@/components/SolidArchiveWarningDialog";
 import WaterfallGrid from "@/components/WaterfallGrid";
 import { usePlatform } from "@/context/PlatformContext";
@@ -187,10 +189,16 @@ export default function HomePage() {
       )}
 
       {showDropZone ? (
-        <DropZone
-          onFoldersSelected={startScan}
-          onArchiveSelected={startArchiveScan}
-        />
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <SidebarHome />
+          <div className="min-w-0 flex-1 overflow-auto">
+            <DropZone
+              onFoldersSelected={startScan}
+              onArchiveSelected={startArchiveScan}
+            />
+            <HomeLibrarySections />
+          </div>
+        </div>
       ) : (
         <>
           <div className="flex items-center gap-1 px-4 py-2">

@@ -77,6 +77,13 @@ export interface ThemeTokenOverrides {
   border?: string;
 }
 
+export interface GallerySourceShortcut {
+  kind: "folder" | "archive";
+  path: string;
+  label: string;
+  lastOpenedAt: string;
+}
+
 export interface Settings {
   formats: string[];
   sortMethod: SortMethod;
@@ -92,6 +99,7 @@ export interface Settings {
   };
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
+  openGallerySidebarByDefault: boolean;
   confirmDelete: boolean;
   showDeleteToast: boolean;
   cacheCleanupStrategy: CacheCleanupStrategy;
@@ -99,6 +107,8 @@ export interface Settings {
   cachePolicy: CachePolicy;
   thumbnailSizes: number[];
   folderThumbnails: FolderThumbnailsMode;
+  recentSources: GallerySourceShortcut[];
+  favoriteSources: GallerySourceShortcut[];
 }
 
 export interface ScanParams {
