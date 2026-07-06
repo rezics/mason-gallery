@@ -1,3 +1,7 @@
 {
-  "appName": "MasonGallery"
+  "appName": "MasonGallery",
+  "goHome": "Go home",
+  "notFoundDescription": "The page you opened does not exist or has moved.",
+  "notFoundRedirect": "Returning to the gallery in {count}s.",
+  "notFoundTitle": "Page not found"
 }

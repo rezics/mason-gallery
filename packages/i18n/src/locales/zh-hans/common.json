@@ -1,3 +1,7 @@
 {
-  "appName": "MasonGallery"
+  "appName": "MasonGallery",
+  "goHome": "返回首页",
+  "notFoundDescription": "你打开的页面不存在，或者已经被移动。",
+  "notFoundRedirect": "{count} 秒后自动回到图库。",
+  "notFoundTitle": "页面未找到"
 }

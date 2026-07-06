@@ -1,3 +1,7 @@
 {
-  "appName": "MasonGallery"
+  "appName": "MasonGallery",
+  "goHome": "ホームへ戻る",
+  "notFoundDescription": "開いたページは存在しないか、移動されました。",
+  "notFoundRedirect": "{count}秒後にギャラリーへ戻ります。",
+  "notFoundTitle": "ページが見つかりません"
 }

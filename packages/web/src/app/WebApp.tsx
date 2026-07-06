@@ -11,6 +11,7 @@ import {
   useViewerStore,
 } from "@mason-gallery/core";
 import {
+  AlertTriangle,
   Github,
   Home,
   Info,
@@ -20,7 +21,7 @@ import {
   Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Route, Router, Switch, useLocation } from "wouter";
 import { WebGalleryPage } from "../features/gallery/WebGalleryPage";
 import {
@@ -30,6 +31,7 @@ import {
 import { WebSettingsPage } from "../features/settings/WebSettingsPage";
 
 const GITHUB_URL = "https://github.com/Edge-coordinates/mason-gallery";
+const NOT_FOUND_REDIRECT_SECONDS = 5;
 
 function WebHeaderButton({
   title,
@@ -171,7 +173,12 @@ function WebAboutPage() {
 }
 
 function LocaleGalleryRoute() {
-  return <WebGalleryPage />;
+  const [location] = useLocation();
+  return getWebLocaleFromPathname(location) ? (
+    <WebGalleryPage />
+  ) : (
+    <WebNotFoundPage />
+  );
 }
 
 function LocaleAboutRoute() {
@@ -179,7 +186,53 @@ function LocaleAboutRoute() {
   return getWebLocaleFromPathname(location) ? (
     <WebAboutPage />
   ) : (
-    <WebGalleryPage />
+    <WebNotFoundPage />
+  );
+}
+
+function WebNotFoundPage() {
+  const t = useI18n();
+  const [, navigate] = useLocation();
+  const [remaining, setRemaining] = useState(NOT_FOUND_REDIRECT_SECONDS);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setRemaining((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (remaining === 0) {
+      navigate("/");
+    }
+  }, [navigate, remaining]);
+
+  return (
+    <div className="flex h-full items-center justify-center bg-background px-6 text-foreground">
+      <section className="mx-auto flex max-w-md flex-col items-center text-center">
+        <div className="mb-6 flex size-14 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground">
+          <AlertTriangle className="size-7" />
+        </div>
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+          404
+        </p>
+        <h1 className="mt-3 text-3xl font-semibold leading-tight">
+          {t("common:notFoundTitle")}
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          {t("common:notFoundDescription")}
+        </p>
+        <p className="mt-6 text-sm text-muted-foreground">
+          {t("common:notFoundRedirect", { count: remaining })}
+        </p>
+        <Button type="button" className="mt-6" onClick={() => navigate("/")}>
+          <Home />
+          {t("common:goHome")}
+        </Button>
+      </section>
+    </div>
   );
 }
 
@@ -222,7 +275,7 @@ export function WebApp() {
             <Route path="/:locale" component={LocaleGalleryRoute} />
             <Route path="/:locale/" component={LocaleGalleryRoute} />
             <Route>
-              <WebGalleryPage />
+              <WebNotFoundPage />
             </Route>
           </Switch>
         </main>

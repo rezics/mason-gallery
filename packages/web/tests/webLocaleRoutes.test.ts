@@ -9,6 +9,8 @@ describe("web locale routes", () => {
   test("reads supported locale prefixes from entry and about URLs", () => {
     expect(getWebLocaleFromPathname("/zh-hant/")).toBe("zh-hant");
     expect(getWebLocaleFromPathname("/ja/about")).toBe("ja");
+    expect(getWebLocaleFromPathname("/jp")).toBeUndefined();
+    expect(getWebLocaleFromPathname("/jpfdsfadfasf")).toBeUndefined();
     expect(getWebLocaleFromPathname("/settings/gallery")).toBeUndefined();
   });
 
