@@ -15,11 +15,11 @@
   "addFavorite": "Add to favorites",
   "removeFavorite": "Remove from favorites",
   "webOpenFolder": "Open folder",
-  "webEmptyTitle": "Your gallery is empty",
-  "webDropHint": "We'll scan it and show your images",
+  "webEmptyTitle": "Masonry image viewer",
+  "webDropHint": "We'll scan it and arrange your images in a masonry layout",
   "webPrivacy": "Your files stay on your device. Nothing is uploaded.",
   "webDropDivider": "or",
   "webDropTitle": "Drop a folder anywhere",
-  "webEmptyHint": "Open a folder or drop one here to start browsing your photos.",
+  "webEmptyHint": "Open a folder or drop one here to browse your images in a fast waterfall grid.",
   "webBackHome": "Back home"
 }

@@ -5,11 +5,11 @@ describe("i18n runtime", () => {
   test("resolves Chinese locale resource keys instead of falling back to English", async () => {
     await i18n.changeLanguage("zh-hant");
     expect(i18n.resolvedLanguage).toBe("zh-hant");
-    expect(i18n.t("home:webEmptyTitle")).toBe("圖庫是空的");
+    expect(i18n.t("home:webEmptyTitle")).toBe("瀑布流圖片檢視器");
     expect(i18n.t("settings:preferences")).toBe("偏好設定");
 
     await i18n.changeLanguage("zh-hans");
     expect(i18n.resolvedLanguage).toBe("zh-hans");
-    expect(i18n.t("home:webEmptyTitle")).toBe("图库为空");
+    expect(i18n.t("home:webEmptyTitle")).toBe("瀑布流图片查看器");
   });
 });
