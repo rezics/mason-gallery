@@ -12,7 +12,7 @@ export default function AboutPage() {
         <h1 className="text-2xl font-semibold">{t("about:title")}</h1>
         <p className="mt-3 text-muted-foreground">{t("about:description")}</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {t("about:version")}: 2.0.0
+          {t("about:version")}: 2.1.0
         </p>
         <div className="mt-6 flex justify-center gap-2">
           <BackButton variant="outline" />
