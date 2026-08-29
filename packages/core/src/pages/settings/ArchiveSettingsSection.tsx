@@ -44,7 +44,6 @@ export function ArchiveSettingsSection({
           }
         >
           <option value="none">{t("archive:dontSave")}</option>
-          <option value="plaintext">{t("archive:plaintext")}</option>
           <option value="master">{t("archive:masterPassword")}</option>
         </Select>
       </SettingsField>

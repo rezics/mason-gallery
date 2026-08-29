@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createDefaultSettings } from "../src/persistence/settingsSchema";
 import type { PlatformService } from "../src/types/platform";
 
 const webLikePlatform = {
@@ -16,7 +17,7 @@ const webLikePlatform = {
   getThumbUrl: () => "",
   pickFolders: async () => null,
   onDragDrop: () => () => {},
-  loadSettings: async () => ({}),
+  loadSettings: async () => createDefaultSettings(),
   saveSettings: async () => {},
   listDirectoryTree: async () => [],
 } satisfies PlatformService;

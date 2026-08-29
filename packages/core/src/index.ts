@@ -27,6 +27,15 @@ export {
   startScan,
 } from "./lib/scanActions";
 export { useCoreRuntime } from "./lib/useCoreRuntime";
+export type { SettingsEnvelope } from "./persistence/settingsSchema";
+export {
+  createDefaultSettings,
+  createSettingsEnvelope,
+  migrateSettingsEnvelope,
+  SETTINGS_SCHEMA_VERSION,
+  settingsEnvelopeSchema,
+  settingsSchema,
+} from "./persistence/settingsSchema";
 export { useSettingsStore } from "./stores/settingsStore";
 export type {
   ColumnBreakpoints,

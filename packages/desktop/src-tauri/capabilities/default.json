@@ -13,9 +13,9 @@
     "core:webview:default",
     "dialog:default",
     "fs:default",
-    "store:default",
     "opener:default",
     "process:default",
+    "stronghold:default",
     "updater:default"
   ]
 }

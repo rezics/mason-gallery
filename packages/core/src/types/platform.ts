@@ -105,7 +105,6 @@ export interface Settings {
   cacheCleanupStrategy: CacheCleanupStrategy;
   passwordStorageMode: PasswordStorageMode;
   cachePolicy: CachePolicy;
-  thumbnailSizes: number[];
   folderThumbnails: FolderThumbnailsMode;
   recentSources: GallerySourceShortcut[];
   favoriteSources: GallerySourceShortcut[];
@@ -166,7 +165,7 @@ export interface PlatformCapabilities {
   canBrowseArchives: boolean;
 }
 
-export type PasswordStorageMode = "none" | "plaintext" | "master";
+export type PasswordStorageMode = "none" | "master";
 export type CacheCleanupStrategy = "auto-clean" | "keep-all";
 
 export interface ArchiveInfo {
@@ -234,9 +233,9 @@ export interface PlatformService {
 
   onDragDrop(callback: (paths: string[]) => void): () => void;
 
-  loadSettings(): Promise<Partial<Settings>>;
+  loadSettings(): Promise<Settings>;
 
-  saveSettings(key: string, value: unknown): Promise<void>;
+  saveSettings(settings: Settings): Promise<void>;
 
   listDirectoryTree(paths: string[]): Promise<string[]>;
 

@@ -42,10 +42,17 @@ Development requires [Go Task](https://taskfile.dev/installation/). Desktop deve
 ### Platform Abstraction
 
 The core pattern is a `PlatformService` interface (`core/src/types/platform.ts`) that abstracts file system access, image scanning, settings persistence, and platform capabilities. Each target implements it:
-- **Desktop**: `TauriPlatformService` — native file access via Tauri plugins, settings via `@tauri-apps/plugin-store`
-- **Web**: `WebPlatformService` — File System Access API, blob URLs, localStorage
+- **Desktop**: `TauriPlatformService` — native file access via Tauri plugins, durable settings through Rust/SQLite, archive secrets through Tauri Stronghold
+- **Web**: `WebPlatformService` — File System Access API, blob URLs, disposable Dexie/IndexedDB persistence
 
 Entry points (`desktop/src/main.tsx`, `web/src/main.tsx`) create the appropriate service and pass it into the shared `Shell` component from core.
+
+### Persistence Lifecycles
+
+- Shared settings use the strict Zod schema and versioned envelope in `core/src/persistence/settingsSchema.ts`. Platforms load and save one complete document; Zustand remains runtime state only.
+- Desktop durable data lives in `library.db` under Tauri's app-data directory. Desktop cache metadata lives in a separate `cache.db` under Tauri's app-cache directory. Both use ordered `rusqlite_migration` SQL files; only the cache database may be rebuilt automatically.
+- Source pinning and per-source policy overrides are durable even when cache rows are discarded. Archive passwords never enter SQLite: `library.db` stores only Stronghold vault-key references.
+- Web settings and File System Access directory handles live in Dexie/IndexedDB. The web database is intentionally best-effort and is rebuilt wholesale when its schema or data is incompatible.
 
 ### Rust Backend (Desktop)
 
@@ -57,7 +64,7 @@ Entry points (`desktop/src/main.tsx`, `web/src/main.tsx`) create the appropriate
 
 Zustand stores in `core/src/stores/`:
 - `useAppStore` — folder selection, UI toggles
-- `useSettingsStore` — image formats, sort method, language, column breakpoints (persisted via platform service)
+- `useSettingsStore` — image formats, sort method, language, column breakpoints (persisted as one validated document via the platform service)
 - `useViewerStore` — current image batch and viewer state
 
 ### Routing

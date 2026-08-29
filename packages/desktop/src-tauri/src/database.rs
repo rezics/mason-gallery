@@ -1,212 +1,396 @@
-use rusqlite::{params, Connection};
-use std::path::Path;
+use rusqlite::{params, Connection, OptionalExtension, MAIN_DB};
+use rusqlite_migration::{Migrations, M};
+use std::collections::HashMap;
+use std::fs;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub const SCHEMA_VERSION: i32 = 2;
+pub const DURABLE_SCHEMA_VERSION: usize = 1;
+pub const CACHE_SCHEMA_VERSION: usize = 1;
+
+const CACHE_SOURCE_COLUMNS: &str =
+    "id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, entry_count, thumb_cache_size, extracted_cache_size, last_accessed";
+
+fn durable_migrations() -> Migrations<'static> {
+    Migrations::new(vec![M::up(include_str!(
+        "migrations/durable/0001_initial.sql"
+    ))])
+}
+
+fn cache_migrations() -> Migrations<'static> {
+    Migrations::new(vec![M::up(include_str!(
+        "migrations/cache/0001_initial.sql"
+    ))])
+}
 
 pub struct Database {
-    conn: Mutex<Connection>,
+    durable_conn: Mutex<Connection>,
+    cache_conn: Mutex<Connection>,
 }
 
 impl Database {
-    /// Open or create the cache database at `<cache_dir>/cache.db`.
+    /// Opens two databases with deliberately different lifecycles.
     ///
-    /// Detects pre-v2 schemas (an `archives` table left over from
-    /// archive-browsing) and wipes the entire cache directory before
-    /// recreating the database on a clean slate. Safe because archive-browsing
-    /// never shipped to end users.
-    pub fn new(cache_dir: &Path) -> Result<Self, String> {
-        std::fs::create_dir_all(cache_dir)
-            .map_err(|e| format!("Failed to create cache dir: {}", e))?;
+    /// `library.db` lives in app data and is never rebuilt automatically.
+    /// `cache.db` lives in the OS cache directory and is safe to recreate.
+    pub fn new(data_dir: &Path, cache_dir: &Path) -> Result<Self, String> {
+        fs::create_dir_all(data_dir)
+            .map_err(|e| format!("Failed to create app data directory: {e}"))?;
+        fs::create_dir_all(cache_dir)
+            .map_err(|e| format!("Failed to create cache directory: {e}"))?;
 
-        let db_path = cache_dir.join("cache.db");
+        let durable_path = data_dir.join("library.db");
+        let cache_path = cache_dir.join("cache.db");
+        let durable_conn = Self::open_durable_database(&durable_path)?;
+        let cache_conn = Self::open_cache_database(cache_dir, &cache_path)?;
 
-        if Self::needs_wipe(&db_path)? {
-            // Close any stray handles by scoping-only open, then wipe.
-            // SQLite isn't strictly required to be closed on Windows before
-            // deletion, but we drop any ephemeral connection that was opened
-            // during needs_wipe above (which returns before opening one).
-            let _ = std::fs::remove_dir_all(cache_dir);
-            std::fs::create_dir_all(cache_dir)
-                .map_err(|e| format!("Failed to recreate cache dir: {}", e))?;
-            eprintln!(
-                "[mason-gallery] Legacy archive-cache schema detected; cache directory wiped."
-            );
-        }
-
-        let conn =
-            Connection::open(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
-
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
-            .map_err(|e| format!("Failed to set pragmas: {}", e))?;
-
-        Self::initialize_tables(&conn)?;
+        // The application has not shipped with the old persistence model, so
+        // remove its exact artifacts after the new stores are known-good.
+        Self::remove_legacy_storage(data_dir, cache_dir, &cache_path)?;
 
         Ok(Self {
-            conn: Mutex::new(conn),
+            durable_conn: Mutex::new(durable_conn),
+            cache_conn: Mutex::new(cache_conn),
         })
     }
 
-    fn needs_wipe(db_path: &Path) -> Result<bool, String> {
-        if !db_path.exists() {
-            return Ok(false);
+    fn open_durable_database(db_path: &Path) -> Result<Connection, String> {
+        let existed = db_path.exists();
+        let mut conn = Connection::open(db_path)
+            .map_err(|e| format!("Failed to open durable database: {e}"))?;
+        Self::configure_connection(&conn, true)?;
+
+        let migrations = durable_migrations();
+        migrations
+            .validate()
+            .map_err(|e| format!("Invalid durable migration set: {e}"))?;
+        let pending = migrations
+            .pending_migrations(&conn)
+            .map_err(|e| format!("Failed to inspect durable migrations: {e}"))?;
+
+        if existed && pending != 0 {
+            let stamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis();
+            let backup_path = db_path.with_file_name(format!("library-{stamp}.backup.db"));
+            conn.backup(MAIN_DB, &backup_path, None)
+                .map_err(|e| format!("Failed to back up durable database: {e}"))?;
+            eprintln!(
+                "[mason-gallery] Durable database backed up before migration: {}",
+                backup_path.display()
+            );
         }
-        let conn = Connection::open(db_path).map_err(|e| format!("Failed to probe db: {}", e))?;
 
-        // Legacy schema indicator: presence of `archives` table.
-        let archives_exists: bool = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='archives'",
-                [],
-                |row| Ok(row.get::<_, i64>(0)? > 0),
-            )
-            .map_err(|e| format!("Failed to probe schema: {}", e))?;
-
-        Ok(archives_exists)
+        migrations
+            .to_latest(&mut conn)
+            .map_err(|e| format!("Failed to migrate durable database: {e}"))?;
+        Ok(conn)
     }
 
-    fn initialize_tables(conn: &Connection) -> Result<(), String> {
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS schema_meta (
-                version INTEGER PRIMARY KEY
-            );
+    fn open_cache_database(cache_dir: &Path, db_path: &Path) -> Result<Connection, String> {
+        match Self::try_open_cache_database(db_path) {
+            Ok(conn) => Ok(conn),
+            Err(first_error) => {
+                Self::reset_cache_storage(cache_dir, db_path)?;
+                eprintln!(
+                    "[mason-gallery] Disposable cache database rebuilt after migration/open error: {first_error}"
+                );
+                Self::try_open_cache_database(db_path).map_err(|second_error| {
+                    format!(
+                        "Failed to rebuild cache database after '{first_error}': {second_error}"
+                    )
+                })
+            }
+        }
+    }
 
-            CREATE TABLE IF NOT EXISTS sources (
-                id                    INTEGER PRIMARY KEY,
-                kind                  TEXT    NOT NULL CHECK(kind IN ('archive','folder')),
-                origin_path           TEXT    UNIQUE NOT NULL,
-                identity_segment      TEXT    NOT NULL,
-                size_hint             INTEGER,
-                content_hash          TEXT    NOT NULL,
-                is_solid              BOOLEAN DEFAULT FALSE,
-                is_pinned             BOOLEAN DEFAULT FALSE,
-                entry_count           INTEGER,
-                thumb_cache_size      INTEGER DEFAULT 0,
-                extracted_cache_size  INTEGER DEFAULT 0,
-                policy_override       TEXT,
-                last_accessed         TIMESTAMP,
-                created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
+    fn try_open_cache_database(db_path: &Path) -> Result<Connection, String> {
+        let mut conn =
+            Connection::open(db_path).map_err(|e| format!("Failed to open cache database: {e}"))?;
+        Self::configure_connection(&conn, false)?;
 
-            CREATE INDEX IF NOT EXISTS idx_sources_migration
-                ON sources(identity_segment, size_hint);
+        let migrations = cache_migrations();
+        migrations
+            .validate()
+            .map_err(|e| format!("Invalid cache migration set: {e}"))?;
+        migrations
+            .to_latest(&mut conn)
+            .map_err(|e| format!("Failed to migrate cache database: {e}"))?;
+        Ok(conn)
+    }
 
-            CREATE TABLE IF NOT EXISTS thumbnails (
-                id          INTEGER PRIMARY KEY,
-                source_id   INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
-                entry_path  TEXT    NOT NULL,
-                width       INTEGER NOT NULL,
-                height      INTEGER NOT NULL,
-                thumb_path  TEXT    NOT NULL,
-                file_size   INTEGER,
-                UNIQUE(source_id, entry_path, width)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_thumbnails_source_entry
-                ON thumbnails(source_id, entry_path);
-
-            CREATE TABLE IF NOT EXISTS extracted (
-                id            INTEGER PRIMARY KEY,
-                source_id     INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
-                entry_path    TEXT    NOT NULL,
-                extract_path  TEXT    NOT NULL,
-                file_size     INTEGER NOT NULL,
-                last_accessed TIMESTAMP,
-                UNIQUE(source_id, entry_path)
-            );
-
-            CREATE TABLE IF NOT EXISTS passwords (
-                archive_path TEXT PRIMARY KEY,
-                password     TEXT NOT NULL,
-                encrypted    BOOLEAN DEFAULT FALSE
-            );",
-        )
-        .map_err(|e| format!("Failed to create tables: {}", e))?;
-
-        // Record schema version (idempotent: single row enforced by PRIMARY KEY).
-        conn.execute(
-            "INSERT OR REPLACE INTO schema_meta (version) VALUES (?1)",
-            params![SCHEMA_VERSION],
-        )
-        .map_err(|e| format!("Failed to set schema version: {}", e))?;
-
+    fn configure_connection(conn: &Connection, durable: bool) -> Result<(), String> {
+        conn.pragma_update(None, "journal_mode", "WAL")
+            .map_err(|e| format!("Failed to enable WAL: {e}"))?;
+        conn.pragma_update(None, "synchronous", if durable { "FULL" } else { "NORMAL" })
+            .map_err(|e| format!("Failed to configure synchronous mode: {e}"))?;
+        conn.pragma_update(None, "foreign_keys", "ON")
+            .map_err(|e| format!("Failed to enable foreign keys: {e}"))?;
+        conn.busy_timeout(Duration::from_secs(5))
+            .map_err(|e| format!("Failed to configure SQLite busy timeout: {e}"))?;
         Ok(())
     }
 
-    pub fn with_conn<F, T>(&self, f: F) -> Result<T, String>
+    fn sqlite_sidecar(db_path: &Path, suffix: &str) -> PathBuf {
+        let mut path = db_path.as_os_str().to_os_string();
+        path.push(suffix);
+        PathBuf::from(path)
+    }
+
+    fn remove_file_if_present(path: &Path) -> Result<(), String> {
+        match fs::remove_file(path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(format!("Failed to remove {}: {error}", path.display())),
+        }
+    }
+
+    fn remove_dir_if_present(path: &Path) -> Result<(), String> {
+        match fs::remove_dir_all(path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(format!("Failed to remove {}: {error}", path.display())),
+        }
+    }
+
+    fn remove_sqlite_files(db_path: &Path) -> Result<(), String> {
+        Self::remove_file_if_present(db_path)?;
+        Self::remove_file_if_present(&Self::sqlite_sidecar(db_path, "-wal"))?;
+        Self::remove_file_if_present(&Self::sqlite_sidecar(db_path, "-shm"))?;
+        Ok(())
+    }
+
+    fn reset_cache_storage(cache_dir: &Path, db_path: &Path) -> Result<(), String> {
+        if db_path.parent() != Some(cache_dir) {
+            return Err(format!(
+                "Refusing to reset cache database outside {}",
+                cache_dir.display()
+            ));
+        }
+        Self::remove_sqlite_files(db_path)?;
+
+        for child in ["thumbs", "extracted"] {
+            let target = cache_dir.join(child);
+            if target.parent() != Some(cache_dir) {
+                return Err(format!(
+                    "Refusing to reset cache path outside {}",
+                    cache_dir.display()
+                ));
+            }
+            Self::remove_dir_if_present(&target)?;
+        }
+        Ok(())
+    }
+
+    fn remove_legacy_storage(
+        data_dir: &Path,
+        cache_dir: &Path,
+        cache_path: &Path,
+    ) -> Result<(), String> {
+        let legacy_db = data_dir.join("cache.db");
+        if legacy_db != cache_path {
+            Self::remove_sqlite_files(&legacy_db)?;
+        }
+        Self::remove_file_if_present(&data_dir.join("settings.json"))?;
+
+        let legacy_cache_dir = data_dir.join("archive-cache");
+        if legacy_cache_dir != cache_dir && legacy_cache_dir.parent() == Some(data_dir) {
+            Self::remove_dir_if_present(&legacy_cache_dir)?;
+        }
+        Ok(())
+    }
+
+    fn with_durable_conn<F, T>(&self, f: F) -> Result<T, String>
     where
         F: FnOnce(&Connection) -> Result<T, rusqlite::Error>,
     {
-        let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
-        f(&conn).map_err(|e| format!("Database error: {}", e))
+        let conn = self
+            .durable_conn
+            .lock()
+            .map_err(|e| format!("Durable database lock error: {e}"))?;
+        f(&conn).map_err(|e| format!("Durable database error: {e}"))
     }
 
-    // ---- Source operations ----
+    fn with_durable_conn_mut<F, T>(&self, f: F) -> Result<T, String>
+    where
+        F: FnOnce(&mut Connection) -> Result<T, rusqlite::Error>,
+    {
+        let mut conn = self
+            .durable_conn
+            .lock()
+            .map_err(|e| format!("Durable database lock error: {e}"))?;
+        f(&mut conn).map_err(|e| format!("Durable database error: {e}"))
+    }
+
+    fn with_cache_conn<F, T>(&self, f: F) -> Result<T, String>
+    where
+        F: FnOnce(&Connection) -> Result<T, rusqlite::Error>,
+    {
+        let conn = self
+            .cache_conn
+            .lock()
+            .map_err(|e| format!("Cache database lock error: {e}"))?;
+        f(&conn).map_err(|e| format!("Cache database error: {e}"))
+    }
+
+    fn with_cache_conn_mut<F, T>(&self, f: F) -> Result<T, String>
+    where
+        F: FnOnce(&mut Connection) -> Result<T, rusqlite::Error>,
+    {
+        let mut conn = self
+            .cache_conn
+            .lock()
+            .map_err(|e| format!("Cache database lock error: {e}"))?;
+        f(&mut conn).map_err(|e| format!("Cache database error: {e}"))
+    }
+
+    // ---- Durable settings document ----
+
+    pub fn load_settings_document(&self) -> Result<Option<String>, String> {
+        self.with_durable_conn(|conn| {
+            conn.query_row(
+                "SELECT payload FROM settings_documents WHERE id = 1",
+                [],
+                |row| row.get(0),
+            )
+            .optional()
+        })
+    }
+
+    pub fn save_settings_document(
+        &self,
+        schema_version: i64,
+        document: &str,
+    ) -> Result<(), String> {
+        self.with_durable_conn(|conn| {
+            conn.execute(
+                "INSERT INTO settings_documents (id, schema_version, payload, updated_at)
+                 VALUES (1, ?1, ?2, CURRENT_TIMESTAMP)
+                 ON CONFLICT(id) DO UPDATE SET
+                    schema_version = excluded.schema_version,
+                    payload = excluded.payload,
+                    updated_at = CURRENT_TIMESTAMP",
+                params![schema_version, document],
+            )?;
+            Ok(())
+        })
+    }
+
+    // ---- Cache source operations + durable source preferences ----
+
+    fn get_source_preference(&self, origin_path: &str) -> Result<SourcePreference, String> {
+        self.with_durable_conn(|conn| {
+            conn.query_row(
+                "SELECT is_pinned, policy_override
+                 FROM source_preferences WHERE origin_path = ?1",
+                params![origin_path],
+                |row| {
+                    Ok(SourcePreference {
+                        is_pinned: row.get::<_, i64>(0)? != 0,
+                        policy_override: row.get(1)?,
+                    })
+                },
+            )
+            .optional()
+            .map(|value| value.unwrap_or_default())
+        })
+    }
+
+    fn get_all_source_preferences(&self) -> Result<HashMap<String, SourcePreference>, String> {
+        self.with_durable_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT origin_path, is_pinned, policy_override FROM source_preferences",
+            )?;
+            let rows = stmt.query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    SourcePreference {
+                        is_pinned: row.get::<_, i64>(1)? != 0,
+                        policy_override: row.get(2)?,
+                    },
+                ))
+            })?;
+            rows.collect::<Result<HashMap<_, _>, _>>()
+        })
+    }
+
+    fn enrich_source(&self, cached: CachedSourceRecord) -> Result<SourceRecord, String> {
+        let preference = self.get_source_preference(&cached.origin_path)?;
+        Ok(cached.with_preference(preference))
+    }
+
+    fn enrich_sources(&self, cached: Vec<CachedSourceRecord>) -> Result<Vec<SourceRecord>, String> {
+        let preferences = self.get_all_source_preferences()?;
+        Ok(cached
+            .into_iter()
+            .map(|record| {
+                let preference = preferences
+                    .get(&record.origin_path)
+                    .cloned()
+                    .unwrap_or_default();
+                record.with_preference(preference)
+            })
+            .collect())
+    }
+
+    fn get_cached_source_by_id(&self, id: i64) -> Result<Option<CachedSourceRecord>, String> {
+        self.with_cache_conn(|conn| {
+            let sql = format!("SELECT {CACHE_SOURCE_COLUMNS} FROM sources WHERE id = ?1");
+            conn.query_row(&sql, params![id], row_to_cached_source)
+                .optional()
+        })
+    }
 
     pub fn get_source_by_path(&self, origin_path: &str) -> Result<Option<SourceRecord>, String> {
-        self.with_conn(|conn| {
-            let mut stmt = conn.prepare(
-                "SELECT id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, is_pinned, entry_count, thumb_cache_size, extracted_cache_size, policy_override, last_accessed
-                 FROM sources WHERE origin_path = ?1",
-            )?;
-            let result = stmt.query_row(params![origin_path], row_to_source);
-            match result {
-                Ok(rec) => Ok(Some(rec)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e),
-            }
-        })
+        let cached = self.with_cache_conn(|conn| {
+            let sql = format!("SELECT {CACHE_SOURCE_COLUMNS} FROM sources WHERE origin_path = ?1");
+            conn.query_row(&sql, params![origin_path], row_to_cached_source)
+                .optional()
+        })?;
+        cached.map(|record| self.enrich_source(record)).transpose()
     }
 
     pub fn get_source_by_id(&self, id: i64) -> Result<Option<SourceRecord>, String> {
-        self.with_conn(|conn| {
-            let mut stmt = conn.prepare(
-                "SELECT id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, is_pinned, entry_count, thumb_cache_size, extracted_cache_size, policy_override, last_accessed
-                 FROM sources WHERE id = ?1",
-            )?;
-            let result = stmt.query_row(params![id], row_to_source);
-            match result {
-                Ok(rec) => Ok(Some(rec)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e),
-            }
-        })
+        self.get_cached_source_by_id(id)?
+            .map(|record| self.enrich_source(record))
+            .transpose()
     }
 
-    pub fn upsert_source(&self, params: &UpsertSourceParams<'_>) -> Result<i64, String> {
-        self.with_conn(|conn| {
+    pub fn upsert_source(&self, source: &UpsertSourceParams<'_>) -> Result<i64, String> {
+        self.with_cache_conn(|conn| {
             conn.execute(
                 "INSERT INTO sources (kind, origin_path, identity_segment, size_hint, content_hash, is_solid, entry_count, last_accessed)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP)
                  ON CONFLICT(origin_path) DO UPDATE SET
                     identity_segment = excluded.identity_segment,
-                    size_hint        = excluded.size_hint,
-                    content_hash     = excluded.content_hash,
-                    is_solid         = excluded.is_solid,
-                    entry_count      = excluded.entry_count,
-                    last_accessed    = CURRENT_TIMESTAMP",
-                rusqlite::params![
-                    params.kind,
-                    params.origin_path,
-                    params.identity_segment,
-                    params.size_hint,
-                    params.content_hash,
-                    params.is_solid,
-                    params.entry_count,
+                    size_hint = excluded.size_hint,
+                    content_hash = excluded.content_hash,
+                    is_solid = excluded.is_solid,
+                    entry_count = excluded.entry_count,
+                    last_accessed = CURRENT_TIMESTAMP",
+                params![
+                    source.kind,
+                    source.origin_path,
+                    source.identity_segment,
+                    source.size_hint,
+                    source.content_hash,
+                    source.is_solid,
+                    source.entry_count,
                 ],
             )?;
-            // ON CONFLICT may not update last_insert_rowid — re-query.
-            let id: i64 = conn.query_row(
+            conn.query_row(
                 "SELECT id FROM sources WHERE origin_path = ?1",
-                rusqlite::params![params.origin_path],
+                params![source.origin_path],
                 |row| row.get(0),
-            )?;
-            Ok(id)
+            )
         })
     }
 
     pub fn touch_source(&self, source_id: i64) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
                 "UPDATE sources SET last_accessed = CURRENT_TIMESTAMP WHERE id = ?1",
                 params![source_id],
@@ -216,10 +400,22 @@ impl Database {
     }
 
     pub fn set_source_pinned(&self, source_id: i64, pinned: bool) -> Result<(), String> {
-        self.with_conn(|conn| {
+        let source = self
+            .get_cached_source_by_id(source_id)?
+            .ok_or_else(|| format!("Source {source_id} does not exist"))?;
+        self.with_durable_conn(|conn| {
             conn.execute(
-                "UPDATE sources SET is_pinned = ?1 WHERE id = ?2",
-                params![pinned, source_id],
+                "INSERT INTO source_preferences (origin_path, is_pinned, updated_at)
+                 VALUES (?1, ?2, CURRENT_TIMESTAMP)
+                 ON CONFLICT(origin_path) DO UPDATE SET
+                    is_pinned = excluded.is_pinned,
+                    updated_at = CURRENT_TIMESTAMP",
+                params![source.origin_path, pinned],
+            )?;
+            conn.execute(
+                "DELETE FROM source_preferences
+                 WHERE origin_path = ?1 AND is_pinned = 0 AND policy_override IS NULL",
+                params![source.origin_path],
             )?;
             Ok(())
         })
@@ -230,10 +426,22 @@ impl Database {
         source_id: i64,
         policy_json: Option<&str>,
     ) -> Result<(), String> {
-        self.with_conn(|conn| {
+        let source = self
+            .get_cached_source_by_id(source_id)?
+            .ok_or_else(|| format!("Source {source_id} does not exist"))?;
+        self.with_durable_conn(|conn| {
             conn.execute(
-                "UPDATE sources SET policy_override = ?1 WHERE id = ?2",
-                params![policy_json, source_id],
+                "INSERT INTO source_preferences (origin_path, policy_override, updated_at)
+                 VALUES (?1, ?2, CURRENT_TIMESTAMP)
+                 ON CONFLICT(origin_path) DO UPDATE SET
+                    policy_override = excluded.policy_override,
+                    updated_at = CURRENT_TIMESTAMP",
+                params![source.origin_path, policy_json],
+            )?;
+            conn.execute(
+                "DELETE FROM source_preferences
+                 WHERE origin_path = ?1 AND is_pinned = 0 AND policy_override IS NULL",
+                params![source.origin_path],
             )?;
             Ok(())
         })
@@ -245,17 +453,83 @@ impl Database {
         new_path: &str,
         new_hash: &str,
     ) -> Result<(), String> {
-        self.with_conn(|conn| {
+        let source = self
+            .get_cached_source_by_id(source_id)?
+            .ok_or_else(|| format!("Source {source_id} does not exist"))?;
+        let old_path = source.origin_path;
+        if old_path == new_path {
+            return self.with_cache_conn(|conn| {
+                conn.execute(
+                    "UPDATE sources SET content_hash = ?1, last_accessed = CURRENT_TIMESTAMP WHERE id = ?2",
+                    params![new_hash, source_id],
+                )?;
+                Ok(())
+            });
+        }
+
+        let preference = self.get_source_preference(&old_path)?;
+        let secret_ref = self.get_archive_secret_ref(&old_path)?;
+
+        // Cross-database moves use copy -> cache update -> old-row cleanup.
+        // If the cache update fails, both durable references remain valid and
+        // a retry is safe; durable state is never stranded at the old path.
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            if preference.is_pinned || preference.policy_override.is_some() {
+                tx.execute(
+                    "INSERT INTO source_preferences (origin_path, is_pinned, policy_override, updated_at)
+                     VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP)
+                     ON CONFLICT(origin_path) DO UPDATE SET
+                        is_pinned = CASE
+                            WHEN source_preferences.is_pinned = 1 OR excluded.is_pinned = 1 THEN 1
+                            ELSE 0
+                        END,
+                        policy_override = COALESCE(excluded.policy_override, source_preferences.policy_override),
+                        updated_at = CURRENT_TIMESTAMP",
+                    params![new_path, preference.is_pinned, preference.policy_override],
+                )?;
+            }
+            if let Some(vault_key) = &secret_ref {
+                tx.execute(
+                    "INSERT INTO archive_secret_refs (archive_path, vault_key, updated_at)
+                     VALUES (?1, ?2, CURRENT_TIMESTAMP)
+                     ON CONFLICT(archive_path) DO UPDATE SET
+                        vault_key = excluded.vault_key,
+                        updated_at = CURRENT_TIMESTAMP",
+                    params![new_path, vault_key],
+                )?;
+            }
+            tx.commit()
+        })?;
+
+        self.with_cache_conn(|conn| {
             conn.execute(
-                "UPDATE sources SET origin_path = ?1, content_hash = ?2, last_accessed = CURRENT_TIMESTAMP WHERE id = ?3",
+                "UPDATE sources
+                 SET origin_path = ?1, content_hash = ?2, last_accessed = CURRENT_TIMESTAMP
+                 WHERE id = ?3",
                 params![new_path, new_hash, source_id],
             )?;
             Ok(())
+        })?;
+
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            tx.execute(
+                "DELETE FROM source_preferences WHERE origin_path = ?1",
+                params![old_path],
+            )?;
+            if secret_ref.is_some() {
+                tx.execute(
+                    "DELETE FROM archive_secret_refs WHERE archive_path = ?1",
+                    params![old_path],
+                )?;
+            }
+            tx.commit()
         })
     }
 
     pub fn set_thumb_cache_size(&self, source_id: i64, bytes: i64) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
                 "UPDATE sources SET thumb_cache_size = ?1 WHERE id = ?2",
                 params![bytes, source_id],
@@ -265,7 +539,7 @@ impl Database {
     }
 
     pub fn set_extracted_cache_size(&self, source_id: i64, bytes: i64) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
                 "UPDATE sources SET extracted_cache_size = ?1 WHERE id = ?2",
                 params![bytes, source_id],
@@ -275,45 +549,43 @@ impl Database {
     }
 
     pub fn get_all_sources(&self) -> Result<Vec<SourceRecord>, String> {
-        self.with_conn(|conn| {
-            let mut stmt = conn.prepare(
-                "SELECT id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, is_pinned, entry_count, thumb_cache_size, extracted_cache_size, policy_override, last_accessed
-                 FROM sources ORDER BY last_accessed DESC",
-            )?;
-            let rows = stmt.query_map([], row_to_source)?;
+        let cached = self.with_cache_conn(|conn| {
+            let sql =
+                format!("SELECT {CACHE_SOURCE_COLUMNS} FROM sources ORDER BY last_accessed DESC");
+            let mut stmt = conn.prepare(&sql)?;
+            let rows = stmt.query_map([], row_to_cached_source)?;
             rows.collect::<Result<Vec<_>, _>>()
-        })
+        })?;
+        self.enrich_sources(cached)
     }
 
     pub fn delete_source(&self, source_id: i64) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute("DELETE FROM sources WHERE id = ?1", params![source_id])?;
             Ok(())
         })
     }
 
     pub fn delete_all_sources(&self) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute("DELETE FROM sources", [])?;
             Ok(())
         })
     }
 
     pub fn delete_unpinned_sources(&self) -> Result<Vec<SourceRecord>, String> {
-        let records = self.with_conn(|conn| {
-            let mut stmt = conn.prepare(
-                "SELECT id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, is_pinned, entry_count, thumb_cache_size, extracted_cache_size, policy_override, last_accessed
-                 FROM sources WHERE is_pinned = FALSE",
-            )?;
-            let rows = stmt.query_map([], row_to_source)?;
-            rows.collect::<Result<Vec<_>, _>>()
+        let records: Vec<_> = self
+            .get_all_sources()?
+            .into_iter()
+            .filter(|record| !record.is_pinned)
+            .collect();
+        self.with_cache_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            for record in &records {
+                tx.execute("DELETE FROM sources WHERE id = ?1", params![record.id])?;
+            }
+            tx.commit()
         })?;
-
-        self.with_conn(|conn| {
-            conn.execute("DELETE FROM sources WHERE is_pinned = FALSE", [])?;
-            Ok(())
-        })?;
-
         Ok(records)
     }
 
@@ -322,27 +594,30 @@ impl Database {
         identity_segment: &str,
         size_hint: Option<i64>,
     ) -> Result<Vec<SourceRecord>, String> {
-        self.with_conn(|conn| match size_hint {
+        let cached = self.with_cache_conn(|conn| match size_hint {
             Some(size) => {
-                let mut stmt = conn.prepare(
-                    "SELECT id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, is_pinned, entry_count, thumb_cache_size, extracted_cache_size, policy_override, last_accessed
-                     FROM sources WHERE identity_segment = ?1 AND size_hint = ?2",
-                )?;
-                let rows = stmt.query_map(params![identity_segment, size], row_to_source)?;
+                let sql = format!(
+                    "SELECT {CACHE_SOURCE_COLUMNS} FROM sources
+                     WHERE identity_segment = ?1 AND size_hint = ?2"
+                );
+                let mut stmt = conn.prepare(&sql)?;
+                let rows = stmt.query_map(params![identity_segment, size], row_to_cached_source)?;
                 rows.collect::<Result<Vec<_>, _>>()
             }
             None => {
-                let mut stmt = conn.prepare(
-                    "SELECT id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, is_pinned, entry_count, thumb_cache_size, extracted_cache_size, policy_override, last_accessed
-                     FROM sources WHERE identity_segment = ?1 AND size_hint IS NULL",
-                )?;
-                let rows = stmt.query_map(params![identity_segment], row_to_source)?;
+                let sql = format!(
+                    "SELECT {CACHE_SOURCE_COLUMNS} FROM sources
+                     WHERE identity_segment = ?1 AND size_hint IS NULL"
+                );
+                let mut stmt = conn.prepare(&sql)?;
+                let rows = stmt.query_map(params![identity_segment], row_to_cached_source)?;
                 rows.collect::<Result<Vec<_>, _>>()
             }
-        })
+        })?;
+        self.enrich_sources(cached)
     }
 
-    // ---- Thumbnail operations ----
+    // ---- Disposable thumbnail operations ----
 
     pub fn insert_thumbnail(
         &self,
@@ -353,10 +628,14 @@ impl Database {
         thumb_path: &str,
         file_size: i64,
     ) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
-                "INSERT OR REPLACE INTO thumbnails (source_id, entry_path, width, height, thumb_path, file_size)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO thumbnails (source_id, entry_path, width, height, thumb_path, file_size)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                 ON CONFLICT(source_id, entry_path, width) DO UPDATE SET
+                    height = excluded.height,
+                    thumb_path = excluded.thumb_path,
+                    file_size = excluded.file_size",
                 params![source_id, entry_path, width, height, thumb_path, file_size],
             )?;
             Ok(())
@@ -369,17 +648,14 @@ impl Database {
         entry_path: &str,
         width: u32,
     ) -> Result<Option<ThumbnailRecord>, String> {
-        self.with_conn(|conn| {
-            let mut stmt = conn.prepare(
+        self.with_cache_conn(|conn| {
+            conn.query_row(
                 "SELECT id, source_id, entry_path, width, height, thumb_path, file_size
                  FROM thumbnails WHERE source_id = ?1 AND entry_path = ?2 AND width = ?3",
-            )?;
-            let result = stmt.query_row(params![source_id, entry_path, width], row_to_thumb);
-            match result {
-                Ok(rec) => Ok(Some(rec)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e),
-            }
+                params![source_id, entry_path, width],
+                row_to_thumb,
+            )
+            .optional()
         })
     }
 
@@ -388,7 +664,7 @@ impl Database {
         source_id: i64,
         entry_path: &str,
     ) -> Result<Vec<ThumbnailRecord>, String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             let mut stmt = conn.prepare(
                 "SELECT id, source_id, entry_path, width, height, thumb_path, file_size
                  FROM thumbnails WHERE source_id = ?1 AND entry_path = ?2
@@ -403,7 +679,7 @@ impl Database {
         &self,
         source_id: i64,
     ) -> Result<Vec<ThumbnailRecord>, String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             let mut stmt = conn.prepare(
                 "SELECT id, source_id, entry_path, width, height, thumb_path, file_size
                  FROM thumbnails WHERE source_id = ?1",
@@ -414,7 +690,7 @@ impl Database {
     }
 
     pub fn delete_thumbnails_for_source(&self, source_id: i64) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
                 "DELETE FROM thumbnails WHERE source_id = ?1",
                 params![source_id],
@@ -424,14 +700,14 @@ impl Database {
     }
 
     pub fn delete_all_thumbnails(&self) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute("DELETE FROM thumbnails", [])?;
             conn.execute("UPDATE sources SET thumb_cache_size = 0", [])?;
             Ok(())
         })
     }
 
-    // ---- Extracted operations ----
+    // ---- Disposable extracted-file operations ----
 
     pub fn insert_extracted(
         &self,
@@ -440,10 +716,14 @@ impl Database {
         extract_path: &str,
         file_size: i64,
     ) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
-                "INSERT OR REPLACE INTO extracted (source_id, entry_path, extract_path, file_size, last_accessed)
-                 VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP)",
+                "INSERT INTO extracted (source_id, entry_path, extract_path, file_size, last_accessed)
+                 VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP)
+                 ON CONFLICT(source_id, entry_path) DO UPDATE SET
+                    extract_path = excluded.extract_path,
+                    file_size = excluded.file_size,
+                    last_accessed = CURRENT_TIMESTAMP",
                 params![source_id, entry_path, extract_path, file_size],
             )?;
             Ok(())
@@ -455,24 +735,22 @@ impl Database {
         source_id: i64,
         entry_path: &str,
     ) -> Result<Option<ExtractedRecord>, String> {
-        self.with_conn(|conn| {
-            let mut stmt = conn.prepare(
+        self.with_cache_conn(|conn| {
+            conn.query_row(
                 "SELECT id, source_id, entry_path, extract_path, file_size, last_accessed
                  FROM extracted WHERE source_id = ?1 AND entry_path = ?2",
-            )?;
-            let result = stmt.query_row(params![source_id, entry_path], row_to_extracted);
-            match result {
-                Ok(rec) => Ok(Some(rec)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e),
-            }
+                params![source_id, entry_path],
+                row_to_extracted,
+            )
+            .optional()
         })
     }
 
     pub fn touch_extracted(&self, source_id: i64, entry_path: &str) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
-                "UPDATE extracted SET last_accessed = CURRENT_TIMESTAMP WHERE source_id = ?1 AND entry_path = ?2",
+                "UPDATE extracted SET last_accessed = CURRENT_TIMESTAMP
+                 WHERE source_id = ?1 AND entry_path = ?2",
                 params![source_id, entry_path],
             )?;
             Ok(())
@@ -483,7 +761,7 @@ impl Database {
         &self,
         source_id: i64,
     ) -> Result<Vec<ExtractedRecord>, String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             let mut stmt = conn.prepare(
                 "SELECT id, source_id, entry_path, extract_path, file_size, last_accessed
                  FROM extracted WHERE source_id = ?1 ORDER BY last_accessed ASC",
@@ -494,7 +772,7 @@ impl Database {
     }
 
     pub fn delete_extracted(&self, source_id: i64, entry_path: &str) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
                 "DELETE FROM extracted WHERE source_id = ?1 AND entry_path = ?2",
                 params![source_id, entry_path],
@@ -504,7 +782,7 @@ impl Database {
     }
 
     pub fn delete_extracted_for_source(&self, source_id: i64) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute(
                 "DELETE FROM extracted WHERE source_id = ?1",
                 params![source_id],
@@ -514,102 +792,120 @@ impl Database {
     }
 
     pub fn delete_all_extracted(&self) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_cache_conn(|conn| {
             conn.execute("DELETE FROM extracted", [])?;
             conn.execute("UPDATE sources SET extracted_cache_size = 0", [])?;
             Ok(())
         })
     }
 
-    // ---- Password operations (unchanged schema) ----
+    // ---- Durable references to secrets held by Stronghold ----
 
-    pub fn get_password(&self, archive_path: &str) -> Result<Option<PasswordRecord>, String> {
-        self.with_conn(|conn| {
-            let mut stmt = conn.prepare(
-                "SELECT archive_path, password, encrypted FROM passwords WHERE archive_path = ?1",
-            )?;
-            let result = stmt.query_row(params![archive_path], |row| {
-                Ok(PasswordRecord {
-                    archive_path: row.get(0)?,
-                    password: row.get(1)?,
-                    encrypted: row.get(2)?,
-                })
-            });
-            match result {
-                Ok(rec) => Ok(Some(rec)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e),
-            }
+    pub fn get_archive_secret_ref(&self, archive_path: &str) -> Result<Option<String>, String> {
+        self.with_durable_conn(|conn| {
+            conn.query_row(
+                "SELECT vault_key FROM archive_secret_refs WHERE archive_path = ?1",
+                params![archive_path],
+                |row| row.get(0),
+            )
+            .optional()
         })
     }
 
-    pub fn save_password(
+    pub fn save_archive_secret_ref(
         &self,
         archive_path: &str,
-        password: &str,
-        encrypted: bool,
+        vault_key: &str,
     ) -> Result<(), String> {
-        self.with_conn(|conn| {
+        self.with_durable_conn(|conn| {
             conn.execute(
-                "INSERT OR REPLACE INTO passwords (archive_path, password, encrypted) VALUES (?1, ?2, ?3)",
-                params![archive_path, password, encrypted],
+                "INSERT INTO archive_secret_refs (archive_path, vault_key, updated_at)
+                 VALUES (?1, ?2, CURRENT_TIMESTAMP)
+                 ON CONFLICT(archive_path) DO UPDATE SET
+                    vault_key = excluded.vault_key,
+                    updated_at = CURRENT_TIMESTAMP",
+                params![archive_path, vault_key],
             )?;
             Ok(())
         })
     }
 
-    pub fn delete_password(&self, archive_path: &str) -> Result<(), String> {
-        self.with_conn(|conn| {
+    pub fn delete_archive_secret_ref(&self, archive_path: &str) -> Result<(), String> {
+        self.with_durable_conn(|conn| {
             conn.execute(
-                "DELETE FROM passwords WHERE archive_path = ?1",
+                "DELETE FROM archive_secret_refs WHERE archive_path = ?1",
                 params![archive_path],
             )?;
             Ok(())
         })
     }
 
-    pub fn delete_all_passwords(&self) -> Result<(), String> {
-        self.with_conn(|conn| {
-            conn.execute("DELETE FROM passwords", [])?;
+    pub fn delete_all_archive_secret_refs(&self) -> Result<(), String> {
+        self.with_durable_conn(|conn| {
+            conn.execute("DELETE FROM archive_secret_refs", [])?;
             Ok(())
-        })
-    }
-
-    pub fn get_all_passwords(&self) -> Result<Vec<PasswordRecord>, String> {
-        self.with_conn(|conn| {
-            let mut stmt =
-                conn.prepare("SELECT archive_path, password, encrypted FROM passwords")?;
-            let rows = stmt.query_map([], |row| {
-                Ok(PasswordRecord {
-                    archive_path: row.get(0)?,
-                    password: row.get(1)?,
-                    encrypted: row.get(2)?,
-                })
-            })?;
-            rows.collect::<Result<Vec<_>, _>>()
         })
     }
 }
 
-fn row_to_source(row: &rusqlite::Row) -> rusqlite::Result<SourceRecord> {
-    Ok(SourceRecord {
+#[derive(Debug, Clone, Default)]
+struct SourcePreference {
+    is_pinned: bool,
+    policy_override: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CachedSourceRecord {
+    id: i64,
+    kind: String,
+    origin_path: String,
+    identity_segment: String,
+    size_hint: Option<i64>,
+    content_hash: String,
+    is_solid: bool,
+    entry_count: Option<i64>,
+    thumb_cache_size: i64,
+    extracted_cache_size: i64,
+    last_accessed: Option<String>,
+}
+
+impl CachedSourceRecord {
+    fn with_preference(self, preference: SourcePreference) -> SourceRecord {
+        SourceRecord {
+            id: self.id,
+            kind: self.kind,
+            origin_path: self.origin_path,
+            identity_segment: self.identity_segment,
+            size_hint: self.size_hint,
+            content_hash: self.content_hash,
+            is_solid: self.is_solid,
+            is_pinned: preference.is_pinned,
+            entry_count: self.entry_count,
+            thumb_cache_size: self.thumb_cache_size,
+            extracted_cache_size: self.extracted_cache_size,
+            policy_override: preference.policy_override,
+            last_accessed: self.last_accessed,
+        }
+    }
+}
+
+fn row_to_cached_source(row: &rusqlite::Row<'_>) -> rusqlite::Result<CachedSourceRecord> {
+    Ok(CachedSourceRecord {
         id: row.get(0)?,
         kind: row.get(1)?,
         origin_path: row.get(2)?,
         identity_segment: row.get(3)?,
         size_hint: row.get(4)?,
         content_hash: row.get(5)?,
-        is_solid: row.get(6)?,
-        is_pinned: row.get(7)?,
-        entry_count: row.get(8)?,
-        thumb_cache_size: row.get(9)?,
-        extracted_cache_size: row.get(10)?,
-        policy_override: row.get(11)?,
-        last_accessed: row.get(12)?,
+        is_solid: row.get::<_, i64>(6)? != 0,
+        entry_count: row.get(7)?,
+        thumb_cache_size: row.get(8)?,
+        extracted_cache_size: row.get(9)?,
+        last_accessed: row.get(10)?,
     })
 }
 
-fn row_to_thumb(row: &rusqlite::Row) -> rusqlite::Result<ThumbnailRecord> {
+fn row_to_thumb(row: &rusqlite::Row<'_>) -> rusqlite::Result<ThumbnailRecord> {
     Ok(ThumbnailRecord {
         id: row.get(0)?,
         source_id: row.get(1)?,
@@ -621,7 +917,7 @@ fn row_to_thumb(row: &rusqlite::Row) -> rusqlite::Result<ThumbnailRecord> {
     })
 }
 
-fn row_to_extracted(row: &rusqlite::Row) -> rusqlite::Result<ExtractedRecord> {
+fn row_to_extracted(row: &rusqlite::Row<'_>) -> rusqlite::Result<ExtractedRecord> {
     Ok(ExtractedRecord {
         id: row.get(0)?,
         source_id: row.get(1)?,
@@ -681,232 +977,191 @@ pub struct ExtractedRecord {
     pub last_accessed: Option<String>,
 }
 
-#[derive(Debug, Clone)]
-pub struct PasswordRecord {
-    pub archive_path: String,
-    pub password: String,
-    pub encrypted: bool,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
 
     fn new_db() -> (Database, tempfile::TempDir) {
-        let dir = tempdir().unwrap();
-        let db = Database::new(dir.path()).unwrap();
-        (db, dir)
+        let root = tempdir().unwrap();
+        let db = Database::new(&root.path().join("data"), &root.path().join("cache")).unwrap();
+        (db, root)
+    }
+
+    fn source<'a>(path: &'a str, hash: &'a str) -> UpsertSourceParams<'a> {
+        UpsertSourceParams {
+            kind: "archive",
+            origin_path: path,
+            identity_segment: "pack.zip",
+            size_hint: Some(123),
+            content_hash: hash,
+            is_solid: false,
+            entry_count: Some(4),
+        }
+    }
+
+    #[test]
+    fn creates_versioned_durable_and_cache_schemas() {
+        let (db, _root) = new_db();
+        let durable_version: i64 = db
+            .with_durable_conn(|conn| conn.query_row("PRAGMA user_version", [], |row| row.get(0)))
+            .unwrap();
+        let cache_version: i64 = db
+            .with_cache_conn(|conn| conn.query_row("PRAGMA user_version", [], |row| row.get(0)))
+            .unwrap();
+        assert_eq!(durable_version, DURABLE_SCHEMA_VERSION as i64);
+        assert_eq!(cache_version, CACHE_SCHEMA_VERSION as i64);
     }
 
     #[test]
     fn upsert_and_get_source() {
-        let (db, _tmp) = new_db();
-        let id = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "archive",
-                origin_path: "D:/packs/a.zip",
-                identity_segment: "a.zip",
-                size_hint: Some(123),
-                content_hash: "h1",
-                is_solid: false,
-                entry_count: Some(4),
-            })
-            .unwrap();
-        let rec = db.get_source_by_id(id).unwrap().unwrap();
-        assert_eq!(rec.kind, "archive");
-        assert_eq!(rec.identity_segment, "a.zip");
-        assert_eq!(rec.size_hint, Some(123));
-
-        let by_path = db.get_source_by_path("D:/packs/a.zip").unwrap().unwrap();
-        assert_eq!(by_path.id, id);
+        let (db, _root) = new_db();
+        let id = db.upsert_source(&source("D:/packs/a.zip", "h1")).unwrap();
+        let record = db.get_source_by_id(id).unwrap().unwrap();
+        assert_eq!(record.kind, "archive");
+        assert_eq!(record.identity_segment, "pack.zip");
+        assert_eq!(record.size_hint, Some(123));
+        assert_eq!(
+            db.get_source_by_path("D:/packs/a.zip").unwrap().unwrap().id,
+            id
+        );
     }
 
     #[test]
-    fn folder_source_has_null_size() {
-        let (db, _tmp) = new_db();
-        let id = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "folder",
-                origin_path: "D:/photos",
-                identity_segment: "photos",
-                size_hint: None,
-                content_hash: "fh1",
-                is_solid: false,
-                entry_count: None,
-            })
+    fn source_preferences_are_durable() {
+        let (db, root) = new_db();
+        let path = "D:/packs/preferred.zip";
+        let id = db.upsert_source(&source(path, "h1")).unwrap();
+        db.set_source_pinned(id, true).unwrap();
+        db.set_source_policy(id, Some(r#"{"extracted":{"mode":"no-cache"}}"#))
             .unwrap();
-        let rec = db.get_source_by_id(id).unwrap().unwrap();
-        assert!(rec.size_hint.is_none());
-        assert_eq!(rec.kind, "folder");
+        db.save_settings_document(1, r#"{"version":1,"settings":{}}"#)
+            .unwrap();
+        db.save_archive_secret_ref(path, "vault-key").unwrap();
+        drop(db);
+
+        let cache_dir = root.path().join("cache");
+        Database::reset_cache_storage(&cache_dir, &cache_dir.join("cache.db")).unwrap();
+        let reopened = Database::new(&root.path().join("data"), &cache_dir).unwrap();
+        assert!(reopened.get_all_sources().unwrap().is_empty());
+
+        let new_id = reopened.upsert_source(&source(path, "h2")).unwrap();
+        let record = reopened.get_source_by_id(new_id).unwrap().unwrap();
+        assert!(record.is_pinned);
+        assert!(record.policy_override.is_some());
+        assert!(reopened.load_settings_document().unwrap().is_some());
+        assert_eq!(
+            reopened.get_archive_secret_ref(path).unwrap().as_deref(),
+            Some("vault-key")
+        );
     }
 
     #[test]
-    fn upsert_source_twice_updates() {
-        let (db, _tmp) = new_db();
-        let id1 = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "archive",
-                origin_path: "D:/p.zip",
-                identity_segment: "p.zip",
-                size_hint: Some(100),
-                content_hash: "h1",
-                is_solid: false,
-                entry_count: Some(1),
+    fn unknown_cache_schema_is_rebuilt() {
+        let root = tempdir().unwrap();
+        let cache_dir = root.path().join("cache");
+        fs::create_dir_all(&cache_dir).unwrap();
+        let conn = Connection::open(cache_dir.join("cache.db")).unwrap();
+        conn.execute_batch("CREATE TABLE obsolete(value TEXT); PRAGMA user_version = 99;")
+            .unwrap();
+        drop(conn);
+
+        let db = Database::new(&root.path().join("data"), &cache_dir).unwrap();
+        let obsolete_exists: i64 = db
+            .with_cache_conn(|conn| {
+                conn.query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'obsolete'",
+                    [],
+                    |row| row.get(0),
+                )
             })
             .unwrap();
-        let id2 = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "archive",
-                origin_path: "D:/p.zip",
-                identity_segment: "p.zip",
-                size_hint: Some(200),
-                content_hash: "h2",
-                is_solid: true,
-                entry_count: Some(2),
-            })
+        assert_eq!(obsolete_exists, 0);
+    }
+
+    #[test]
+    fn durable_database_ahead_is_preserved() {
+        let root = tempdir().unwrap();
+        let data_dir = root.path().join("data");
+        let cache_dir = root.path().join("cache");
+        fs::create_dir_all(&data_dir).unwrap();
+        let conn = Connection::open(data_dir.join("library.db")).unwrap();
+        conn.execute_batch("CREATE TABLE sentinel(value TEXT); PRAGMA user_version = 99;")
             .unwrap();
-        assert_eq!(id1, id2);
-        let rec = db.get_source_by_id(id1).unwrap().unwrap();
-        assert_eq!(rec.size_hint, Some(200));
-        assert!(rec.is_solid);
+        conn.execute("INSERT INTO sentinel(value) VALUES ('keep-me')", [])
+            .unwrap();
+        drop(conn);
+
+        assert!(Database::new(&data_dir, &cache_dir).is_err());
+        let conn = Connection::open(data_dir.join("library.db")).unwrap();
+        let value: String = conn
+            .query_row("SELECT value FROM sentinel", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(value, "keep-me");
     }
 
     #[test]
     fn thumbnail_multi_width() {
-        let (db, _tmp) = new_db();
-        let sid = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "archive",
-                origin_path: "D:/a.zip",
-                identity_segment: "a.zip",
-                size_hint: Some(1),
-                content_hash: "h",
-                is_solid: false,
-                entry_count: Some(1),
-            })
+        let (db, _root) = new_db();
+        let id = db.upsert_source(&source("D:/a.zip", "h")).unwrap();
+        db.insert_thumbnail(id, "a/b.jpg", 400, 300, "thumbs/h/x_400.webp", 10)
             .unwrap();
-        db.insert_thumbnail(sid, "a/b.jpg", 400, 300, "thumbs/h/x_400.webp", 10)
+        db.insert_thumbnail(id, "a/b.jpg", 800, 600, "thumbs/h/x_800.webp", 20)
             .unwrap();
-        db.insert_thumbnail(sid, "a/b.jpg", 800, 600, "thumbs/h/x_800.webp", 20)
-            .unwrap();
-        let all = db.get_thumbnails_by_entry(sid, "a/b.jpg").unwrap();
+        let all = db.get_thumbnails_by_entry(id, "a/b.jpg").unwrap();
         assert_eq!(all.len(), 2);
         assert_eq!(all[0].width, 400);
         assert_eq!(all[1].width, 800);
     }
 
     #[test]
-    fn extracted_crud() {
-        let (db, _tmp) = new_db();
-        let sid = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "archive",
-                origin_path: "D:/e.zip",
-                identity_segment: "e.zip",
-                size_hint: Some(1),
-                content_hash: "h",
-                is_solid: false,
-                entry_count: Some(1),
-            })
+    fn extracted_crud_and_cascading_delete() {
+        let (db, _root) = new_db();
+        let id = db.upsert_source(&source("D:/e.zip", "h")).unwrap();
+        db.insert_thumbnail(id, "e/x.jpg", 400, 300, "thumb", 10)
             .unwrap();
-        db.insert_extracted(sid, "e/x.jpg", "extracted/h/x.jpg", 1024)
+        db.insert_extracted(id, "e/x.jpg", "extracted/h/x.jpg", 1024)
             .unwrap();
-        let rec = db.get_extracted(sid, "e/x.jpg").unwrap().unwrap();
-        assert_eq!(rec.file_size, 1024);
-        db.touch_extracted(sid, "e/x.jpg").unwrap();
-        db.delete_extracted(sid, "e/x.jpg").unwrap();
-        assert!(db.get_extracted(sid, "e/x.jpg").unwrap().is_none());
+        assert_eq!(
+            db.get_extracted(id, "e/x.jpg").unwrap().unwrap().file_size,
+            1024
+        );
+        db.delete_source(id).unwrap();
+        assert!(db.get_thumbnail(id, "e/x.jpg", 400).unwrap().is_none());
+        assert!(db.get_extracted(id, "e/x.jpg").unwrap().is_none());
     }
 
     #[test]
-    fn cascading_delete_source_removes_thumbs_and_extracted() {
-        let (db, _tmp) = new_db();
-        let sid = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "archive",
-                origin_path: "D:/c.zip",
-                identity_segment: "c.zip",
-                size_hint: Some(1),
-                content_hash: "h",
-                is_solid: false,
-                entry_count: Some(1),
-            })
-            .unwrap();
-        db.insert_thumbnail(sid, "a.jpg", 400, 300, "t", 1).unwrap();
-        db.insert_extracted(sid, "a.jpg", "e", 1).unwrap();
-        db.delete_source(sid).unwrap();
-        assert!(db.get_thumbnail(sid, "a.jpg", 400).unwrap().is_none());
-        assert!(db.get_extracted(sid, "a.jpg").unwrap().is_none());
+    fn delete_unpinned_sources_respects_durable_preference() {
+        let (db, _root) = new_db();
+        let pinned = db.upsert_source(&source("D:/pinned.zip", "p")).unwrap();
+        let unpinned = db.upsert_source(&source("D:/temp.zip", "t")).unwrap();
+        db.set_source_pinned(pinned, true).unwrap();
+
+        let deleted = db.delete_unpinned_sources().unwrap();
+        assert_eq!(deleted.len(), 1);
+        assert_eq!(deleted[0].id, unpinned);
+        assert!(db.get_source_by_id(pinned).unwrap().is_some());
     }
 
     #[test]
-    fn migration_candidates_by_identity_and_size() {
-        let (db, _tmp) = new_db();
-        db.upsert_source(&UpsertSourceParams {
-            kind: "archive",
-            origin_path: "D:/old/pack.zip",
-            identity_segment: "pack.zip",
-            size_hint: Some(900_000_000),
-            content_hash: "h1",
-            is_solid: false,
-            entry_count: Some(10),
-        })
-        .unwrap();
-        db.upsert_source(&UpsertSourceParams {
-            kind: "archive",
-            origin_path: "D:/other/pack.zip",
-            identity_segment: "pack.zip",
-            size_hint: Some(500),
-            content_hash: "h2",
-            is_solid: false,
-            entry_count: Some(1),
-        })
-        .unwrap();
-        let cands = db
-            .find_migration_candidates("pack.zip", Some(900_000_000))
+    fn path_migration_moves_preferences_and_secret_references() {
+        let (db, _root) = new_db();
+        let old_path = "D:/old/pack.zip";
+        let new_path = "E:/new/pack.zip";
+        let id = db.upsert_source(&source(old_path, "old-hash")).unwrap();
+        db.set_source_pinned(id, true).unwrap();
+        db.save_archive_secret_ref(old_path, "stable-vault-key")
             .unwrap();
-        assert_eq!(cands.len(), 1);
-        assert_eq!(cands[0].origin_path, "D:/old/pack.zip");
-    }
 
-    #[test]
-    fn migration_candidates_folder_null_size() {
-        let (db, _tmp) = new_db();
-        db.upsert_source(&UpsertSourceParams {
-            kind: "folder",
-            origin_path: "D:/photos/collection",
-            identity_segment: "collection",
-            size_hint: None,
-            content_hash: "fh",
-            is_solid: false,
-            entry_count: None,
-        })
-        .unwrap();
-        let cands = db.find_migration_candidates("collection", None).unwrap();
-        assert_eq!(cands.len(), 1);
-    }
-
-    #[test]
-    fn policy_override_roundtrip() {
-        let (db, _tmp) = new_db();
-        let sid = db
-            .upsert_source(&UpsertSourceParams {
-                kind: "archive",
-                origin_path: "D:/policy.zip",
-                identity_segment: "policy.zip",
-                size_hint: Some(1),
-                content_hash: "h",
-                is_solid: false,
-                entry_count: Some(1),
-            })
-            .unwrap();
-        let j = r#"{"extracted":{"mode":"no-cache"}}"#;
-        db.set_source_policy(sid, Some(j)).unwrap();
-        let rec = db.get_source_by_id(sid).unwrap().unwrap();
-        assert_eq!(rec.policy_override.as_deref(), Some(j));
-        db.set_source_policy(sid, None).unwrap();
-        let rec = db.get_source_by_id(sid).unwrap().unwrap();
-        assert!(rec.policy_override.is_none());
+        db.update_source_path(id, new_path, "new-hash").unwrap();
+        let record = db.get_source_by_path(new_path).unwrap().unwrap();
+        assert!(record.is_pinned);
+        assert_eq!(record.content_hash, "new-hash");
+        assert!(db.get_archive_secret_ref(old_path).unwrap().is_none());
+        assert_eq!(
+            db.get_archive_secret_ref(new_path).unwrap().as_deref(),
+            Some("stable-vault-key")
+        );
     }
 }

@@ -23,7 +23,8 @@
     "tailwindcss": "^4.3.3",
     "@mason-gallery/i18n": "workspace:*",
     "i18next": "^25.6.3",
-    "react-i18next": "^16.4.0"
+    "react-i18next": "^16.4.0",
+    "zod": "^4.1.5"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

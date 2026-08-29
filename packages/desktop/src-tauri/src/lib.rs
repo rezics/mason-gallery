@@ -6,6 +6,7 @@ pub mod database;
 mod password;
 mod server;
 pub mod services;
+mod settings_commands;
 
 use database::Database;
 use server::{AllowedRoots, SharedPolicy};
@@ -25,7 +26,6 @@ pub struct CacheDir(pub PathBuf);
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -45,14 +45,20 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-            let cache_dir = app_data_dir.join("archive-cache");
+            let stronghold_salt_path = app_data_dir.join("stronghold-salt.txt");
+            app.handle().plugin(
+                tauri_plugin_stronghold::Builder::with_argon2(&stronghold_salt_path).build(),
+            )?;
+            let cache_dir = app
+                .path()
+                .app_cache_dir()
+                .map_err(|e| format!("Failed to get app cache dir: {}", e))?
+                .join("archive-cache");
 
             let db = Arc::new(
-                Database::new(&app_data_dir)
+                Database::new(&app_data_dir, &cache_dir)
                     .map_err(|e| format!("Failed to initialize database: {}", e))?,
             );
-            std::fs::create_dir_all(&cache_dir)
-                .map_err(|e| format!("Failed to create cache dir: {}", e))?;
 
             app.manage(db.clone());
             app.manage(CacheDir(cache_dir.clone()));
@@ -63,9 +69,7 @@ pub fn run() {
             let thumbnail_svc = Arc::new(ThumbnailService::new(db.clone(), cache_dir.clone()));
             let extract_locks = services::new_extract_locks();
             let password_cache = Arc::new(password::PasswordCache::new());
-            let master_password_cache = Arc::new(password::MasterPasswordCache::new());
             app.manage(password_cache.clone());
-            app.manage(master_password_cache);
             let image_svc = Arc::new(ImageService::new(
                 db.clone(),
                 archive_svc.clone(),
@@ -137,6 +141,8 @@ pub fn run() {
             commands::delete_to_trash,
             commands::open_devtools,
             commands::get_image_server_port,
+            settings_commands::load_settings,
+            settings_commands::save_settings,
             commands::request_thumbnail,
             commands::cancel_thumbnail,
             archive_commands::scan_archive,
@@ -147,7 +153,8 @@ pub fn run() {
             archive_commands::pin_cache,
             archive_commands::unlock_archive,
             archive_commands::requires_master_password,
-            archive_commands::unlock_archive_with_master_password,
+            archive_commands::get_archive_secret_ref,
+            archive_commands::mark_archive_secret_stored,
             archive_commands::check_migration,
             archive_commands::confirm_migration,
             archive_commands::startup_cache_cleanup,

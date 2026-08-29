@@ -14,7 +14,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
-tauri-plugin-store = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
@@ -23,6 +22,7 @@ tauri-plugin-process = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-persisted-scope = "2"
+tauri-plugin-stronghold = "2.3.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 walkdir = "2"
@@ -36,10 +36,10 @@ tower-http = { version = "0.6", features = ["cors"] }
 zip = "2"
 sevenz-rust = "0.6"
 unrar = "0.5"
-rusqlite = { version = "0.32", features = ["bundled"] }
-aes-gcm = "0.10"
-pbkdf2 = { version = "0.12", features = ["simple"] }
-sha2 = "0.10"
-rand = "0.8"
+rusqlite = { version = "0.40", features = ["backup", "bundled"] }
+rusqlite_migration = "2.6"
 dashmap = "6"
 tempfile = "3"
+
+[profile.dev.package.scrypt]
+opt-level = 3

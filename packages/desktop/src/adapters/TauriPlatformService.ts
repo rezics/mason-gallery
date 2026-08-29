@@ -3,7 +3,6 @@ import type {
   CacheCleanupStrategy,
   CachePolicy,
   CacheStats,
-  FolderThumbnailsMode,
   ImageBatch,
   MigrationCandidate,
   PasswordStorageMode,
@@ -12,17 +11,23 @@ import type {
   ScanInfoProgress,
   ScanParams,
   ScanThumbProgress,
-  Settings,
   SourceOverride,
   Thumbnail,
+} from "@mason-gallery/core";
+import {
+  createDefaultSettings,
+  createSettingsEnvelope,
+  migrateSettingsEnvelope,
 } from "@mason-gallery/core";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { open } from "@tauri-apps/plugin-dialog";
-import { load } from "@tauri-apps/plugin-store";
-
-const STORE_FILE = "settings.json";
+import {
+  loadArchiveSecret,
+  loadArchiveSecretFromActiveVault,
+  saveArchiveSecret,
+} from "../persistence/archiveSecrets";
 
 let cachedServerPort: number | null = null;
 
@@ -160,59 +165,17 @@ export const tauriPlatformService: PlatformService = {
     };
   },
 
-  async loadSettings(): Promise<Partial<Settings>> {
-    const store = await load(STORE_FILE, { defaults: {}, autoSave: true });
-    const formats = await store.get<string[]>("formats");
-    const sortMethod = await store.get<Settings["sortMethod"]>("sortMethod");
-    const pageSize = await store.get<number>("pageSize");
-    const language = await store.get<Settings["language"]>("language");
-    const theme = await store.get<Settings["theme"]>("theme");
-    const themePreset = await store.get<Settings["themePreset"]>("themePreset");
-    const accentPreset =
-      await store.get<Settings["accentPreset"]>("accentPreset");
-    const customAccent =
-      await store.get<Settings["customAccent"]>("customAccent");
-    const customTheme = await store.get<Settings["customTheme"]>("customTheme");
-    const breakpoints = await store.get<Settings["breakpoints"]>("breakpoints");
-    const showGridPosition = await store.get<boolean>("showGridPosition");
-    const confirmDelete = await store.get<boolean>("confirmDelete");
-    const showDeleteToast = await store.get<boolean>("showDeleteToast");
-    const cacheCleanupStrategy = await store.get<CacheCleanupStrategy>(
-      "cacheCleanupStrategy",
-    );
-    const passwordStorageMode = await store.get<PasswordStorageMode>(
-      "passwordStorageMode",
-    );
-    const cachePolicy = await store.get<CachePolicy>("cachePolicy");
-    const thumbnailSizes = await store.get<number[]>("thumbnailSizes");
-    const folderThumbnails =
-      await store.get<FolderThumbnailsMode>("folderThumbnails");
-
-    return {
-      ...(formats != null && { formats }),
-      ...(sortMethod != null && { sortMethod }),
-      ...(pageSize != null && { pageSize }),
-      ...(language != null && { language }),
-      ...(theme != null && { theme }),
-      ...(themePreset != null && { themePreset }),
-      ...(accentPreset != null && { accentPreset }),
-      ...(customAccent != null && { customAccent }),
-      ...(customTheme != null && { customTheme }),
-      ...(breakpoints != null && { breakpoints }),
-      ...(showGridPosition != null && { showGridPosition }),
-      ...(confirmDelete != null && { confirmDelete }),
-      ...(showDeleteToast != null && { showDeleteToast }),
-      ...(cacheCleanupStrategy != null && { cacheCleanupStrategy }),
-      ...(passwordStorageMode != null && { passwordStorageMode }),
-      ...(cachePolicy != null && { cachePolicy }),
-      ...(thumbnailSizes != null && { thumbnailSizes }),
-      ...(folderThumbnails != null && { folderThumbnails }),
-    };
+  async loadSettings() {
+    const envelope = await invoke<unknown | null>("load_settings");
+    return envelope
+      ? migrateSettingsEnvelope(envelope).settings
+      : createDefaultSettings();
   },
 
-  async saveSettings(key: string, value: unknown): Promise<void> {
-    const store = await load(STORE_FILE, { defaults: {}, autoSave: true });
-    await store.set(key, value);
+  async saveSettings(settings): Promise<void> {
+    await invoke("save_settings", {
+      envelope: createSettingsEnvelope(settings),
+    });
   },
 
   async listDirectoryTree(paths: string[]): Promise<string[]> {
@@ -317,27 +280,51 @@ export const tauriPlatformService: PlatformService = {
     storageMode?: PasswordStorageMode,
     masterPassword?: string,
   ): Promise<void> {
-    await invoke("unlock_archive", {
+    await invoke("unlock_archive", { path, password });
+
+    if (!remember || storageMode !== "master") return;
+    await saveArchiveSecret(path, password, masterPassword);
+    await invoke("mark_archive_secret_stored", {
       path,
-      password,
-      remember,
-      storageMode: storageMode ?? null,
-      masterPassword: masterPassword ?? null,
+      vaultKey: path,
     });
   },
 
   async requiresMasterPassword(path: string): Promise<boolean> {
-    return invoke<boolean>("requires_master_password", { path });
+    const required = await invoke<boolean>("requires_master_password", {
+      path,
+    });
+    if (!required) return false;
+
+    const vaultKey = await invoke<string | null>("get_archive_secret_ref", {
+      path,
+    });
+    if (!vaultKey) return false;
+    const activePassword = await loadArchiveSecretFromActiveVault(vaultKey);
+    if (!activePassword) return true;
+
+    await invoke("unlock_archive", { path, password: activePassword });
+    return false;
   },
 
   async unlockArchiveWithMasterPassword(
     path: string,
     masterPassword: string,
   ): Promise<void> {
-    await invoke("unlock_archive_with_master_password", {
+    const vaultKey = await invoke<string | null>("get_archive_secret_ref", {
       path,
-      masterPassword,
     });
+    if (!vaultKey) throw new Error("MasterPasswordNotStored");
+
+    let password: string | null;
+    try {
+      password = await loadArchiveSecret(vaultKey, masterPassword);
+    } catch {
+      throw new Error("WrongMasterPassword");
+    }
+    if (!password) throw new Error("MasterPasswordNotStored");
+
+    await invoke("unlock_archive", { path, password });
   },
 
   async checkMigration(path: string): Promise<MigrationCandidate | null> {

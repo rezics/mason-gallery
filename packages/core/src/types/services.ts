@@ -40,8 +40,8 @@ export interface GalleryFeatureSettings
 }
 
 export interface SettingsStorage<TSettings extends object> {
-  loadSettings(): Promise<Partial<TSettings>>;
-  saveSettings(key: keyof TSettings & string, value: unknown): Promise<void>;
+  loadSettings(): Promise<TSettings>;
+  saveSettings(settings: TSettings): Promise<void>;
 }
 
 export interface ImageScannerService {

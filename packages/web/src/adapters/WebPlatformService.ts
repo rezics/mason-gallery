@@ -2,12 +2,15 @@ import type {
   ImageBatch,
   PlatformService,
   ScanParams,
-  Settings,
 } from "@mason-gallery/core";
 import type { WebFileRegistry } from "../features/gallery/types";
 import { getInitialWebLanguage } from "../features/i18n/webLocaleRoutes";
-
-const SETTINGS_KEY = "mason-gallery-settings";
+import {
+  loadDirectoryHandles,
+  loadWebSettings,
+  replaceDirectoryHandles,
+  saveWebSettings,
+} from "../persistence/webDatabase";
 
 interface FileEntry {
   handle: FileSystemFileHandle;
@@ -152,6 +155,73 @@ async function getImageDimensions(
 const registry = new FileHandleRegistry();
 
 let storedDirHandles: FileSystemDirectoryHandle[] = [];
+let directoryHandlesLoaded = false;
+let directoryHandlesLoadPromise: Promise<void> | null = null;
+const permissionRequests = new WeakMap<
+  FileSystemDirectoryHandle,
+  Promise<boolean>
+>();
+
+async function ensureDirectoryHandlesLoaded(): Promise<void> {
+  if (directoryHandlesLoaded) return;
+  if (directoryHandlesLoadPromise) return directoryHandlesLoadPromise;
+
+  directoryHandlesLoadPromise = (async () => {
+    try {
+      const handles = await loadDirectoryHandles();
+      if (!directoryHandlesLoaded) {
+        storedDirHandles = handles;
+        directoryHandlesLoaded = true;
+      }
+    } catch (error) {
+      console.warn("Failed to restore browser directory handles:", error);
+      directoryHandlesLoaded = true;
+    }
+  })();
+
+  try {
+    await directoryHandlesLoadPromise;
+  } finally {
+    directoryHandlesLoadPromise = null;
+  }
+}
+
+async function replaceStoredDirectoryHandles(
+  handles: FileSystemDirectoryHandle[],
+): Promise<void> {
+  storedDirHandles = handles;
+  directoryHandlesLoaded = true;
+  try {
+    await replaceDirectoryHandles(handles);
+  } catch (error) {
+    console.warn("Failed to persist browser directory handles:", error);
+  }
+}
+
+async function hasReadPermission(
+  handle: FileSystemDirectoryHandle,
+): Promise<boolean> {
+  const existing = permissionRequests.get(handle);
+  if (existing) return existing;
+
+  const request = (async () => {
+    try {
+      const current = await handle.queryPermission({ mode: "read" });
+      if (current === "granted") return true;
+      if (current === "denied") return false;
+      return (await handle.requestPermission({ mode: "read" })) === "granted";
+    } catch {
+      return false;
+    }
+  })();
+  permissionRequests.set(handle, request);
+
+  try {
+    return await request;
+  } finally {
+    permissionRequests.delete(handle);
+  }
+}
 
 export const webPlatformService: PlatformService = {
   capabilities: {
@@ -170,6 +240,7 @@ export const webPlatformService: PlatformService = {
     onComplete: () => void,
     onCount?: (total: number) => void,
   ): Promise<void> {
+    await ensureDirectoryHandlesLoaded();
     registry.beginScan(params.preserveExistingUrls === true);
 
     try {
@@ -190,6 +261,7 @@ export const webPlatformService: PlatformService = {
       ) {
         const dirHandle = storedDirHandles[rootIndex];
         if (!dirHandle) continue;
+        if (!(await hasReadPermission(dirHandle))) continue;
         for await (const entry of walkDirectory(dirHandle, formats)) {
           fileHandles.push({ rootIndex, ...entry });
         }
@@ -239,7 +311,7 @@ export const webPlatformService: PlatformService = {
   async pickFolders(): Promise<string[] | null> {
     try {
       const dirHandle = await window.showDirectoryPicker({ mode: "read" });
-      storedDirHandles = [dirHandle];
+      await replaceStoredDirectoryHandles([dirHandle]);
       return [dirHandle.name];
     } catch {
       return null;
@@ -268,7 +340,7 @@ export const webPlatformService: PlatformService = {
       }
 
       if (handles.length > 0) {
-        storedDirHandles = handles;
+        await replaceStoredDirectoryHandles(handles);
         callback(handles.map((h) => h.name));
       }
     };
@@ -282,41 +354,24 @@ export const webPlatformService: PlatformService = {
     };
   },
 
-  async loadSettings(): Promise<Partial<Settings>> {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      const settings = raw ? (JSON.parse(raw) as Partial<Settings>) : {};
-      return {
-        ...settings,
-        language: getInitialWebLanguage(
-          window.location.pathname,
-          settings.language,
-          window.location.search,
-        ),
-      };
-    } catch {
-      return {
-        language: getInitialWebLanguage(
-          window.location.pathname,
-          undefined,
-          window.location.search,
-        ),
-      };
-    }
+  async loadSettings() {
+    const settings = await loadWebSettings();
+    return {
+      ...settings,
+      language: getInitialWebLanguage(
+        window.location.pathname,
+        settings.language,
+        window.location.search,
+      ),
+    };
   },
 
-  async saveSettings(key: string, value: unknown): Promise<void> {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      const settings = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-      settings[key] = value;
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch {
-      // ignore
-    }
+  async saveSettings(settings): Promise<void> {
+    await saveWebSettings(settings);
   },
 
   async listDirectoryTree(): Promise<string[]> {
+    await ensureDirectoryHandlesLoaded();
     const directories: string[] = [];
 
     async function walkDirs(
@@ -333,6 +388,7 @@ export const webPlatformService: PlatformService = {
     }
 
     for (const dirHandle of storedDirHandles) {
+      if (!(await hasReadPermission(dirHandle))) continue;
       await walkDirs(dirHandle, "");
     }
 

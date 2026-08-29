@@ -29,7 +29,6 @@
   "keepAll": "保留全部",
   "passwordStorage": "密码存储",
   "dontSave": "不保存",
-  "plaintext": "明文",
   "masterPassword": "主密码",
   "manageCache": "管理缓存",
   "setMasterPassword": "设置主密码",

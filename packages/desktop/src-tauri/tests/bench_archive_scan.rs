@@ -151,7 +151,8 @@ fn run_once(cfg: &BenchConfig) -> RunResult {
     let cache_dir = tmp.path().join("cache");
     std::fs::create_dir_all(&cache_dir).expect("failed to create cache dir");
 
-    let db = Arc::new(Database::new(&cache_dir).expect("failed to open db"));
+    let db =
+        Arc::new(Database::new(&tmp.path().join("data"), &cache_dir).expect("failed to open db"));
     let source_svc = SourceService::new(db.clone());
     let thumb_svc = Arc::new(ThumbnailService::new(db.clone(), cache_dir.clone()));
 

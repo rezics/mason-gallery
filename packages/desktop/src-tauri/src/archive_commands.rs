@@ -2,7 +2,7 @@ use crate::archive::{open_archive, ArchiveError, ArchiveReader};
 use crate::archive_scan::{self, ScanConfig, ScanInputs};
 use crate::commands::{ImageBatch, ImageCount, WImage};
 use crate::database::Database;
-use crate::password::{decrypt_password, encrypt_password, MasterPasswordCache, PasswordCache};
+use crate::password::PasswordCache;
 use crate::server::SharedPolicy;
 use crate::services::image_service::ImageService;
 use crate::services::policy::{self, CachePolicy, CachePolicyOverride};
@@ -137,21 +137,6 @@ fn get_password_for_archive(
     let pw_cache = app.state::<Arc<PasswordCache>>();
     if let Some(pw) = pw_cache.get(archive_path) {
         return Some(pw);
-    }
-
-    let db = app.state::<Arc<Database>>();
-    if let Ok(Some(record)) = db.get_password(archive_path) {
-        if !record.encrypted {
-            return Some(record.password);
-        }
-
-        let master_cache = app.state::<Arc<MasterPasswordCache>>();
-        if let Some(master_password) = master_cache.get() {
-            if let Ok(password) = decrypt_password(&record.password, &master_password) {
-                pw_cache.set(archive_path, &password);
-                return Some(password);
-            }
-        }
     }
 
     None
@@ -525,48 +510,14 @@ pub async fn pin_cache(app: AppHandle, source_id: i64, pinned: bool) -> Result<(
 }
 
 #[tauri::command]
-pub async fn unlock_archive(
-    app: AppHandle,
-    path: String,
-    password: String,
-    remember: bool,
-    storage_mode: Option<String>,
-    master_password: Option<String>,
-) -> Result<(), String> {
+pub async fn unlock_archive(app: AppHandle, path: String, password: String) -> Result<(), String> {
     let reader = open_archive(Path::new(&path)).map_err(archive_error_to_string)?;
     let _ = reader
         .list_entries(Some(&password))
         .map_err(archive_error_to_string)?;
 
-    let mut master_password_to_cache = None;
-    if remember {
-        let db = app.state::<Arc<Database>>().inner().clone();
-        let mode = storage_mode.unwrap_or_else(|| "none".to_string());
-
-        match mode.as_str() {
-            "plaintext" => {
-                db.save_password(&path, &password, false)?;
-            }
-            "master" => {
-                let master_cache = app.state::<Arc<MasterPasswordCache>>();
-                let master_password = master_password
-                    .filter(|value| !value.is_empty())
-                    .or_else(|| master_cache.get())
-                    .ok_or_else(|| "MasterPasswordRequired".to_string())?;
-                let encrypted = encrypt_password(&password, &master_password)?;
-                db.save_password(&path, &encrypted, true)?;
-                master_password_to_cache = Some(master_password);
-            }
-            _ => {}
-        }
-    }
-
     let pw_cache = app.state::<Arc<PasswordCache>>();
     pw_cache.set(&path, &password);
-    if let Some(master_password) = master_password_to_cache {
-        app.state::<Arc<MasterPasswordCache>>()
-            .set(&master_password);
-    }
 
     Ok(())
 }
@@ -578,35 +529,26 @@ pub async fn requires_master_password(app: AppHandle, path: String) -> Result<bo
     }
 
     let db = app.state::<Arc<Database>>();
-    Ok(db
-        .get_password(&path)?
-        .is_some_and(|record| record.encrypted))
+    Ok(db.get_archive_secret_ref(&path)?.is_some())
 }
 
 #[tauri::command]
-pub async fn unlock_archive_with_master_password(
+pub async fn get_archive_secret_ref(
     app: AppHandle,
     path: String,
-    master_password: String,
+) -> Result<Option<String>, String> {
+    let db = app.state::<Arc<Database>>();
+    db.get_archive_secret_ref(&path)
+}
+
+#[tauri::command]
+pub async fn mark_archive_secret_stored(
+    app: AppHandle,
+    path: String,
+    vault_key: String,
 ) -> Result<(), String> {
     let db = app.state::<Arc<Database>>();
-    let record = db
-        .get_password(&path)?
-        .filter(|record| record.encrypted)
-        .ok_or_else(|| "MasterPasswordNotStored".to_string())?;
-    let password = decrypt_password(&record.password, &master_password)
-        .map_err(|_| "WrongMasterPassword".to_string())?;
-
-    let reader = open_archive(Path::new(&path)).map_err(archive_error_to_string)?;
-    let _ = reader
-        .list_entries(Some(&password))
-        .map_err(archive_error_to_string)?;
-
-    app.state::<Arc<PasswordCache>>().set(&path, &password);
-    app.state::<Arc<MasterPasswordCache>>()
-        .set(&master_password);
-
-    Ok(())
+    db.save_archive_secret_ref(&path, &vault_key)
 }
 
 #[tauri::command]

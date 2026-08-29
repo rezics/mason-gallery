@@ -42,10 +42,17 @@ Development requires [Go Task](https://taskfile.dev/installation/). Desktop deve
 ### Platform Abstraction
 
 The core pattern is a `PlatformService` interface (`core/src/types/platform.ts`) that abstracts file system access, image scanning, settings persistence, and platform capabilities. Each target implements it:
-- **Desktop**: `TauriPlatformService` — native file access via Tauri plugins, settings via `@tauri-apps/plugin-store`
-- **Web**: `WebPlatformService` — File System Access API, blob URLs, localStorage
+- **Desktop**: `TauriPlatformService` — native file access via Tauri plugins, durable settings through Rust/SQLite, archive secrets through Tauri Stronghold
+- **Web**: `WebPlatformService` — File System Access API, blob URLs, disposable Dexie/IndexedDB persistence
 
 Entry points (`desktop/src/main.tsx`, `web/src/main.tsx`) create the appropriate service and pass it into the shared `Shell` component from core.
+
+### Persistence Lifecycles
+
+- Shared settings use the strict Zod schema and versioned envelope in `core/src/persistence/settingsSchema.ts`. Platforms load and save one complete document; Zustand remains runtime state only.
+- Desktop durable data lives in `library.db` under Tauri's app-data directory. Desktop cache metadata lives in a separate `cache.db` under Tauri's app-cache directory. Both use ordered `rusqlite_migration` SQL files; only the cache database may be rebuilt automatically.
+- Source pinning and per-source policy overrides are durable even when cache rows are discarded. Archive passwords never enter SQLite: `library.db` stores only Stronghold vault-key references.
+- Web settings and File System Access directory handles live in Dexie/IndexedDB. The web database is intentionally best-effort and is rebuilt wholesale when its schema or data is incompatible.
 
 ### Rust Backend (Desktop)
 
@@ -57,7 +64,7 @@ The backend is layered as `commands` → `services` → `database` + local Axum 
 - `thumbnail_service` — resolves `(sourceHash, entryHash, width)` to an on-disk thumbnail path (lookup only) and generates thumbnails during archive scans
 - `image_service` — resolves `archive:///` URIs and bare filesystem paths to bytes, enforcing the per-source `CachePolicy` (extracted `no-cache`/`lru-capped`/`unlimited`, thumbnails retain mode). Guards concurrent extraction of the same entry behind `ExtractLocks = Arc<DashMap<String, Arc<tokio::sync::Mutex<()>>>>` so simultaneous viewer opens trigger exactly one extraction.
 
-**SQLite schema** (`src-tauri/src/database.rs`): `sources` (unified), `thumbnails` (per width), `extracted` (per entry with `last_accessed` for LRU), `passwords` (encrypted archive unlocks), `schema_meta` (version marker — on legacy-schema detection, the old cache dir is wiped and recreated).
+**SQLite schemas** (`src-tauri/src/database.rs` + `src-tauri/src/migrations/`): durable `library.db` contains the versioned settings document, source preferences, and Stronghold secret references. Disposable `cache.db` contains `sources`, `thumbnails` (per width), and `extracted` (per entry with `last_accessed` for LRU). Migrations use SQLite `user_version`; a cache migration failure rebuilds only explicit cache artifacts, while a durable migration failure preserves the database and aborts startup.
 
 **Local Axum server** (`src-tauri/src/server.rs`): serves two split endpoints:
 - `GET /image` — **always** returns originals. `image_handler` delegates to `image_service::resolve_original`.
@@ -83,7 +90,7 @@ Scan batches include `thumbnails?: Thumbnail[]` (array of widths) on each image.
 
 Zustand stores in `core/src/stores/`:
 - `useAppStore` — folder selection, UI toggles, archive migration/password prompts, directory tree state
-- `useSettingsStore` — image formats, sort method, language, column breakpoints, `cachePolicy`, `thumbnailSizes`, password storage mode (persisted via platform service; `setCachePolicy` also syncs to the Rust backend)
+- `useSettingsStore` — image formats, sort method, language, column breakpoints, `cachePolicy`, derived `thumbnailSizes`, password storage mode (persisted as one versioned document; `setCachePolicy` also syncs to the Rust backend)
 - `useViewerStore` — current image batch, scan progress, viewer open state, relayout signaling
 
 ### Routing
