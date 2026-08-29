@@ -21,6 +21,7 @@ packages/
 ### Prerequisites
 
 - [Bun](https://bun.sh/)
+- [Go Task](https://taskfile.dev/installation/)
 - [Rust](https://www.rust-lang.org/tools/install) (for desktop only)
 - [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (for desktop only)
 
@@ -31,26 +32,27 @@ bun install
 ### Desktop
 
 ```bash
-bun run dev:desktop
+task dev:desktop
 ```
 
 ### Web
 
 ```bash
-bun run dev:web
+task dev:web
 ```
 
 ### CLI
 
 ```bash
-bun run build:cli
+task build:cli
 ```
 
 ### Linting & Type Checking
 
 ```bash
-bun run check     # biome ci + tsc --build
-bun run format    # biome format --write
+task check     # biome ci + tsc --build
+task format    # biome format --write
+task test      # core + web behavior tests
 ```
 
 ### Updater Signing Key Setup (Desktop)

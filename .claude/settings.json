@@ -46,7 +46,7 @@
       "Bash(bunx tauri:*)",
       "Bash(cargo check:*)",
       "Bash(cargo fmt:*)",
-      "Bash(bun run:*)",
+      "Bash(task:*)",
       "Bash(ls:*)"
     ],
     "ask": [

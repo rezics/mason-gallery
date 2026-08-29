@@ -3,12 +3,6 @@
   "version": "2.1.0",
   "type": "module",
   "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build && bun run scripts/write-static-entrypoints.mjs",
-    "preview": "vite preview",
-    "test": "bun test tests"
-  },
   "dependencies": {
     "@mason-gallery/core": "workspace:*",
     "@mason-gallery/i18n": "workspace:*",
@@ -31,4 +25,3 @@
     "typescript": "^6.0.2"
   }
 }
-

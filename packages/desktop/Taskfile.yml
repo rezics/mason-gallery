@@ -1,0 +1,37 @@
+version: "3"
+
+tasks:
+    generate:icons:
+        desc: Generate Tauri platform icons from the project logo.
+        cmds:
+            - bunx tauri icon ../../public/logo/logo.svg -o src-tauri/icons
+
+    dev:
+        desc: Start the Tauri desktop app with hot reload.
+        cmds:
+            - bunx tauri dev
+
+    build:
+        desc: Build the Tauri desktop app.
+        cmds:
+            - bunx tauri build
+
+    dev:vite:
+        desc: Start the desktop Vite development server for Tauri.
+        cmds:
+            - bunx vite
+
+    build:vite:
+        desc: Build the desktop frontend for Tauri.
+        cmds:
+            - bunx vite build
+
+    rust:format:check:
+        desc: Check Rust source formatting.
+        cmds:
+            - cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+    rust:clippy:
+        desc: Run Clippy and reject warnings.
+        cmds:
+            - cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings

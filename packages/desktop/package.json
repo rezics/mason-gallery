@@ -3,12 +3,6 @@
   "version": "2.1.0",
   "type": "module",
   "private": true,
-  "scripts": {
-    "dev:vite": "vite",
-    "build:vite": "vite build",
-    "dev": "tauri dev",
-    "build": "tauri build"
-  },
   "dependencies": {
     "@mason-gallery/core": "workspace:*",
     "@tauri-apps/api": "^2",

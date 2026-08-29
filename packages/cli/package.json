@@ -8,10 +8,6 @@
   "files": [
     "dist/"
   ],
-  "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target node && node -e \"require('fs').cpSync('../web/dist','dist/web',{recursive:true})\"",
-    "start": "node dist/index.js"
-  },
   "dependencies": {
     "sirv": "^3.0.1"
   },

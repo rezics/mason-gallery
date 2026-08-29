@@ -1,0 +1,19 @@
+version: "3"
+
+tasks:
+    build:
+        desc: Bundle the npm CLI and copy the web build into its distribution.
+        cmds:
+            - bun build src/index.ts --outdir dist --target node
+            - >-
+                node -e "require('node:fs').cpSync('../web/dist', 'dist/web', { recursive: true })"
+
+    start:
+        desc: Start the built CLI locally.
+        cmds:
+            - node dist/index.js
+
+    publish:
+        desc: Publish the built CLI package to npm.
+        cmds:
+            - npm publish {{.CLI_ARGS}}

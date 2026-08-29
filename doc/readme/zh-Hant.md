@@ -21,12 +21,13 @@
 ### 環境需求
 
 - [Bun](https://bun.sh/)
+- [Go Task](https://taskfile.dev/installation/)
 - [Rust](https://www.rust-lang.org/tools/install)
 - [Tauri 環境需求](https://v2.tauri.app/start/prerequisites/)
 
 ```bash
 bun install
-bun run dev
+task dev:desktop
 ```
 
 ### 更新簽章金鑰設定

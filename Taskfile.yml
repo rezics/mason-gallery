@@ -1,0 +1,86 @@
+version: "3"
+
+includes:
+    core:
+        taskfile: ./packages/core/Taskfile.yml
+        dir: ./packages/core
+    desktop:
+        taskfile: ./packages/desktop/Taskfile.yml
+        dir: ./packages/desktop
+    web:
+        taskfile: ./packages/web/Taskfile.yml
+        dir: ./packages/web
+    cli:
+        taskfile: ./packages/cli/Taskfile.yml
+        dir: ./packages/cli
+
+tasks:
+    dev:desktop:
+        desc: Start the Tauri desktop app with hot reload.
+        cmds:
+            - task: desktop:dev
+
+    dev:web:
+        desc: Start the web development server.
+        cmds:
+            - task: web:dev
+
+    gen:icons:
+        desc: Generate Tauri platform icons.
+        cmds:
+            - task: desktop:generate:icons
+
+    build:desktop:
+        desc: Generate icons and build the Tauri desktop app.
+        cmds:
+            - task: desktop:generate:icons
+            - task: desktop:build
+
+    build:web:
+        desc: Build the web SPA.
+        cmds:
+            - task: web:build
+
+    build:cli:
+        desc: Build the web SPA and bundle the npm CLI.
+        cmds:
+            - task: web:build
+            - task: cli:build
+
+    publish:npm:
+        desc: Build and publish the npm CLI.
+        cmds:
+            - task: build:cli
+            - task: cli:publish
+              vars:
+                  CLI_ARGS: "{{.CLI_ARGS}}"
+
+    check:
+        desc: Run Biome checks and TypeScript project checks.
+        cmds:
+            - bunx biome ci .
+            - bunx tsc --build
+
+    format:
+        desc: Format source files with Biome.
+        cmds:
+            - bunx biome format --write .
+
+    test:
+        desc: Run behavior tests for the shared core and web app.
+        cmds:
+            - task: core:test
+            - task: web:test
+
+    ci:
+        desc: Run the checks enforced by continuous integration.
+        cmds:
+            - task: check
+            - task: desktop:rust:format:check
+            - task: desktop:rust:clippy
+
+    deploy:web:
+        desc: Build and deploy the web app to Cloudflare Workers.
+        cmds:
+            - task: web:build
+            - bunx wrangler deploy --minify

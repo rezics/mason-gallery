@@ -21,20 +21,21 @@ Mason Gallery is a masonry-layout image viewer shipped as three targets from a s
 bun install                # install dependencies
 
 # Development
-bun run dev:desktop        # Tauri desktop with hot reload (requires Rust + Tauri prereqs)
-bun run dev:web            # Vite web dev server
+task dev:desktop           # Tauri desktop with hot reload (requires Rust + Tauri prereqs)
+task dev:web               # Vite web dev server
 
 # Production builds
-bun run build:desktop      # Tauri production build
-bun run build:web          # Web SPA build
-bun run build:cli          # Builds web then bundles CLI
+task build:desktop         # Tauri production build
+task build:web             # Web SPA build
+task build:cli             # Builds web then bundles CLI
 
 # Quality
-bun run check              # biome ci . && tsc --build
-bun run format             # biome format --write .
+task check                 # biome ci . && tsc --build
+task format                # biome format --write .
+task test                  # core and web behavior tests
 ```
 
-Desktop development requires Rust and [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/).
+Development requires [Go Task](https://taskfile.dev/installation/). Desktop development also requires Rust and [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ## Architecture
 

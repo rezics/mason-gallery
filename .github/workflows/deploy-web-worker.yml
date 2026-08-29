@@ -23,6 +23,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Setup Task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2
+
       - name: Cache Bun downloads
         uses: actions/cache@v6
         with:
@@ -33,11 +36,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build web
-        run: bun run build:web
-
-      - name: Deploy to Cloudflare Workers
-        run: bun run wrangler deploy --minify
+      - name: Build and deploy to Cloudflare Workers
+        run: task deploy:web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

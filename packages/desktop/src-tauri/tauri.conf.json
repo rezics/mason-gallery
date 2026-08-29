@@ -4,9 +4,9 @@
   "version": "2.1.0",
   "identifier": "com.mason-gallery.app",
   "build": {
-    "beforeDevCommand": "bun run dev:vite",
+    "beforeDevCommand": "task dev:vite",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build:vite",
+    "beforeBuildCommand": "task build:vite",
     "frontendDist": "../dist"
   },
   "app": {

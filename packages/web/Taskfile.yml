@@ -1,0 +1,23 @@
+version: "3"
+
+tasks:
+    dev:
+        desc: Start the web development server.
+        cmds:
+            - bunx vite
+
+    build:
+        desc: Build the web SPA and write its static entrypoints.
+        cmds:
+            - bunx vite build
+            - bun scripts/write-static-entrypoints.mjs
+
+    preview:
+        desc: Preview the production web build.
+        cmds:
+            - bunx vite preview
+
+    test:
+        desc: Run web behavior tests.
+        cmds:
+            - bun test tests

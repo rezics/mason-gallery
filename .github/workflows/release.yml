@@ -47,6 +47,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Setup Task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -83,7 +86,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Generate icons
-        run: bun run gen:icons
+        run: task desktop:generate:icons
 
       - name: Build desktop release
         uses: tauri-apps/tauri-action@v0
