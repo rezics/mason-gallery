@@ -47,7 +47,7 @@ export const tauriPlatformService: PlatformService = {
     canRevealFile: true,
     canSelectFolder: true,
     hasCustomTitlebar: true,
-    canAutoUpdate: true,
+    canAutoUpdate: import.meta.env.PROD,
     canDragDropFolders: true,
     canBrowseArchives: true,
   },
@@ -323,6 +323,20 @@ export const tauriPlatformService: PlatformService = {
       remember,
       storageMode: storageMode ?? null,
       masterPassword: masterPassword ?? null,
+    });
+  },
+
+  async requiresMasterPassword(path: string): Promise<boolean> {
+    return invoke<boolean>("requires_master_password", { path });
+  },
+
+  async unlockArchiveWithMasterPassword(
+    path: string,
+    masterPassword: string,
+  ): Promise<void> {
+    await invoke("unlock_archive_with_master_password", {
+      path,
+      masterPassword,
     });
   },
 

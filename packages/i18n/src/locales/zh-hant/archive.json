@@ -36,5 +36,7 @@
   "enterMasterPassword": "輸入主密碼",
   "confirmMasterPassword": "確認主密碼",
   "masterPasswordMismatch": "密碼不相符",
+  "wrongMasterPassword": "主密碼錯誤，請重試。",
+  "passwordStorageFailed": "密碼儲存失敗，請重試。",
   "deletePasswordsWarning": "所有已儲存的密碼都會被刪除。確定繼續？"
 }

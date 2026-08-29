@@ -1,7 +1,5 @@
 use crate::archive::compute_entry_hash;
-use crate::archive_commands::{
-    expand_archive_into_scan, ExpansionResult, ScanProgressTracker,
-};
+use crate::archive_commands::{expand_archive_into_scan, ExpansionResult, ScanProgressTracker};
 use crate::database::Database;
 use crate::server::{ServerState, SharedPolicy};
 use crate::services::policy;
@@ -158,8 +156,8 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
     match params.sort_method.as_str() {
         "name-asc" => entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
         "name-desc" => entries.sort_by(|a, b| natord::compare(&b.path, &a.path)),
-        "time-asc" => entries.sort_by(|a, b| a.modified.cmp(&b.modified)),
-        "time-desc" => entries.sort_by(|a, b| b.modified.cmp(&a.modified)),
+        "time-asc" => entries.sort_by_key(|entry| entry.modified),
+        "time-desc" => entries.sort_by_key(|entry| std::cmp::Reverse(entry.modified)),
         _ => entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
     }
 
@@ -194,11 +192,8 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
         .filter(|e| !e.is_archive)
         .map(|e| {
             let result = (e.path.clone(), get_image_dimensions(Path::new(&e.path)));
-            let n = loose_tracker
-                .info_loaded
-                .fetch_add(1, Ordering::Relaxed)
-                + 1;
-            if n % 16 == 0 || n == loose_count {
+            let n = loose_tracker.info_loaded.fetch_add(1, Ordering::Relaxed) + 1;
+            if n.is_multiple_of(16) || n == loose_count {
                 loose_tracker.emit_info(&loose_progress_app);
             }
             result
@@ -238,7 +233,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                 },
             );
             match result {
-                ExpansionResult::Listed { entry_count: _ } => {
+                ExpansionResult::Listed => {
                     // Entries already streamed; tracker already updated.
                 }
                 ExpansionResult::Locked(placeholder) => {
@@ -264,10 +259,7 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                 }
             }
         } else {
-            let (width, height) = loose_dims
-                .get(&entry.path)
-                .copied()
-                .unwrap_or((None, None));
+            let (width, height) = loose_dims.get(&entry.path).copied().unwrap_or((None, None));
             pending.push(WImage {
                 source: entry.path.clone(),
                 relative_path: entry.relative_path.clone(),
@@ -426,10 +418,7 @@ pub async fn request_thumbnail(
             .ok()
             .flatten()
             .and_then(|r| r.policy_override);
-        let global = policy_state
-            .read()
-            .map(|p| p.clone())
-            .unwrap_or_default();
+        let global = policy_state.read().map(|p| p.clone()).unwrap_or_default();
         policy::resolve_widths(override_json.as_deref(), &global)
     } else {
         params.widths.clone()
@@ -490,10 +479,7 @@ pub struct CancelThumbnailParams {
 }
 
 #[tauri::command]
-pub async fn cancel_thumbnail(
-    app: AppHandle,
-    params: CancelThumbnailParams,
-) -> Result<(), String> {
+pub async fn cancel_thumbnail(app: AppHandle, params: CancelThumbnailParams) -> Result<(), String> {
     let queue = app.state::<Arc<ThumbnailQueue>>().inner().clone();
     queue.cancel(&(params.source_id, params.entry_path));
     Ok(())
@@ -553,10 +539,7 @@ pub async fn run_thumbnail_worker(
             }
         };
 
-        let global_policy = policy_state
-            .read()
-            .map(|p| p.clone())
-            .unwrap_or_default();
+        let global_policy = policy_state.read().map(|p| p.clone()).unwrap_or_default();
         let widths = policy::resolve_widths(override_json.as_deref(), &global_policy);
         let svc = thumbnail_svc.clone();
         let cancel_flag = slot.cancel.clone();
@@ -588,11 +571,7 @@ pub async fn run_thumbnail_worker(
                 let thumbnails: Vec<WThumbnail> = generated
                     .into_iter()
                     .map(|g| WThumbnail {
-                        source: ThumbnailService::build_uri(
-                            &source_hash,
-                            &entry_hash,
-                            g.width,
-                        ),
+                        source: ThumbnailService::build_uri(&source_hash, &entry_hash, g.width),
                         width: g.width,
                         height: g.height,
                     })

@@ -7,7 +7,10 @@ import UpdateChecker from "./components/UpdateChecker";
 export default function App() {
   return (
     <PlatformContext.Provider value={tauriPlatformService}>
-      <DesktopApp titlebar={<Titlebar />} updateChecker={<UpdateChecker />} />
+      <DesktopApp
+        titlebar={<Titlebar />}
+        updateChecker={import.meta.env.PROD ? <UpdateChecker /> : null}
+      />
     </PlatformContext.Provider>
   );
 }

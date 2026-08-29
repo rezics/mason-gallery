@@ -88,10 +88,10 @@ struct BenchConfig {
 
 impl BenchConfig {
     fn from_env() -> Self {
-        let archive = std::env::var("MASON_BENCH_ARCHIVE")
-            .unwrap_or_else(|_| DEFAULT_ARCHIVE.to_string());
-        let widths_raw = std::env::var("MASON_BENCH_WIDTHS")
-            .unwrap_or_else(|_| DEFAULT_WIDTHS.to_string());
+        let archive =
+            std::env::var("MASON_BENCH_ARCHIVE").unwrap_or_else(|_| DEFAULT_ARCHIVE.to_string());
+        let widths_raw =
+            std::env::var("MASON_BENCH_WIDTHS").unwrap_or_else(|_| DEFAULT_WIDTHS.to_string());
         let workers: usize = std::env::var("MASON_BENCH_WORKERS")
             .ok()
             .map(|s| {
@@ -117,7 +117,10 @@ impl BenchConfig {
                     .unwrap_or_else(|_| panic!("Invalid width in MASON_BENCH_WIDTHS: {}", s))
             })
             .collect();
-        assert!(!widths.is_empty(), "MASON_BENCH_WIDTHS must have at least one value");
+        assert!(
+            !widths.is_empty(),
+            "MASON_BENCH_WIDTHS must have at least one value"
+        );
         assert!(runs >= 1, "MASON_BENCH_RUNS must be at least 1");
 
         Self {
@@ -153,9 +156,7 @@ fn run_once(cfg: &BenchConfig) -> RunResult {
     let thumb_svc = Arc::new(ThumbnailService::new(db.clone(), cache_dir.clone()));
 
     let reader = open_archive(&cfg.archive).expect("failed to open archive");
-    let entries = reader
-        .list_entries(None)
-        .expect("failed to list entries");
+    let entries = reader.list_entries(None).expect("failed to list entries");
     let is_solid = reader.is_solid().unwrap_or(false);
 
     let mut image_entries: Vec<ArchiveEntry> = entries
@@ -184,7 +185,8 @@ fn run_once(cfg: &BenchConfig) -> RunResult {
     let source_id = source_rec.id;
     let source_hash = source_rec.content_hash.clone();
 
-    let emitted: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::with_capacity(image_entries.len()));
+    let emitted: std::sync::Mutex<Vec<String>> =
+        std::sync::Mutex::new(Vec::with_capacity(image_entries.len()));
     let archive_path_str = cfg
         .archive
         .to_str()
@@ -265,7 +267,15 @@ fn bench_archive_scan() {
     println!("=== mason-gallery archive-scan benchmark ===");
     println!("archive : {}", cfg.archive.display());
     println!("widths  : {:?}", cfg.widths);
-    println!("workers : {} ({})", cfg.workers, if cfg.workers == 0 { "serial" } else { "parallel" });
+    println!(
+        "workers : {} ({})",
+        cfg.workers,
+        if cfg.workers == 0 {
+            "serial"
+        } else {
+            "parallel"
+        }
+    );
     println!("warmup  : {}", cfg.warmup);
     println!("runs    : {}", cfg.runs);
     println!();
@@ -303,20 +313,21 @@ fn bench_archive_scan() {
         let mut expected = r.emitted_order.clone();
         expected.sort_by(|a, b| natord::compare(a, b));
         assert_eq!(
-            r.emitted_order, expected,
+            r.emitted_order,
+            expected,
             "run {} emitted entries out of source sort order; first mismatch: \
              got={:?} expected={:?}",
             i + 1,
-            r.emitted_order.iter().zip(expected.iter()).find(|(a, b)| a != b),
+            r.emitted_order
+                .iter()
+                .zip(expected.iter())
+                .find(|(a, b)| a != b),
             expected.iter().find(|e| !r.emitted_order.contains(e)),
         );
     }
 
     // --- aggregated stats (across timed runs) ---
-    let mut wall_ns: Vec<u64> = results
-        .iter()
-        .map(|r| r.wall.as_nanos() as u64)
-        .collect();
+    let mut wall_ns: Vec<u64> = results.iter().map(|r| r.wall.as_nanos() as u64).collect();
     wall_ns.sort_unstable();
     let wall_median = pct(&wall_ns, 0.5);
     let wall_p95 = pct(&wall_ns, 0.95);

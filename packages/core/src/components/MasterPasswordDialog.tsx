@@ -7,8 +7,9 @@ import { useI18n } from "@/i18n";
 interface MasterPasswordDialogProps {
   open: boolean;
   mode: "set" | "enter";
-  onSubmit: (password: string) => void;
+  onSubmit: (password: string) => boolean | Promise<boolean>;
   onCancel: () => void;
+  error?: string;
 }
 
 export default function MasterPasswordDialog({
@@ -16,24 +17,39 @@ export default function MasterPasswordDialog({
   mode,
   onSubmit,
   onCancel,
+  error: externalError,
 }: MasterPasswordDialogProps) {
   const t = useI18n();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (mode === "set" && password !== confirmPassword) {
       setError(t("archive:masterPasswordMismatch"));
       return;
     }
     if (password) {
-      onSubmit(password);
-      setPassword("");
-      setConfirmPassword("");
-      setError("");
+      setIsSubmitting(true);
+      try {
+        if (await onSubmit(password)) {
+          setPassword("");
+          setConfirmPassword("");
+          setError("");
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   }, [password, confirmPassword, mode, onSubmit, t]);
+
+  const handleCancel = useCallback(() => {
+    setPassword("");
+    setConfirmPassword("");
+    setError("");
+    onCancel();
+  }, [onCancel]);
 
   const title =
     mode === "set"
@@ -44,13 +60,17 @@ export default function MasterPasswordDialog({
     <Dialog
       open={open}
       title={title}
-      onClose={onCancel}
+      onClose={handleCancel}
       actions={
         <>
-          <Button type="button" variant="ghost" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={handleCancel}>
             {t("archive:cancel")}
           </Button>
-          <Button type="button" disabled={!password} onClick={handleSubmit}>
+          <Button
+            type="button"
+            disabled={!password || isSubmitting}
+            onClick={() => void handleSubmit()}
+          >
             {t("archive:submit")}
           </Button>
         </>
@@ -61,24 +81,35 @@ export default function MasterPasswordDialog({
         type="password"
         placeholder={t("archive:enterMasterPassword")}
         value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && mode === "enter") handleSubmit();
+        onChange={(event) => {
+          setPassword(event.target.value);
+          setError("");
         }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && mode === "enter") {
+            void handleSubmit();
+          }
+        }}
+        aria-invalid={!!(error || externalError)}
       />
       {mode === "set" && (
         <Input
           type="password"
           placeholder={t("archive:confirmMasterPassword")}
           value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") handleSubmit();
+          onChange={(event) => {
+            setConfirmPassword(event.target.value);
+            setError("");
           }}
-          aria-invalid={!!error}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void handleSubmit();
+          }}
+          aria-invalid={!!(error || externalError)}
         />
       )}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {(error || externalError) && (
+        <p className="text-xs text-destructive">{error || externalError}</p>
+      )}
     </Dialog>
   );
 }

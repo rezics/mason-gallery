@@ -92,6 +92,11 @@ export interface ArchiveScannerService {
     storageMode?: PasswordStorageMode,
     masterPassword?: string,
   ): Promise<void>;
+  requiresMasterPassword(path: string): Promise<boolean>;
+  unlockArchiveWithMasterPassword(
+    path: string,
+    masterPassword: string,
+  ): Promise<void>;
   checkMigration(path: string): Promise<MigrationCandidate | null>;
   confirmMigration(sourceId: number, newPath: string): Promise<void>;
 }

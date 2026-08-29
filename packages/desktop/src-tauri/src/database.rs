@@ -34,8 +34,8 @@ impl Database {
             );
         }
 
-        let conn = Connection::open(&db_path)
-            .map_err(|e| format!("Failed to open database: {}", e))?;
+        let conn =
+            Connection::open(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
 
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
             .map_err(|e| format!("Failed to set pragmas: {}", e))?;
@@ -51,8 +51,7 @@ impl Database {
         if !db_path.exists() {
             return Ok(false);
         }
-        let conn = Connection::open(db_path)
-            .map_err(|e| format!("Failed to probe db: {}", e))?;
+        let conn = Connection::open(db_path).map_err(|e| format!("Failed to probe db: {}", e))?;
 
         // Legacy schema indicator: presence of `archives` table.
         let archives_exists: bool = conn
@@ -226,7 +225,11 @@ impl Database {
         })
     }
 
-    pub fn set_source_policy(&self, source_id: i64, policy_json: Option<&str>) -> Result<(), String> {
+    pub fn set_source_policy(
+        &self,
+        source_id: i64,
+        policy_json: Option<&str>,
+    ) -> Result<(), String> {
         self.with_conn(|conn| {
             conn.execute(
                 "UPDATE sources SET policy_override = ?1 WHERE id = ?2",

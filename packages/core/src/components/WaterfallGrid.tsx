@@ -9,6 +9,7 @@ import type { RefCallback, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { useThumbnailRequest } from "@/hooks/useThumbnailRequest";
+import { requestArchiveUnlock } from "@/lib/scanActions";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
@@ -119,7 +120,7 @@ function ImageCell({
         className="flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-md border border-border bg-muted p-3 transition-shadow hover:shadow-lg"
         onClick={() => {
           if (archivePath) {
-            useAppStore.setState({ archivePasswordNeeded: archivePath });
+            void requestArchiveUnlock(archivePath);
           }
         }}
       >

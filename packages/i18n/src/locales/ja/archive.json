@@ -36,5 +36,7 @@
   "enterMasterPassword": "マスターパスワードを入力",
   "confirmMasterPassword": "マスターパスワードを確認",
   "masterPasswordMismatch": "パスワードが一致しません",
+  "wrongMasterPassword": "マスターパスワードが正しくありません。もう一度お試しください。",
+  "passwordStorageFailed": "パスワードを保存できませんでした。もう一度お試しください。",
   "deletePasswordsWarning": "保存済みのパスワードはすべて削除されます。続行しますか？"
 }

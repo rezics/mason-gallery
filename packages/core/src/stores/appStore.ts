@@ -12,6 +12,7 @@ interface AppState {
   // Archive-related state
   archivePath: string | null;
   archivePasswordNeeded: string | null;
+  archiveMasterPasswordNeeded: string | null;
   archiveSolidWarning: string | null;
   archiveMigrationCandidate: {
     archiveId: number;
@@ -42,6 +43,7 @@ export const useAppStore = create<AppState>((set) => ({
   folderImageCounts: {},
   archivePath: null,
   archivePasswordNeeded: null,
+  archiveMasterPasswordNeeded: null,
   archiveSolidWarning: null,
   archiveMigrationCandidate: null,
 
@@ -87,6 +89,7 @@ export const useAppStore = create<AppState>((set) => ({
       folderImageCounts: {},
       archivePath: null,
       archivePasswordNeeded: null,
+      archiveMasterPasswordNeeded: null,
       archiveSolidWarning: null,
       archiveMigrationCandidate: null,
     }),

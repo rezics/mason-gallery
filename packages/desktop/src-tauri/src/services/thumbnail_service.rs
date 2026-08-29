@@ -57,12 +57,7 @@ impl ThumbnailService {
 
     /// Lookup only — returns the existing file path, or None if no thumbnail
     /// has been generated at the requested width.
-    pub fn resolve(
-        &self,
-        source_hash: &str,
-        entry_hash: &str,
-        width: u32,
-    ) -> Option<PathBuf> {
+    pub fn resolve(&self, source_hash: &str, entry_hash: &str, width: u32) -> Option<PathBuf> {
         let p = self.thumb_path(source_hash, entry_hash, width);
         if p.exists() {
             Some(p)
@@ -191,14 +186,8 @@ impl ThumbnailService {
             let rel = format!("thumbs/{}/{}_{}.webp", source_hash, entry_hash, w);
 
             let t = Instant::now();
-            self.db.insert_thumbnail(
-                source_id,
-                entry_path,
-                w,
-                th,
-                &rel,
-                size as i64,
-            )?;
+            self.db
+                .insert_thumbnail(source_id, entry_path, w, th, &rel, size as i64)?;
             timings.db_ns += t.elapsed().as_nanos() as u64;
 
             results.push(GeneratedThumbnail {
@@ -243,8 +232,8 @@ impl ThumbnailService {
         widths: &[u32],
         cancel: Option<&Arc<AtomicBool>>,
     ) -> Result<Vec<GeneratedThumbnail>, String> {
-        let bytes = fs::read(entry_path)
-            .map_err(|e| format!("Failed to read {}: {}", entry_path, e))?;
+        let bytes =
+            fs::read(entry_path).map_err(|e| format!("Failed to read {}: {}", entry_path, e))?;
         self.generate_for_entry_cancelable(
             source_id,
             source_hash,

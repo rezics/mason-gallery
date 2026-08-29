@@ -2,6 +2,7 @@ use crate::archive::{self, open_archive, parse_archive_uri, ArchiveEntry, Archiv
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[derive(Default)]
 pub struct ArchiveService;
 
 impl ArchiveService {
@@ -14,8 +15,7 @@ impl ArchiveService {
         archive_path: &str,
         password: Option<&str>,
     ) -> Result<(Vec<ArchiveEntry>, bool, bool), String> {
-        let reader = open_archive(Path::new(archive_path))
-            .map_err(|e| format!("{}", e))?;
+        let reader = open_archive(Path::new(archive_path)).map_err(|e| format!("{}", e))?;
         let entries = reader
             .list_entries(password)
             .map_err(|e| format!("{}", e))?;
@@ -32,8 +32,7 @@ impl ArchiveService {
         output_path: &Path,
         password: Option<&str>,
     ) -> Result<(), String> {
-        let reader = open_archive(Path::new(archive_path))
-            .map_err(|e| format!("{}", e))?;
+        let reader = open_archive(Path::new(archive_path)).map_err(|e| format!("{}", e))?;
         reader
             .extract_entry(entry_path, output_path, password)
             .map_err(|e| format!("{}", e))
@@ -45,8 +44,7 @@ impl ArchiveService {
         entry_path: &str,
         password: Option<&str>,
     ) -> Result<Vec<u8>, String> {
-        let reader = open_archive(Path::new(archive_path))
-            .map_err(|e| format!("{}", e))?;
+        let reader = open_archive(Path::new(archive_path)).map_err(|e| format!("{}", e))?;
         reader
             .extract_entry_to_memory(entry_path, password)
             .map_err(|e| format!("{}", e))

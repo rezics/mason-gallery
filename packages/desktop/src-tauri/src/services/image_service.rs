@@ -119,11 +119,9 @@ impl ImageService {
         }
 
         let password = self.password_cache.get(archive_path);
-        let data = self.archive_svc.extract_to_memory(
-            archive_path,
-            entry_path,
-            password.as_deref(),
-        )?;
+        let data =
+            self.archive_svc
+                .extract_to_memory(archive_path, entry_path, password.as_deref())?;
         let byte_len = data.len() as i64;
 
         let ext = entry_extension(entry_path);
@@ -147,8 +145,7 @@ impl ImageService {
 
         let target = extracted_target_path(&self.cache_dir, &source_hash, &entry_hash, &ext);
         ensure_parent_dir(&target)?;
-        fs::write(&target, &data)
-            .map_err(|e| format!("Failed to write extracted file: {}", e))?;
+        fs::write(&target, &data).map_err(|e| format!("Failed to write extracted file: {}", e))?;
 
         let target_str = target.to_string_lossy().to_string();
         self.db

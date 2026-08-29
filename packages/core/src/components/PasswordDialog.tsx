@@ -30,14 +30,20 @@ export default function PasswordDialog({
     }
   }, [password, remember, onSubmit]);
 
+  const handleCancel = useCallback(() => {
+    setPassword("");
+    setRemember(false);
+    onCancel();
+  }, [onCancel]);
+
   return (
     <Dialog
       open={open}
       title={t("archive:passwordRequired")}
-      onClose={onCancel}
+      onClose={handleCancel}
       actions={
         <>
-          <Button type="button" variant="ghost" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={handleCancel}>
             {t("archive:cancel")}
           </Button>
           <Button type="button" disabled={!password} onClick={handleSubmit}>

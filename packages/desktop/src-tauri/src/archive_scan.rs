@@ -90,8 +90,7 @@ pub fn process_entry(
         .collect();
 
     let mut width_hint: Option<u32> = existing.iter().map(|t| t.width).max();
-    let mut height_hint: Option<u32> =
-        existing.iter().max_by_key(|t| t.width).map(|t| t.height);
+    let mut height_hint: Option<u32> = existing.iter().max_by_key(|t| t.width).map(|t| t.height);
 
     let mut timings = StageTimings::default();
 
@@ -263,17 +262,16 @@ where
     };
     let mut batch_buffer: Vec<WImage> = Vec::with_capacity(cfg.page_size.max(1));
 
-    let push_and_maybe_flush =
-        |images: Vec<WImage>, buf: &mut Vec<WImage>, on_batch: &mut F| {
-            for img in images {
-                buf.push(img);
-                if buf.len() >= cfg.page_size {
-                    let drained = std::mem::take(buf);
-                    on_batch(drained, false);
-                    buf.reserve(cfg.page_size);
-                }
+    let push_and_maybe_flush = |images: Vec<WImage>, buf: &mut Vec<WImage>, on_batch: &mut F| {
+        for img in images {
+            buf.push(img);
+            if buf.len() >= cfg.page_size {
+                let drained = std::mem::take(buf);
+                on_batch(drained, false);
+                buf.reserve(cfg.page_size);
             }
-        };
+        }
+    };
 
     if cfg.workers == 0 {
         // Serial, on the calling thread. Already in source order, no
@@ -296,15 +294,15 @@ where
                     summary.per_entry_ns.push(t0.elapsed().as_nanos() as u64);
                     summary.stage_totals.add(&outcome.timings);
                     summary.entries_processed += 1;
-                    summary.thumbs_generated +=
-                        outcome.image.thumbnails.as_ref().map(|v| v.len()).unwrap_or(0);
+                    summary.thumbs_generated += outcome
+                        .image
+                        .thumbnails
+                        .as_ref()
+                        .map(|v| v.len())
+                        .unwrap_or(0);
                     progress_count += 1;
                     on_progress(progress_count);
-                    push_and_maybe_flush(
-                        vec![outcome.image],
-                        &mut batch_buffer,
-                        &mut on_batch,
-                    );
+                    push_and_maybe_flush(vec![outcome.image], &mut batch_buffer, &mut on_batch);
                 }
                 Err(_) => {
                     progress_count += 1;
@@ -374,8 +372,12 @@ where
                     summary.per_entry_ns.push(ns);
                     summary.stage_totals.add(&outcome.timings);
                     summary.entries_processed += 1;
-                    summary.thumbs_generated +=
-                        outcome.image.thumbnails.as_ref().map(|v| v.len()).unwrap_or(0);
+                    summary.thumbs_generated += outcome
+                        .image
+                        .thumbnails
+                        .as_ref()
+                        .map(|v| v.len())
+                        .unwrap_or(0);
                     reassembly.insert_ok(idx, outcome.image)
                 }
                 Err(_) => reassembly.insert_err(idx),
@@ -438,7 +440,9 @@ mod tests {
 
         let r2 = r.insert_ok(0, stub_image("a"));
         assert_eq!(
-            r2.iter().map(|i| i.relative_path.as_str()).collect::<Vec<_>>(),
+            r2.iter()
+                .map(|i| i.relative_path.as_str())
+                .collect::<Vec<_>>(),
             vec!["a"],
             "0 alone drains only 0 (1 still missing)"
         );
@@ -448,14 +452,18 @@ mod tests {
 
         let r4 = r.insert_ok(1, stub_image("b"));
         assert_eq!(
-            r4.iter().map(|i| i.relative_path.as_str()).collect::<Vec<_>>(),
+            r4.iter()
+                .map(|i| i.relative_path.as_str())
+                .collect::<Vec<_>>(),
             vec!["b", "c"],
             "inserting 1 should drain 1 and 2 (2 was buffered)"
         );
 
         let r5 = r.insert_ok(3, stub_image("d"));
         assert_eq!(
-            r5.iter().map(|i| i.relative_path.as_str()).collect::<Vec<_>>(),
+            r5.iter()
+                .map(|i| i.relative_path.as_str())
+                .collect::<Vec<_>>(),
             vec!["d", "e"],
             "inserting 3 should drain 3 and 4 (4 was buffered)"
         );
@@ -474,7 +482,10 @@ mod tests {
         );
         let drained = r.insert_err(1);
         assert_eq!(
-            drained.iter().map(|i| i.relative_path.as_str()).collect::<Vec<_>>(),
+            drained
+                .iter()
+                .map(|i| i.relative_path.as_str())
+                .collect::<Vec<_>>(),
             vec!["c"],
             "after skipping errored 0 and 1, buffered 2 must drain"
         );

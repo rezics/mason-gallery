@@ -4,10 +4,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const host = process.env.TAURI_DEV_HOST;
-const coreSrc = path.resolve(__dirname, "../core/src");
+const coreSrc = path.resolve(import.meta.dirname, "../core/src");
 
 export default defineConfig(async () => ({
-  publicDir: path.resolve(__dirname, "../../public"),
+  publicDir: path.resolve(import.meta.dirname, "../../public"),
   plugins: [react(), tailwindcss()],
   resolve: {
     dedupe: ["react", "react-dom"],

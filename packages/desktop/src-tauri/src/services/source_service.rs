@@ -59,8 +59,8 @@ impl SourceService {
     }
 
     pub fn archive_metadata(path: &str) -> Result<(u64, u64), String> {
-        let meta = std::fs::metadata(path)
-            .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+        let meta =
+            std::fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
         let size = meta.len();
         let mtime = meta
             .modified()
@@ -161,9 +161,7 @@ impl SourceService {
                     break;
                 }
             }
-            if score >= 1
-                && (best.is_none() || score > best.as_ref().unwrap().match_score)
-            {
+            if score >= 1 && (best.is_none() || score > best.as_ref().unwrap().match_score) {
                 best = Some(SourceMigrationCandidate {
                     source_id: cand.id,
                     old_path: cand.origin_path.clone(),
@@ -175,11 +173,7 @@ impl SourceService {
         Ok(best)
     }
 
-    pub fn confirm_migration(
-        &self,
-        source_id: i64,
-        new_path: &str,
-    ) -> Result<(), String> {
+    pub fn confirm_migration(&self, source_id: i64, new_path: &str) -> Result<(), String> {
         let rec = self
             .db
             .get_source_by_id(source_id)?
@@ -209,8 +203,14 @@ mod tests {
 
     #[test]
     fn identity_segment_archive() {
-        assert_eq!(SourceService::identity_segment("D:/a/b/pack.zip"), "pack.zip");
-        assert_eq!(SourceService::identity_segment("D:\\a\\b\\pack.zip"), "pack.zip");
+        assert_eq!(
+            SourceService::identity_segment("D:/a/b/pack.zip"),
+            "pack.zip"
+        );
+        assert_eq!(
+            SourceService::identity_segment("D:\\a\\b\\pack.zip"),
+            "pack.zip"
+        );
     }
 
     #[test]

@@ -63,7 +63,9 @@ pub fn run() {
             let thumbnail_svc = Arc::new(ThumbnailService::new(db.clone(), cache_dir.clone()));
             let extract_locks = services::new_extract_locks();
             let password_cache = Arc::new(password::PasswordCache::new());
+            let master_password_cache = Arc::new(password::MasterPasswordCache::new());
             app.manage(password_cache.clone());
+            app.manage(master_password_cache);
             let image_svc = Arc::new(ImageService::new(
                 db.clone(),
                 archive_svc.clone(),
@@ -118,9 +120,7 @@ pub fn run() {
                 db.clone(),
                 image_svc.clone(),
                 thumbnail_svc.clone(),
-                source_svc.clone(),
                 policy.clone(),
-                cache_dir.clone(),
             ))
             .map_err(|e| e.to_string())?;
 
@@ -146,6 +146,8 @@ pub fn run() {
             archive_commands::clear_extracted,
             archive_commands::pin_cache,
             archive_commands::unlock_archive,
+            archive_commands::requires_master_password,
+            archive_commands::unlock_archive_with_master_password,
             archive_commands::check_migration,
             archive_commands::confirm_migration,
             archive_commands::startup_cache_cleanup,

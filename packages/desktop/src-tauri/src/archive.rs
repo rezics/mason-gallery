@@ -177,9 +177,7 @@ impl ZipArchiveReader {
         Ok(Self { path })
     }
 
-    fn open_archive(
-        &self,
-    ) -> Result<zip::ZipArchive<std::io::BufReader<fs::File>>, ArchiveError> {
+    fn open_archive(&self) -> Result<zip::ZipArchive<std::io::BufReader<fs::File>>, ArchiveError> {
         let file = fs::File::open(&self.path)
             .map_err(|e| ArchiveError::Io(format!("Failed to open ZIP: {}", e)))?;
         let reader = std::io::BufReader::new(file);
@@ -333,8 +331,8 @@ impl ArchiveReader for RarArchiveReader {
                             .to_string_lossy()
                             .to_string()
                             .replace('\\', "/"),
-                        compressed_size: entry.unpacked_size as u64,
-                        uncompressed_size: entry.unpacked_size as u64,
+                        compressed_size: entry.unpacked_size,
+                        uncompressed_size: entry.unpacked_size,
                         is_directory: entry.is_directory(),
                     });
                 }
@@ -383,9 +381,7 @@ impl ArchiveReader for RarArchiveReader {
                         .to_string()
                         .replace('\\', "/");
                     if entry_name == normalized_entry {
-                        header
-                            .extract_to(output_dir)
-                            .map_err(Self::map_rar_error)?;
+                        header.extract_to(output_dir).map_err(Self::map_rar_error)?;
                         return Ok(());
                     } else {
                         cursor = header.skip().map_err(Self::map_rar_error)?;
@@ -472,8 +468,7 @@ impl ArchiveReader for RarArchiveReader {
                     if let Err(e) = entry {
                         if matches!(
                             e.code,
-                            unrar::error::Code::MissingPassword
-                                | unrar::error::Code::BadPassword
+                            unrar::error::Code::MissingPassword | unrar::error::Code::BadPassword
                         ) {
                             return Ok(true);
                         }

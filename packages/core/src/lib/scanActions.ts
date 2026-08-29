@@ -25,6 +25,23 @@ function rememberRecentSources(
   }
 }
 
+export async function requestArchiveUnlock(archivePath: string): Promise<void> {
+  const platform = getPlatform();
+  let requiresMasterPassword = false;
+
+  try {
+    requiresMasterPassword =
+      (await platform.requiresMasterPassword?.(archivePath)) ?? false;
+  } catch (error) {
+    console.error("Failed to inspect stored archive password:", error);
+  }
+
+  useAppStore.setState({
+    archivePasswordNeeded: requiresMasterPassword ? null : archivePath,
+    archiveMasterPasswordNeeded: requiresMasterPassword ? archivePath : null,
+  });
+}
+
 function computeBatchFolderCounts(
   images: { relativePath: string }[],
 ): Record<string, number> {
@@ -318,10 +335,11 @@ export async function executeArchiveScan(
     );
   } catch (e) {
     const errorMsg = String(e);
-    if (errorMsg.includes("PasswordRequired")) {
-      useAppStore.setState({ archivePasswordNeeded: archivePath });
-    } else if (errorMsg.includes("WrongPassword")) {
-      useAppStore.setState({ archivePasswordNeeded: archivePath });
+    if (
+      errorMsg.includes("PasswordRequired") ||
+      errorMsg.includes("WrongPassword")
+    ) {
+      await requestArchiveUnlock(archivePath);
     } else {
       console.error("Archive scan failed:", e);
     }
@@ -376,7 +394,7 @@ export async function expandLockedArchive(
       errorMsg.includes("PasswordRequired") ||
       errorMsg.includes("WrongPassword")
     ) {
-      useAppStore.setState({ archivePasswordNeeded: archivePath });
+      await requestArchiveUnlock(archivePath);
     } else {
       console.error("Archive expand failed:", e);
     }

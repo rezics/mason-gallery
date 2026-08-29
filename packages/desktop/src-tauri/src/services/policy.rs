@@ -1,33 +1,23 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ExtractedMode {
     NoCache,
     LruCapped,
+    #[default]
     Unlimited,
 }
 
-impl Default for ExtractedMode {
-    fn default() -> Self {
-        ExtractedMode::Unlimited
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ThumbRetain {
+    #[default]
     UntilSourceRemoved,
     LruCapped,
 }
 
-impl Default for ThumbRetain {
-    fn default() -> Self {
-        ThumbRetain::UntilSourceRemoved
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtractedPolicy {
     #[serde(default)]
@@ -38,32 +28,13 @@ pub struct ExtractedPolicy {
     pub min_file_size: Option<i64>,
 }
 
-impl Default for ExtractedPolicy {
-    fn default() -> Self {
-        Self {
-            mode: ExtractedMode::default(),
-            max_size_per_source: None,
-            min_file_size: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThumbnailPolicy {
     #[serde(default)]
     pub retain: ThumbRetain,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_total_size: Option<i64>,
-}
-
-impl Default for ThumbnailPolicy {
-    fn default() -> Self {
-        Self {
-            retain: ThumbRetain::default(),
-            max_total_size: None,
-        }
-    }
 }
 
 fn default_thumbnail_sizes() -> Vec<u32> {

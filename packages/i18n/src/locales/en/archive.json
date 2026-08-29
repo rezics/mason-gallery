@@ -36,5 +36,7 @@
   "enterMasterPassword": "Enter master password",
   "confirmMasterPassword": "Confirm master password",
   "masterPasswordMismatch": "Passwords do not match",
+  "wrongMasterPassword": "Incorrect master password. Please try again.",
+  "passwordStorageFailed": "Failed to save the password. Please try again.",
   "deletePasswordsWarning": "All saved passwords will be deleted. Continue?"
 }

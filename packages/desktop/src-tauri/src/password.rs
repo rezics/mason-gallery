@@ -43,16 +43,48 @@ impl PasswordCache {
     }
 }
 
+/// In-memory master password for the current application session.
+///
+/// The master password is deliberately never persisted. Once supplied and
+/// verified against a stored archive password, it can decrypt other saved
+/// passwords until the application exits.
+pub struct MasterPasswordCache {
+    password: Mutex<Option<String>>,
+}
+
+impl MasterPasswordCache {
+    pub fn new() -> Self {
+        Self {
+            password: Mutex::new(None),
+        }
+    }
+
+    pub fn get(&self) -> Option<String> {
+        self.password.lock().ok()?.clone()
+    }
+
+    pub fn set(&self, password: &str) {
+        if let Ok(mut cached) = self.password.lock() {
+            *cached = Some(password.to_string());
+        }
+    }
+}
+
 /// Encrypt a password with a master password using AES-256-GCM
 pub fn encrypt_password(plaintext: &str, master_password: &str) -> Result<String, String> {
     let mut salt = [0u8; SALT_LEN];
     OsRng.fill_bytes(&mut salt);
 
     let mut key = [0u8; KEY_LEN];
-    pbkdf2_hmac::<Sha256>(master_password.as_bytes(), &salt, PBKDF2_ITERATIONS, &mut key);
+    pbkdf2_hmac::<Sha256>(
+        master_password.as_bytes(),
+        &salt,
+        PBKDF2_ITERATIONS,
+        &mut key,
+    );
 
-    let cipher = Aes256Gcm::new_from_slice(&key)
-        .map_err(|e| format!("Failed to create cipher: {}", e))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|e| format!("Failed to create cipher: {}", e))?;
 
     let mut nonce_bytes = [0u8; NONCE_LEN];
     OsRng.fill_bytes(&mut nonce_bytes);
@@ -79,8 +111,7 @@ pub fn encrypt_password(plaintext: &str, master_password: &str) -> Result<String
 
 /// Decrypt a password with a master password
 pub fn decrypt_password(encrypted_hex: &str, master_password: &str) -> Result<String, String> {
-    let combined = hex_to_bytes(encrypted_hex)
-        .map_err(|e| format!("Invalid hex: {}", e))?;
+    let combined = hex_to_bytes(encrypted_hex).map_err(|e| format!("Invalid hex: {}", e))?;
 
     if combined.len() < SALT_LEN + NONCE_LEN + 1 {
         return Err("Encrypted data too short".to_string());
@@ -91,10 +122,15 @@ pub fn decrypt_password(encrypted_hex: &str, master_password: &str) -> Result<St
     let ciphertext = &combined[SALT_LEN + NONCE_LEN..];
 
     let mut key = [0u8; KEY_LEN];
-    pbkdf2_hmac::<Sha256>(master_password.as_bytes(), salt, PBKDF2_ITERATIONS, &mut key);
+    pbkdf2_hmac::<Sha256>(
+        master_password.as_bytes(),
+        salt,
+        PBKDF2_ITERATIONS,
+        &mut key,
+    );
 
-    let cipher = Aes256Gcm::new_from_slice(&key)
-        .map_err(|e| format!("Failed to create cipher: {}", e))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|e| format!("Failed to create cipher: {}", e))?;
 
     let nonce = Nonce::from_slice(nonce_bytes);
 
@@ -106,7 +142,7 @@ pub fn decrypt_password(encrypted_hex: &str, master_password: &str) -> Result<St
 }
 
 fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, String> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         return Err("Odd-length hex string".to_string());
     }
     (0..hex.len())
@@ -116,4 +152,34 @@ fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, String> {
                 .map_err(|e| format!("Invalid hex at {}: {}", i, e))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{decrypt_password, encrypt_password};
+
+    #[test]
+    fn encrypted_password_round_trips() {
+        let encrypted = encrypt_password("archive-secret", "master-secret")
+            .expect("password encryption should succeed");
+
+        let decrypted = decrypt_password(&encrypted, "master-secret")
+            .expect("password decryption should succeed");
+
+        assert_eq!(decrypted, "archive-secret");
+        assert_ne!(encrypted, "archive-secret");
+    }
+
+    #[test]
+    fn wrong_master_password_is_rejected() {
+        let encrypted = encrypt_password("archive-secret", "master-secret")
+            .expect("password encryption should succeed");
+
+        assert!(decrypt_password(&encrypted, "different-master").is_err());
+    }
+
+    #[test]
+    fn malformed_ciphertext_is_rejected() {
+        assert!(decrypt_password("not-hex", "master-secret").is_err());
+    }
 }

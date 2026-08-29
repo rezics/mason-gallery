@@ -2,7 +2,7 @@ use crate::archive::{open_archive, ArchiveError, ArchiveReader};
 use crate::archive_scan::{self, ScanConfig, ScanInputs};
 use crate::commands::{ImageBatch, ImageCount, WImage};
 use crate::database::Database;
-use crate::password::PasswordCache;
+use crate::password::{decrypt_password, encrypt_password, MasterPasswordCache, PasswordCache};
 use crate::server::SharedPolicy;
 use crate::services::image_service::ImageService;
 use crate::services::policy::{self, CachePolicy, CachePolicyOverride};
@@ -144,6 +144,14 @@ fn get_password_for_archive(
         if !record.encrypted {
             return Some(record.password);
         }
+
+        let master_cache = app.state::<Arc<MasterPasswordCache>>();
+        if let Some(master_password) = master_cache.get() {
+            if let Ok(password) = decrypt_password(&record.password, &master_password) {
+                pw_cache.set(archive_path, &password);
+                return Some(password);
+            }
+        }
     }
 
     None
@@ -153,10 +161,9 @@ fn get_password_for_archive(
 /// Entries themselves are streamed through the caller-supplied callback —
 /// only the lifecycle status is returned here.
 pub enum ExpansionResult {
-    /// Archive listed and processed successfully. `entry_count` is the
-    /// number of image entries that were streamed into `on_batch` (and that
-    /// `on_progress` will eventually report once each).
-    Listed { entry_count: usize },
+    /// Archive listed and processed successfully. Entries have already been
+    /// streamed into `on_batch` and accounted for by the progress tracker.
+    Listed,
     /// Archive needs a password we don't have — caller should emit a
     /// locked placeholder tile (carried inline so the caller doesn't have
     /// to reconstruct it).
@@ -184,7 +191,7 @@ pub fn expand_archive_into_scan<F>(
     sort_method: &str,
     page_size: usize,
     tracker: &Arc<ScanProgressTracker>,
-    mut on_batch: F,
+    on_batch: F,
 ) -> ExpansionResult
 where
     F: FnMut(Vec<WImage>, bool),
@@ -261,7 +268,9 @@ where
     // Bump shared totals before any worker fires so the indicator denominator
     // grows monotonically as archives are listed.
     tracker.info_total.fetch_add(entry_count, Ordering::Relaxed);
-    tracker.thumb_total.fetch_add(entry_count, Ordering::Relaxed);
+    tracker
+        .thumb_total
+        .fetch_add(entry_count, Ordering::Relaxed);
     tracker.emit_info(app);
     tracker.emit_thumb(app);
 
@@ -283,29 +292,21 @@ where
     };
 
     let progress_tracker = tracker.clone();
-    archive_scan::run_scan(
-        inputs,
-        cfg,
-        |images, done| on_batch(images, done),
-        |_n_local| {
-            // Archive entries advance info and thumb 1:1 — the entry is only
-            // display-ready once its thumbnail is on disk.
-            let info_n = progress_tracker
-                .info_loaded
-                .fetch_add(1, Ordering::Relaxed)
-                + 1;
-            progress_tracker
-                .thumb_generated
-                .fetch_add(1, Ordering::Relaxed);
-            let total = progress_tracker.info_total.load(Ordering::Relaxed);
-            if info_n % 16 == 0 || info_n == total {
-                progress_tracker.emit_info(app);
-                progress_tracker.emit_thumb(app);
-            }
-        },
-    );
+    archive_scan::run_scan(inputs, cfg, on_batch, |_n_local| {
+        // Archive entries advance info and thumb 1:1 — the entry is only
+        // display-ready once its thumbnail is on disk.
+        let info_n = progress_tracker.info_loaded.fetch_add(1, Ordering::Relaxed) + 1;
+        progress_tracker
+            .thumb_generated
+            .fetch_add(1, Ordering::Relaxed);
+        let total = progress_tracker.info_total.load(Ordering::Relaxed);
+        if info_n.is_multiple_of(16) || info_n == total {
+            progress_tracker.emit_info(app);
+            progress_tracker.emit_thumb(app);
+        }
+    });
 
-    ExpansionResult::Listed { entry_count }
+    ExpansionResult::Listed
 }
 
 #[tauri::command]
@@ -350,8 +351,11 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
         _ => image_entries.sort_by(|a, b| natord::compare(&a.path, &b.path)),
     }
 
-    let (source_rec, _size) =
-        source_svc.open_or_create_archive(&archive_path, Some(is_solid), Some(image_entries.len() as i64))?;
+    let (source_rec, _size) = source_svc.open_or_create_archive(
+        &archive_path,
+        Some(is_solid),
+        Some(image_entries.len() as i64),
+    )?;
     let source_id = source_rec.id;
     let source_hash = source_rec.content_hash.clone();
 
@@ -375,12 +379,8 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
     // Pre-emit zero progress so the UI can render the indicator immediately
     // with a known denominator, before any worker starts.
     let tracker = Arc::new(ScanProgressTracker::new());
-    tracker
-        .info_total
-        .store(total_entries, Ordering::Relaxed);
-    tracker
-        .thumb_total
-        .store(total_entries, Ordering::Relaxed);
+    tracker.info_total.store(total_entries, Ordering::Relaxed);
+    tracker.thumb_total.store(total_entries, Ordering::Relaxed);
     tracker.emit_info(&app);
     tracker.emit_thumb(&app);
 
@@ -430,14 +430,11 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
             |_n_local| {
                 // In archive scans info and thumb advance 1:1 — every entry
                 // becomes display-ready exactly when its thumbnail is written.
-                let info_n = progress_tracker
-                    .info_loaded
-                    .fetch_add(1, Ordering::Relaxed)
-                    + 1;
+                let info_n = progress_tracker.info_loaded.fetch_add(1, Ordering::Relaxed) + 1;
                 progress_tracker
                     .thumb_generated
                     .fetch_add(1, Ordering::Relaxed);
-                if info_n % 16 == 0 || info_n == total_entries {
+                if info_n.is_multiple_of(16) || info_n == total_entries {
                     progress_tracker.emit_info(&progress_app);
                     progress_tracker.emit_thumb(&progress_app);
                 }
@@ -451,10 +448,7 @@ pub async fn scan_archive(app: AppHandle, params: ScanArchiveParams) -> Result<(
 }
 
 #[tauri::command]
-pub async fn get_archive_info(
-    app: AppHandle,
-    path: String,
-) -> Result<ArchiveInfoResponse, String> {
+pub async fn get_archive_info(app: AppHandle, path: String) -> Result<ArchiveInfoResponse, String> {
     let password = get_password_for_archive(&app, &path, None);
 
     let reader = open_archive(Path::new(&path)).map_err(archive_error_to_string)?;
@@ -544,9 +538,7 @@ pub async fn unlock_archive(
         .list_entries(Some(&password))
         .map_err(archive_error_to_string)?;
 
-    let pw_cache = app.state::<Arc<PasswordCache>>();
-    pw_cache.set(&path, &password);
-
+    let mut master_password_to_cache = None;
     if remember {
         let db = app.state::<Arc<Database>>().inner().clone();
         let mode = storage_mode.unwrap_or_else(|| "none".to_string());
@@ -556,14 +548,63 @@ pub async fn unlock_archive(
                 db.save_password(&path, &password, false)?;
             }
             "master" => {
-                if let Some(mp) = master_password {
-                    let encrypted = crate::password::encrypt_password(&password, &mp)?;
-                    db.save_password(&path, &encrypted, true)?;
-                }
+                let master_cache = app.state::<Arc<MasterPasswordCache>>();
+                let master_password = master_password
+                    .filter(|value| !value.is_empty())
+                    .or_else(|| master_cache.get())
+                    .ok_or_else(|| "MasterPasswordRequired".to_string())?;
+                let encrypted = encrypt_password(&password, &master_password)?;
+                db.save_password(&path, &encrypted, true)?;
+                master_password_to_cache = Some(master_password);
             }
             _ => {}
         }
     }
+
+    let pw_cache = app.state::<Arc<PasswordCache>>();
+    pw_cache.set(&path, &password);
+    if let Some(master_password) = master_password_to_cache {
+        app.state::<Arc<MasterPasswordCache>>()
+            .set(&master_password);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn requires_master_password(app: AppHandle, path: String) -> Result<bool, String> {
+    if get_password_for_archive(&app, &path, None).is_some() {
+        return Ok(false);
+    }
+
+    let db = app.state::<Arc<Database>>();
+    Ok(db
+        .get_password(&path)?
+        .is_some_and(|record| record.encrypted))
+}
+
+#[tauri::command]
+pub async fn unlock_archive_with_master_password(
+    app: AppHandle,
+    path: String,
+    master_password: String,
+) -> Result<(), String> {
+    let db = app.state::<Arc<Database>>();
+    let record = db
+        .get_password(&path)?
+        .filter(|record| record.encrypted)
+        .ok_or_else(|| "MasterPasswordNotStored".to_string())?;
+    let password = decrypt_password(&record.password, &master_password)
+        .map_err(|_| "WrongMasterPassword".to_string())?;
+
+    let reader = open_archive(Path::new(&path)).map_err(archive_error_to_string)?;
+    let _ = reader
+        .list_entries(Some(&password))
+        .map_err(archive_error_to_string)?;
+
+    app.state::<Arc<PasswordCache>>().set(&path, &password);
+    app.state::<Arc<MasterPasswordCache>>()
+        .set(&master_password);
 
     Ok(())
 }
@@ -601,10 +642,7 @@ pub async fn confirm_migration(
 }
 
 #[tauri::command]
-pub async fn startup_cache_cleanup(
-    app: AppHandle,
-    strategy: String,
-) -> Result<(), String> {
+pub async fn startup_cache_cleanup(app: AppHandle, strategy: String) -> Result<(), String> {
     if strategy != "auto-clean" {
         return Ok(());
     }
@@ -653,11 +691,9 @@ pub async fn set_source_policy(
     }
     let json = match policy_override {
         Some(o) => Some(
-            serde_json::to_string(&o)
-                .map_err(|e| format!("Failed to encode override: {}", e))?,
+            serde_json::to_string(&o).map_err(|e| format!("Failed to encode override: {}", e))?,
         ),
         None => None,
     };
     db.set_source_policy(source_id, json.as_deref())
 }
-

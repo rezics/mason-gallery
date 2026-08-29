@@ -2,7 +2,6 @@ use crate::database::Database;
 use crate::services::archive_service::{ArchiveService, ExtractResult};
 use crate::services::image_service::ImageService;
 use crate::services::policy::{parse_override, CachePolicy};
-use crate::services::source_service::SourceService;
 use crate::services::thumbnail_service::ThumbnailService;
 use axum::{
     extract::{Query, State},
@@ -32,9 +31,7 @@ pub struct AppState {
     pub db: Arc<Database>,
     pub image_svc: Arc<ImageService>,
     pub thumbnail_svc: Arc<ThumbnailService>,
-    pub source_svc: Arc<SourceService>,
     pub policy: SharedPolicy,
-    pub cache_dir: PathBuf,
 }
 
 #[derive(serde::Deserialize)]
@@ -137,7 +134,10 @@ async fn thumb_handler(
         _ => return (StatusCode::BAD_REQUEST, "Missing or invalid 'w'").into_response(),
     };
 
-    let path = match state.thumbnail_svc.resolve(&source_hash, &entry_hash, width) {
+    let path = match state
+        .thumbnail_svc
+        .resolve(&source_hash, &entry_hash, width)
+    {
         Some(p) => p,
         None => return StatusCode::NOT_FOUND.into_response(),
     };
@@ -208,17 +208,13 @@ pub async fn start_server(
     db: Arc<Database>,
     image_svc: Arc<ImageService>,
     thumbnail_svc: Arc<ThumbnailService>,
-    source_svc: Arc<SourceService>,
     policy: SharedPolicy,
-    cache_dir: PathBuf,
 ) -> Result<u16, Box<dyn std::error::Error>> {
     let state = AppState {
         db,
         image_svc,
         thumbnail_svc,
-        source_svc,
         policy,
-        cache_dir,
     };
 
     let app = Router::new()

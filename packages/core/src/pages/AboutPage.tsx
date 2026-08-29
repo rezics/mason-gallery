@@ -1,4 +1,4 @@
-import { Github } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n";
@@ -26,7 +26,7 @@ export default function AboutPage() {
               )
             }
           >
-            <Github />
+            <ExternalLink />
             {t("about:github")}
           </Button>
         </div>

@@ -5,6 +5,7 @@ import DropZone from "@/components/DropZone";
 import FolderSidebar from "@/components/FolderSidebar";
 import HomeLibrarySections from "@/components/HomeLibrarySections";
 import ImageViewer from "@/components/ImageViewer";
+import MasterPasswordDialog from "@/components/MasterPasswordDialog";
 import MigrationConfirmDialog from "@/components/MigrationConfirmDialog";
 import PasswordDialog from "@/components/PasswordDialog";
 import SidebarHome from "@/components/SidebarHome";
@@ -88,11 +89,21 @@ export default function HomePage() {
 
   const platform = usePlatform();
   const archivePasswordNeeded = useAppStore((s) => s.archivePasswordNeeded);
+  const archiveMasterPasswordNeeded = useAppStore(
+    (s) => s.archiveMasterPasswordNeeded,
+  );
   const archiveSolidWarning = useAppStore((s) => s.archiveSolidWarning);
   const archiveMigrationCandidate = useAppStore(
     (s) => s.archiveMigrationCandidate,
   );
   const [passwordError, setPasswordError] = useState("");
+  const [masterPasswordError, setMasterPasswordError] = useState("");
+  const [isMasterPasswordSetupOpen, setIsMasterPasswordSetupOpen] =
+    useState(false);
+  const pendingArchivePasswordRef = useRef<{
+    path: string;
+    password: string;
+  } | null>(null);
 
   const images = useMemo(() => {
     if (!selectedFolder) {
@@ -174,6 +185,133 @@ export default function HomePage() {
     isScanning && totalCount > 0
       ? (allImages.length / totalCount) * 100
       : undefined;
+
+  const resumeArchive = useCallback((path: string, password?: string) => {
+    const placeholderSource = `archive:///${path}`;
+    const hasPlaceholder = useViewerStore
+      .getState()
+      .images.some((img) => img.locked && img.source === placeholderSource);
+
+    pendingArchivePasswordRef.current = null;
+    setIsMasterPasswordSetupOpen(false);
+    setPasswordError("");
+    setMasterPasswordError("");
+    useAppStore.setState({
+      archivePasswordNeeded: null,
+      archiveMasterPasswordNeeded: null,
+    });
+
+    if (hasPlaceholder) {
+      void expandLockedArchive(path, password).catch(() => {});
+    } else {
+      void executeArchiveScan(path, password);
+    }
+  }, []);
+
+  const handleArchivePasswordSubmit = useCallback(
+    async (password: string, remember: boolean) => {
+      const path = archivePasswordNeeded;
+      if (!path) return;
+
+      const { passwordStorageMode } = useSettingsStore.getState();
+      try {
+        if (platform.unlockArchive) {
+          await platform.unlockArchive(
+            path,
+            password,
+            remember,
+            passwordStorageMode,
+          );
+        }
+        resumeArchive(path, platform.unlockArchive ? undefined : password);
+      } catch (error) {
+        const message = String(error);
+        if (message.includes("MasterPasswordRequired")) {
+          pendingArchivePasswordRef.current = { path, password };
+          setPasswordError("");
+          setMasterPasswordError("");
+          setIsMasterPasswordSetupOpen(true);
+          useAppStore.setState({ archivePasswordNeeded: null });
+          return;
+        }
+
+        setPasswordError(
+          message.includes("WrongPassword")
+            ? t("archive:wrongPassword")
+            : t("archive:passwordStorageFailed"),
+        );
+      }
+    },
+    [archivePasswordNeeded, platform, resumeArchive, t],
+  );
+
+  const handleMasterPasswordSubmit = useCallback(
+    async (masterPassword: string): Promise<boolean> => {
+      const pending = pendingArchivePasswordRef.current;
+      if (isMasterPasswordSetupOpen && pending) {
+        if (!platform.unlockArchive) return false;
+        try {
+          await platform.unlockArchive(
+            pending.path,
+            pending.password,
+            true,
+            "master",
+            masterPassword,
+          );
+          resumeArchive(pending.path);
+          return true;
+        } catch (error) {
+          console.error("Failed to save encrypted archive password:", error);
+          setMasterPasswordError(t("archive:passwordStorageFailed"));
+          return false;
+        }
+      }
+
+      const path = archiveMasterPasswordNeeded;
+      if (!path || !platform.unlockArchiveWithMasterPassword) return false;
+      try {
+        await platform.unlockArchiveWithMasterPassword(path, masterPassword);
+        resumeArchive(path);
+        return true;
+      } catch (error) {
+        const message = String(error);
+        if (
+          message.includes("WrongPassword") ||
+          message.includes("MasterPasswordNotStored")
+        ) {
+          setMasterPasswordError("");
+          useAppStore.setState({
+            archiveMasterPasswordNeeded: null,
+            archivePasswordNeeded: path,
+          });
+          return true;
+        }
+
+        setMasterPasswordError(t("archive:wrongMasterPassword"));
+        return false;
+      }
+    },
+    [
+      archiveMasterPasswordNeeded,
+      isMasterPasswordSetupOpen,
+      platform,
+      resumeArchive,
+      t,
+    ],
+  );
+
+  const handleMasterPasswordCancel = useCallback(() => {
+    const pending = pendingArchivePasswordRef.current;
+    pendingArchivePasswordRef.current = null;
+    setIsMasterPasswordSetupOpen(false);
+    setMasterPasswordError("");
+
+    if (pending) {
+      useAppStore.setState({ archivePasswordNeeded: pending.path });
+      return;
+    }
+    useAppStore.setState({ archiveMasterPasswordNeeded: null });
+  }, []);
 
   return (
     <div className="flex h-full flex-col">
@@ -296,41 +434,19 @@ export default function HomePage() {
         open={!!archivePasswordNeeded}
         archivePath={archivePasswordNeeded ?? ""}
         error={passwordError}
-        onSubmit={async (password, remember) => {
-          const path = archivePasswordNeeded;
-          if (!path) return;
-
-          try {
-            if (platform.unlockArchive) {
-              const { passwordStorageMode } = useSettingsStore.getState();
-              await platform.unlockArchive(
-                path,
-                password,
-                remember,
-                passwordStorageMode,
-              );
-            }
-            const placeholderSource = `archive:///${path}`;
-            const hasPlaceholder = useViewerStore
-              .getState()
-              .images.some(
-                (img) => img.locked && img.source === placeholderSource,
-              );
-            useAppStore.setState({ archivePasswordNeeded: null });
-            setPasswordError("");
-            if (hasPlaceholder) {
-              expandLockedArchive(path, password).catch(() => {});
-            } else {
-              executeArchiveScan(path, password);
-            }
-          } catch {
-            setPasswordError(t("archive:wrongPassword"));
-          }
-        }}
+        onSubmit={handleArchivePasswordSubmit}
         onCancel={() => {
           useAppStore.setState({ archivePasswordNeeded: null });
           setPasswordError("");
         }}
+      />
+
+      <MasterPasswordDialog
+        open={isMasterPasswordSetupOpen || !!archiveMasterPasswordNeeded}
+        mode={isMasterPasswordSetupOpen ? "set" : "enter"}
+        error={masterPasswordError}
+        onSubmit={handleMasterPasswordSubmit}
+        onCancel={handleMasterPasswordCancel}
       />
 
       {/* Migration Confirm Dialog */}
