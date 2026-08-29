@@ -50,3 +50,6 @@ packages/desktop/src-tauri/gen
 
 # local generated preview assets
 public/local-preview/
+
+# generated from public/logo/banner.svg during the web build
+public/logo/og-image.png
