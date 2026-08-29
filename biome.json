@@ -24,5 +24,18 @@
   },
   "files": {
     "includes": ["packages/*/src/**", "*.ts", "*.json"]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedImports": "off",
+            "noUnusedVariables": "off"
+          }
+        }
+      }
+    }
+  ]
 }

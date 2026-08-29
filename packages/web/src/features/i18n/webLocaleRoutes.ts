@@ -16,8 +16,9 @@ export function getLocalizedWebPath(
   path: "/" | "/about",
   locale: SupportedLanguage | undefined,
 ): string {
-  if (!locale) return path;
-  return path === "/" ? `/${locale}/` : `/${locale}${path}`;
+  const suffix = path === "/" ? "" : "about/";
+  if (!locale || locale === "en") return `/${suffix}`;
+  return `/${locale}/${suffix}`;
 }
 
 export function getBrowserLanguage(): SupportedLanguage {
@@ -28,11 +29,20 @@ export function getBrowserLanguage(): SupportedLanguage {
   return resolvePreferredLanguage(languages);
 }
 
+export function getWebLocaleFromSearch(
+  search: string,
+): SupportedLanguage | undefined {
+  const value = new URLSearchParams(search).get("lang");
+  return isSupportedLanguage(value) ? value : undefined;
+}
+
 export function getInitialWebLanguage(
   pathname: string,
   storedLanguage: unknown,
+  search = "",
 ): SupportedLanguage {
   return (
+    getWebLocaleFromSearch(search) ??
     getWebLocaleFromPathname(pathname) ??
     resolvePreferredLanguage([storedLanguage], getBrowserLanguage())
   );

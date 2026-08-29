@@ -1,0 +1,168 @@
+---
+import type { SupportedLanguage } from "@mason-gallery/i18n";
+import "@mason-gallery/core/src/index.css";
+import PublicWebHeader from "../app/PublicWebHeader";
+import {
+  getLocalizedPath,
+  publicLocales,
+  SITE_ORIGIN,
+  siteContent,
+} from "../content/siteContent";
+
+interface Props {
+  locale: SupportedLanguage;
+  page: "home" | "about";
+  title?: string;
+  description?: string;
+  canonicalPath?: string | null;
+  noindex?: boolean;
+  structuredData?: Record<string, unknown>;
+  showHeader?: boolean;
+}
+
+const {
+  locale,
+  page,
+  title = siteContent[locale].title,
+  description = siteContent[locale].description,
+  canonicalPath = getLocalizedPath(locale, page),
+  noindex = false,
+  structuredData,
+  showHeader = true,
+} = Astro.props;
+const content = siteContent[locale];
+const canonical = canonicalPath
+  ? new URL(canonicalPath, SITE_ORIGIN).toString()
+  : undefined;
+const ogImage = new URL("/logo/og-image.png", SITE_ORIGIN).toString();
+const homePath = getLocalizedPath(locale, "home");
+const aboutPath = getLocalizedPath(locale, "about");
+const privacyPath = page === "home" ? "#privacy" : `${homePath}#privacy`;
+---
+
+<!doctype html>
+<html lang={content.htmlLang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta
+      name="robots"
+      content={noindex ? "noindex, follow" : "index, follow, max-image-preview:large"}
+    />
+    <meta name="theme-color" content="#fcf8f7" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/logo/logo.svg" type="image/svg+xml" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {
+      !noindex &&
+        publicLocales.map((alternateLocale) => (
+          <link
+            rel="alternate"
+            hreflang={siteContent[alternateLocale].htmlLang}
+            href={new URL(
+              getLocalizedPath(alternateLocale, page),
+              SITE_ORIGIN,
+            ).toString()}
+          />
+        ))
+    }
+    {
+      !noindex && (
+        <link
+          rel="alternate"
+          hreflang="x-default"
+          href={new URL(getLocalizedPath("en", page), SITE_ORIGIN).toString()}
+        />
+      )
+    }
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mason Gallery" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Mason Gallery" />
+    <meta property="og:locale" content={content.ogLocale} />
+    {
+      publicLocales
+        .filter((alternateLocale) => alternateLocale !== locale)
+        .map((alternateLocale) => (
+          <meta
+            property="og:locale:alternate"
+            content={siteContent[alternateLocale].ogLocale}
+          />
+        ))
+    }
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    {
+      structuredData && (
+        <script
+          type="application/ld+json"
+          is:inline
+          set:html={JSON.stringify(structuredData)}
+        />
+      )
+    }
+    <script is:inline>
+      document.documentElement.classList.toggle(
+        "dark",
+        window.matchMedia("(prefers-color-scheme: dark)").matches,
+      );
+    </script>
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    <a
+      href="#main-content"
+      class="fixed left-4 top-4 z-50 -translate-y-24 rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground transition focus:translate-y-0"
+    >
+      {content.skipToContent}
+    </a>
+    {
+      showHeader && (
+        <PublicWebHeader locale={locale} page={page} client:load />
+      )
+    }
+    <main id="main-content">
+      <slot />
+    </main>
+    <footer class="border-t border-border bg-card/40">
+      <div
+        class="mx-auto flex max-w-[1440px] flex-col gap-4 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-16"
+      >
+        <p>{content.footer}</p>
+        <div class="flex gap-5">
+          <a class="transition hover:text-foreground" href={privacyPath}
+            >{content.navPrivacy}</a
+          >
+          <a class="transition hover:text-foreground" href={aboutPath}
+            >{content.navAbout}</a
+          >
+          <a
+            class="transition hover:text-foreground"
+            href="https://github.com/Edge-coordinates/mason-gallery"
+            rel="noopener noreferrer"
+          >GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+</style>

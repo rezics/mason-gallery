@@ -1,12 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "types": ["astro/client"],
     "paths": {
       "@/*": ["./src/*"],
       "@mason-gallery/core": ["../core/src/index.ts"],
       "@mason-gallery/core/*": ["../core/src/*"]
     }
   },
-  "include": ["src"],
+  "include": [".astro/types.d.ts", "src"],
   "references": [{ "path": "../core" }]
 }

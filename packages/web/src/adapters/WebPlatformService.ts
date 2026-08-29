@@ -291,11 +291,16 @@ export const webPlatformService: PlatformService = {
         language: getInitialWebLanguage(
           window.location.pathname,
           settings.language,
+          window.location.search,
         ),
       };
     } catch {
       return {
-        language: getInitialWebLanguage(window.location.pathname, undefined),
+        language: getInitialWebLanguage(
+          window.location.pathname,
+          undefined,
+          window.location.search,
+        ),
       };
     }
   },

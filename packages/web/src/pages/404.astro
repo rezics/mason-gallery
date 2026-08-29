@@ -1,0 +1,37 @@
+---
+import { siteContent } from "../content/siteContent";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const content = siteContent.en;
+---
+
+<BaseLayout
+  locale="en"
+  page="home"
+  title={`${content.notFoundTitle} — Mason Gallery`}
+  description={content.notFoundDescription}
+  canonicalPath={null}
+  noindex
+>
+  <section class="flex min-h-[64vh] items-center justify-center px-5 py-20">
+    <div class="max-w-lg text-center">
+      <p
+        class="text-sm font-semibold uppercase tracking-[0.24em] text-primary"
+      >
+        404
+      </p>
+      <h1 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+        {content.notFoundTitle}
+      </h1>
+      <p class="mt-5 text-lg leading-8 text-muted-foreground">
+        {content.notFoundDescription}
+      </p>
+      <a
+        href="/"
+        class="mt-8 inline-flex h-12 items-center justify-center rounded-md bg-primary px-7 font-semibold text-primary-foreground transition hover:bg-primary/90"
+      >
+        {content.goHome}
+      </a>
+    </div>
+  </section>
+</BaseLayout>

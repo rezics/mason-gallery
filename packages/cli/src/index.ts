@@ -17,7 +17,7 @@ const server = createServer(serve);
 server.listen(port, () => {
   const addr = server.address();
   const actualPort = typeof addr === "object" && addr ? addr.port : port;
-  const url = `http://localhost:${actualPort}`;
+  const url = `http://localhost:${actualPort}/`;
   console.log(`MasonGallery running at ${url}`);
 
   const cmd =

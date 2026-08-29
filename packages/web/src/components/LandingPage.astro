@@ -1,0 +1,176 @@
+---
+import type { SupportedLanguage } from "@mason-gallery/i18n";
+import { WebHeader } from "../app/WebHeader";
+import {
+  GITHUB_URL,
+  getLocalizedPath,
+  publicLocales,
+  SITE_ORIGIN,
+  siteContent,
+} from "../content/siteContent";
+import EmbeddedApp from "../EmbeddedApp";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import StaticHeroFallback from "./StaticHeroFallback.astro";
+
+interface Props {
+  locale: SupportedLanguage;
+}
+
+const { locale } = Astro.props;
+const content = siteContent[locale];
+const pageUrl = new URL(
+  getLocalizedPath(locale, "home"),
+  SITE_ORIGIN,
+).toString();
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Mason Gallery",
+  url: pageUrl,
+  description: content.description,
+  inLanguage: content.htmlLang,
+  applicationCategory: "MultimediaApplication",
+  operatingSystem: "Any",
+  browserRequirements:
+    "Requires a Chromium-based browser with File System Access API support",
+  isAccessibleForFree: true,
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  image: new URL("/logo/og-image.png", SITE_ORIGIN).toString(),
+  sameAs: [GITHUB_URL],
+};
+const homePath = getLocalizedPath(locale, "home");
+const aboutPath = getLocalizedPath(locale, "about");
+const preferencesPath = `/app/settings/gallery/${
+  locale === "en" ? "" : `?lang=${locale}`
+}`;
+---
+
+<BaseLayout
+  locale={locale}
+  page="home"
+  structuredData={structuredData}
+  showHeader={false}
+>
+  <section
+    id="app-entry"
+    class="h-svh min-h-[664px] overflow-hidden border-b border-border"
+  >
+    <EmbeddedApp locale={locale} client:only="react">
+      <div slot="fallback" class="flex h-full min-h-0 flex-col">
+        <WebHeader
+          preferencesLabel={content.preferences}
+          aboutLabel={content.navAbout}
+          brandHref={homePath}
+          preferencesHref={preferencesPath}
+          aboutHref={aboutPath}
+          languageMenu={{
+            label: content.languageMenuLabel,
+            currentLanguage: locale,
+            options: publicLocales.map((optionLocale) => ({
+              language: optionLocale,
+              label: siteContent[optionLocale].languageName,
+              href: getLocalizedPath(optionLocale, "home"),
+            })),
+          }}
+        />
+        <div class="min-h-0 flex-1">
+          <StaticHeroFallback locale={locale} />
+        </div>
+      </div>
+    </EmbeddedApp>
+  </section>
+
+  <section id="features" class="scroll-mt-24 py-20 sm:py-28">
+    <div class="mx-auto max-w-[1200px] px-5 sm:px-10">
+      <div class="max-w-2xl">
+        <h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">
+          {content.featuresTitle}
+        </h2>
+        <p class="mt-4 text-lg leading-8 text-muted-foreground">
+          {content.featuresLead}
+        </p>
+      </div>
+      <div class="mt-12 grid gap-5 md:grid-cols-2">
+        {
+          content.features.map((feature, index) => (
+            <article class="rounded-xl border border-border bg-card p-7 shadow-sm">
+              <div class="mb-5 flex size-10 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground">
+                {String(index + 1).padStart(2, "0")}
+              </div>
+              <h3 class="text-xl font-semibold">{feature.title}</h3>
+              <p class="mt-3 leading-7 text-muted-foreground">
+                {feature.description}
+              </p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-border bg-card/55 py-20 sm:py-24">
+    <div class="mx-auto max-w-[1200px] px-5 sm:px-10">
+      <h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">
+        {content.stepsTitle}
+      </h2>
+      <div class="mt-10 grid gap-8 md:grid-cols-3">
+        {
+          content.steps.map((step, index) => (
+            <article>
+              <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+                {String(index + 1).padStart(2, "0")}
+              </p>
+              <h3 class="mt-3 text-xl font-semibold">{step.title}</h3>
+              <p class="mt-3 leading-7 text-muted-foreground">
+                {step.description}
+              </p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy" class="scroll-mt-24 py-20 sm:py-24">
+    <div class="mx-auto max-w-[900px] px-5 sm:px-10">
+      <h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">
+        {content.privacyTitle}
+      </h2>
+      <p class="mt-5 text-lg leading-8 text-muted-foreground">
+        {content.privacyBody}
+      </p>
+      <p class="mt-4 text-sm leading-6 text-muted-foreground">
+        {content.privacyDetail}
+      </p>
+    </div>
+  </section>
+
+  <section class="border-t border-border bg-card/55 py-20 sm:py-24">
+    <div class="mx-auto max-w-3xl px-5 sm:px-10">
+      <h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">
+        {content.faqTitle}
+      </h2>
+      <div class="mt-10 grid gap-3">
+        {
+          content.faqs.map((faq) => (
+            <details class="group rounded-lg border border-border bg-card p-5 open:shadow-sm">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-6 font-semibold">
+                {faq.question}
+                <span class="text-xl text-muted-foreground transition group-open:rotate-45" aria-hidden="true">
+                  +
+                </span>
+              </summary>
+              <p class="mt-4 max-w-2xl leading-7 text-muted-foreground">
+                {faq.answer}
+              </p>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>

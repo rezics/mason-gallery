@@ -12,7 +12,7 @@ Masonry layout Image Viewer — desktop, web, and CLI.
 packages/
 ├── core/       — Shared UI components, stores, types, i18n
 ├── desktop/    — Tauri desktop app (Windows, macOS, Linux)
-├── web/        — Static web SPA (Chromium browsers)
+├── web/        — Astro static site + React browser app (Chromium browsers)
 └── cli/        — npm CLI that serves the web build locally
 ```
 

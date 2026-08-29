@@ -1,0 +1,58 @@
+---
+import type { SupportedLanguage } from "@mason-gallery/i18n";
+import { GITHUB_URL, siteContent } from "../content/siteContent";
+
+interface Props {
+  locale: SupportedLanguage;
+}
+
+const { locale } = Astro.props;
+const content = siteContent[locale];
+---
+
+<div class="relative h-full overflow-hidden bg-background">
+  <div
+    class="pointer-events-none absolute inset-0 opacity-70 [background-size:30px_30px] [background-image:radial-gradient(circle,hsl(var(--primary)/0.14)_1.5px,transparent_1.5px)] [mask-image:linear-gradient(90deg,black,transparent_70%)]"
+  >
+  </div>
+  <div
+    class="pointer-events-none absolute -left-32 top-16 h-96 w-96 rounded-full bg-primary/12 blur-3xl"
+  >
+  </div>
+  <div
+    class="relative mx-auto flex h-full max-w-[1440px] items-center px-5 py-12 sm:px-10 lg:px-16"
+  >
+    <div class="max-w-3xl">
+      <p
+        class="mb-5 text-sm font-semibold uppercase tracking-[0.18em] text-primary"
+      >
+        {content.eyebrow}
+      </p>
+      <h1
+        class="text-5xl font-semibold leading-[1.02] tracking-[-0.035em] text-foreground sm:text-6xl lg:text-7xl"
+      >
+        {content.heroTitle}
+      </h1>
+      <p class="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">
+        {content.heroLead}
+      </p>
+      <ul class="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
+        {
+          content.highlights.map((highlight) => (
+            <li class="flex items-start gap-2">
+              <span class="mt-0.5 text-primary" aria-hidden="true">✓</span>
+              <span>{highlight}</span>
+            </li>
+          ))
+        }
+      </ul>
+      <a
+        href={GITHUB_URL}
+        rel="noopener noreferrer"
+        class="mt-9 inline-flex h-11 items-center justify-center rounded-md border border-border bg-card px-5 text-sm font-semibold transition hover:bg-secondary"
+      >
+        {content.githubCta}
+      </a>
+    </div>
+  </div>
+</div>

@@ -2,22 +2,26 @@ version: "3"
 
 tasks:
     dev:
-        desc: Start the web development server.
+        desc: Start the Astro web development server.
         cmds:
-            - bunx vite
+            - bun run dev
 
     build:
-        desc: Build the web SPA and write its static entrypoints.
+        desc: Build the Astro static site and React web app.
         cmds:
-            - bunx vite build
-            - bun scripts/write-static-entrypoints.mjs
+            - bun run build
 
     preview:
         desc: Preview the production web build.
         cmds:
-            - bunx vite preview
+            - bun run preview
+
+    check:
+        desc: Type-check Astro pages and components.
+        cmds:
+            - bun run check
 
     test:
         desc: Run web behavior tests.
         cmds:
-            - bun test tests
+            - bun run test

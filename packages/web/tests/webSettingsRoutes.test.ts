@@ -23,4 +23,11 @@ describe("web settings routes", () => {
     );
     expect(getWebSettingsCategory("/ja/settings/nope")).toBe("gallery");
   });
+
+  test("accepts the noindex app settings prefix", () => {
+    expect(getWebSettingsCategory("/app/settings/appearance")).toBe(
+      "appearance",
+    );
+    expect(getWebSettingsCategory("/app/settings/gallery")).toBe("gallery");
+  });
 });

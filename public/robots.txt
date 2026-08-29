@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mason-gallery.rezics.com/sitemap-index.xml

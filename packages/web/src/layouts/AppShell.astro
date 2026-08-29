@@ -1,0 +1,24 @@
+---
+import "@mason-gallery/core/src/index.css";
+import App from "../App";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mason Gallery App</title>
+    <meta
+      name="description"
+      content="Browse a local image folder in a masonry grid."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#fcf8f7" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/logo/logo.svg" type="image/svg+xml" />
+  </head>
+  <body class="min-h-screen overflow-hidden bg-background text-foreground">
+    <App client:only="react" />
+  </body>
+</html>

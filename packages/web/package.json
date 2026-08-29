@@ -3,6 +3,13 @@
   "version": "2.1.0",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "bun test tests"
+  },
   "dependencies": {
     "@mason-gallery/core": "workspace:*",
     "@mason-gallery/i18n": "workspace:*",
@@ -16,12 +23,15 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/react": "^6.0.4",
+    "@astrojs/sitemap": "^3.7.3",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@tailwindcss/vite": "^4.2.2",
+    "astro": "^7.2.9",
     "tailwindcss": "^4.2.2",
-    "vite": "^8.0.3",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3"
   }
 }

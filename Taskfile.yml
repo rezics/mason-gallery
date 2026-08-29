@@ -37,12 +37,12 @@ tasks:
             - task: desktop:build
 
     build:web:
-        desc: Build the web SPA.
+        desc: Build the Astro static site and React web app.
         cmds:
             - task: web:build
 
     build:cli:
-        desc: Build the web SPA and bundle the npm CLI.
+        desc: Build the static web distribution and bundle the npm CLI.
         cmds:
             - task: web:build
             - task: cli:build
@@ -60,6 +60,7 @@ tasks:
         cmds:
             - bunx biome ci .
             - bunx tsc --build
+            - task: web:check
 
     format:
         desc: Format source files with Biome.

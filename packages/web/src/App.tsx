@@ -1,11 +1,10 @@
-import { PlatformContext } from "@mason-gallery/core";
-import { webPlatformService } from "./adapters/WebPlatformService";
 import { WebApp } from "./app/WebApp";
+import { WebRuntimeProvider } from "./app/WebRuntimeProvider";
 
 export default function App() {
   return (
-    <PlatformContext.Provider value={webPlatformService}>
+    <WebRuntimeProvider>
       <WebApp />
-    </PlatformContext.Provider>
+    </WebRuntimeProvider>
   );
 }

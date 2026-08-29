@@ -1,0 +1,83 @@
+---
+import type { SupportedLanguage } from "@mason-gallery/i18n";
+import {
+  GITHUB_URL,
+  getLocalizedPath,
+  SITE_ORIGIN,
+  siteContent,
+} from "../content/siteContent";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+interface Props {
+  locale: SupportedLanguage;
+}
+
+const { locale } = Astro.props;
+const content = siteContent[locale];
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  name: content.aboutTitle,
+  description: content.aboutLead,
+  inLanguage: content.htmlLang,
+  url: new URL(getLocalizedPath(locale, "about"), SITE_ORIGIN).toString(),
+  isPartOf: {
+    "@type": "WebSite",
+    name: "Mason Gallery",
+    url: SITE_ORIGIN,
+  },
+};
+---
+
+<BaseLayout
+  locale={locale}
+  page="about"
+  title={`${content.aboutTitle} — Mason Gallery`}
+  description={content.aboutLead}
+  structuredData={structuredData}
+>
+  <section class="relative overflow-hidden py-20 sm:py-28">
+    <div
+      class="pointer-events-none absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
+    >
+    </div>
+    <div class="relative mx-auto max-w-3xl px-5 sm:px-10">
+      <a
+        href={getLocalizedPath(locale, "home")}
+        class="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"
+      >
+        <span aria-hidden="true">←</span>
+        {content.backHome}
+      </a>
+      <p
+        class="mt-12 text-sm font-semibold uppercase tracking-[0.18em] text-primary"
+      >
+        Mason Gallery
+      </p>
+      <h1 class="mt-4 text-4xl font-semibold tracking-tight sm:text-6xl">
+        {content.aboutTitle}
+      </h1>
+      <p class="mt-6 text-xl leading-9 text-muted-foreground">
+        {content.aboutLead}
+      </p>
+      <div class="mt-12 grid gap-7 text-lg leading-8 text-muted-foreground">
+        {content.aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}
+      </div>
+      <div class="mt-12 flex flex-col gap-3 sm:flex-row">
+        <a
+          href={`${getLocalizedPath(locale, "home")}#app-entry`}
+          class="inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 font-semibold text-primary-foreground transition hover:bg-primary/90"
+        >
+          {content.launchApp}
+        </a>
+        <a
+          href={GITHUB_URL}
+          rel="noopener noreferrer"
+          class="inline-flex h-12 items-center justify-center rounded-md border border-border bg-card px-6 font-semibold transition hover:bg-secondary"
+        >
+          {content.githubCta}
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
