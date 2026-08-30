@@ -60,30 +60,20 @@ function FolderTreeNode({ node, depth }: { node: TreeNode; depth: number }) {
 
   return (
     <>
-      <button
-        type="button"
+      <div
         className={cn(
-          "flex min-h-8 w-full items-center gap-1 px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+          "flex min-h-8 w-full items-center pr-2 text-sm hover:bg-accent hover:text-accent-foreground",
           isSelected && "bg-accent text-accent-foreground",
         )}
         style={{ paddingLeft: 8 + depth * 16 }}
-        onClick={() => setSelectedFolder(node.path)}
       >
         {hasChildren ? (
           <button
             type="button"
             className="flex size-5 items-center justify-center"
-            onClick={(event) => {
-              event.stopPropagation();
-              toggleExpandedFolder(node.path);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                event.stopPropagation();
-                toggleExpandedFolder(node.path);
-              }
-            }}
+            aria-label={node.name}
+            aria-expanded={isExpanded}
+            onClick={() => toggleExpandedFolder(node.path)}
           >
             {isExpanded ? (
               <ChevronDown className="size-4" />
@@ -94,12 +84,20 @@ function FolderTreeNode({ node, depth }: { node: TreeNode; depth: number }) {
         ) : (
           <span className="size-5" />
         )}
-        <Folder className="size-4 shrink-0" />
-        <span className="truncate">{node.name}</span>
-        {count > 0 && (
-          <span className="ml-auto text-xs text-muted-foreground">{count}</span>
-        )}
-      </button>
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-1 py-1 text-left"
+          onClick={() => setSelectedFolder(node.path)}
+        >
+          <Folder className="size-4 shrink-0" />
+          <span className="truncate">{node.name}</span>
+          {count > 0 && (
+            <span className="ml-auto text-xs text-muted-foreground">
+              {count}
+            </span>
+          )}
+        </button>
+      </div>
       {hasChildren && isExpanded && (
         <div>
           {node.children.map((child) => (

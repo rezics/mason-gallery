@@ -3,12 +3,10 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DropZone from "@/components/DropZone";
 import FolderSidebar from "@/components/FolderSidebar";
-import HomeLibrarySections from "@/components/HomeLibrarySections";
 import ImageViewer from "@/components/ImageViewer";
 import MasterPasswordDialog from "@/components/MasterPasswordDialog";
 import MigrationConfirmDialog from "@/components/MigrationConfirmDialog";
 import PasswordDialog from "@/components/PasswordDialog";
-import SidebarHome from "@/components/SidebarHome";
 import SolidArchiveWarningDialog from "@/components/SolidArchiveWarningDialog";
 import { Progress } from "@/components/ui/progress";
 import WaterfallGrid from "@/components/WaterfallGrid";
@@ -325,15 +323,11 @@ export default function HomePage() {
       )}
 
       {showDropZone ? (
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <SidebarHome />
-          <div className="min-w-0 flex-1 overflow-auto">
-            <DropZone
-              onFoldersSelected={startScan}
-              onArchiveSelected={startArchiveScan}
-            />
-            <HomeLibrarySections />
-          </div>
+        <div className="min-h-0 flex-1 overflow-auto">
+          <DropZone
+            onFoldersSelected={startScan}
+            onArchiveSelected={startArchiveScan}
+          />
         </div>
       ) : (
         <>

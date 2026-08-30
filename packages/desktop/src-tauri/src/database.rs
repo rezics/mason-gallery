@@ -7,16 +7,17 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub const DURABLE_SCHEMA_VERSION: usize = 1;
+pub const DURABLE_SCHEMA_VERSION: usize = 2;
 pub const CACHE_SCHEMA_VERSION: usize = 1;
 
 const CACHE_SOURCE_COLUMNS: &str =
     "id, kind, origin_path, identity_segment, size_hint, content_hash, is_solid, entry_count, thumb_cache_size, extracted_cache_size, last_accessed";
 
 fn durable_migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(include_str!(
-        "migrations/durable/0001_initial.sql"
-    ))])
+    Migrations::new(vec![
+        M::up(include_str!("migrations/durable/0001_initial.sql")),
+        M::up(include_str!("migrations/durable/0002_library_sources.sql")),
+    ])
 }
 
 fn cache_migrations() -> Migrations<'static> {
@@ -28,6 +29,19 @@ fn cache_migrations() -> Migrations<'static> {
 pub struct Database {
     durable_conn: Mutex<Connection>,
     cache_conn: Mutex<Connection>,
+}
+
+pub fn normalize_library_path_key(path: &str) -> String {
+    let normalized = path
+        .trim()
+        .replace('\\', "/")
+        .trim_end_matches('/')
+        .to_string();
+    if cfg!(windows) {
+        normalized.to_lowercase()
+    } else {
+        normalized
+    }
 }
 
 impl Database {
@@ -279,6 +293,125 @@ impl Database {
         })
     }
 
+    // ---- Durable gallery library ----
+
+    pub fn get_library_sources(&self) -> Result<Vec<LibrarySourceRecord>, String> {
+        self.with_durable_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, kind, origin_path, display_name, is_favorite,
+                        added_at, last_opened_at, last_scanned_at, image_count
+                 FROM library_sources
+                 ORDER BY
+                    CASE WHEN last_opened_at IS NULL THEN 1 ELSE 0 END,
+                    last_opened_at DESC,
+                    display_name COLLATE NOCASE ASC",
+            )?;
+            let rows = stmt.query_map([], row_to_library_source)?;
+            rows.collect()
+        })
+    }
+
+    pub fn get_library_source_by_id(&self, id: i64) -> Result<Option<LibrarySourceRecord>, String> {
+        self.with_durable_conn(|conn| {
+            conn.query_row(
+                "SELECT id, kind, origin_path, display_name, is_favorite,
+                        added_at, last_opened_at, last_scanned_at, image_count
+                 FROM library_sources
+                 WHERE id = ?1",
+                params![id],
+                row_to_library_source,
+            )
+            .optional()
+        })
+    }
+
+    pub fn upsert_library_sources(
+        &self,
+        sources: &[UpsertLibrarySourceParams<'_>],
+    ) -> Result<Vec<LibrarySourceRecord>, String> {
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            for source in sources {
+                tx.execute(
+                    "INSERT INTO library_sources (
+                        kind, origin_path, path_key, display_name, last_opened_at
+                     )
+                     VALUES (?1, ?2, ?3, ?4, ?5)
+                     ON CONFLICT(path_key) DO UPDATE SET
+                        kind = excluded.kind,
+                        origin_path = excluded.origin_path,
+                        last_opened_at = COALESCE(
+                            excluded.last_opened_at,
+                            library_sources.last_opened_at
+                        )",
+                    params![
+                        source.kind,
+                        source.origin_path,
+                        source.path_key,
+                        source.display_name,
+                        source.last_opened_at,
+                    ],
+                )?;
+            }
+            tx.commit()
+        })?;
+        self.get_library_sources()
+    }
+
+    pub fn update_library_source(
+        &self,
+        id: i64,
+        display_name: Option<&str>,
+        is_favorite: Option<bool>,
+    ) -> Result<Vec<LibrarySourceRecord>, String> {
+        self.with_durable_conn(|conn| {
+            conn.execute(
+                "UPDATE library_sources
+                 SET display_name = COALESCE(?1, display_name),
+                     is_favorite = COALESCE(?2, is_favorite)
+                 WHERE id = ?3",
+                params![
+                    display_name,
+                    is_favorite.map(|value| if value { 1 } else { 0 }),
+                    id,
+                ],
+            )?;
+            Ok(())
+        })?;
+        self.get_library_sources()
+    }
+
+    pub fn remove_library_sources(&self, ids: &[i64]) -> Result<Vec<LibrarySourceRecord>, String> {
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            for id in ids {
+                tx.execute("DELETE FROM library_sources WHERE id = ?1", params![id])?;
+            }
+            tx.commit()
+        })?;
+        self.get_library_sources()
+    }
+
+    pub fn mark_library_sources_scanned(
+        &self,
+        path_keys: &[String],
+        image_count: Option<i64>,
+    ) -> Result<(), String> {
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            for path_key in path_keys {
+                tx.execute(
+                    "UPDATE library_sources
+                     SET last_scanned_at = CURRENT_TIMESTAMP,
+                         image_count = COALESCE(?1, image_count)
+                     WHERE path_key = ?2",
+                    params![image_count, path_key],
+                )?;
+            }
+            tx.commit()
+        })
+    }
+
     // ---- Cache source operations + durable source preferences ----
 
     fn get_source_preference(&self, origin_path: &str) -> Result<SourcePreference, String> {
@@ -469,6 +602,7 @@ impl Database {
 
         let preference = self.get_source_preference(&old_path)?;
         let secret_ref = self.get_archive_secret_ref(&old_path)?;
+        let new_path_key = normalize_library_path_key(new_path);
 
         // Cross-database moves use copy -> cache update -> old-row cleanup.
         // If the cache update fails, both durable references remain valid and
@@ -499,6 +633,38 @@ impl Database {
                     params![new_path, vault_key],
                 )?;
             }
+            tx.execute(
+                "INSERT INTO library_sources (
+                    kind, origin_path, path_key, display_name, is_favorite,
+                    added_at, last_opened_at, last_scanned_at, image_count
+                 )
+                 SELECT
+                    kind, ?1, ?2, display_name, is_favorite,
+                    added_at, last_opened_at, last_scanned_at, image_count
+                 FROM library_sources
+                 WHERE origin_path = ?3
+                 ON CONFLICT(path_key) DO UPDATE SET
+                    origin_path = excluded.origin_path,
+                    display_name = excluded.display_name,
+                    is_favorite = CASE
+                        WHEN library_sources.is_favorite = 1
+                          OR excluded.is_favorite = 1 THEN 1
+                        ELSE 0
+                    END,
+                    last_opened_at = COALESCE(
+                        excluded.last_opened_at,
+                        library_sources.last_opened_at
+                    ),
+                    last_scanned_at = COALESCE(
+                        excluded.last_scanned_at,
+                        library_sources.last_scanned_at
+                    ),
+                    image_count = COALESCE(
+                        excluded.image_count,
+                        library_sources.image_count
+                    )",
+                params![new_path, new_path_key, old_path],
+            )?;
             tx.commit()
         })?;
 
@@ -524,6 +690,10 @@ impl Database {
                     params![old_path],
                 )?;
             }
+            tx.execute(
+                "DELETE FROM library_sources WHERE origin_path = ?1",
+                params![old_path],
+            )?;
             tx.commit()
         })
     }
@@ -889,6 +1059,20 @@ impl CachedSourceRecord {
     }
 }
 
+fn row_to_library_source(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibrarySourceRecord> {
+    Ok(LibrarySourceRecord {
+        id: row.get(0)?,
+        kind: row.get(1)?,
+        origin_path: row.get(2)?,
+        display_name: row.get(3)?,
+        is_favorite: row.get::<_, i64>(4)? != 0,
+        added_at: row.get(5)?,
+        last_opened_at: row.get(6)?,
+        last_scanned_at: row.get(7)?,
+        image_count: row.get(8)?,
+    })
+}
+
 fn row_to_cached_source(row: &rusqlite::Row<'_>) -> rusqlite::Result<CachedSourceRecord> {
     Ok(CachedSourceRecord {
         id: row.get(0)?,
@@ -926,6 +1110,28 @@ fn row_to_extracted(row: &rusqlite::Row<'_>) -> rusqlite::Result<ExtractedRecord
         file_size: row.get(4)?,
         last_accessed: row.get(5)?,
     })
+}
+
+#[derive(Debug, Clone)]
+pub struct UpsertLibrarySourceParams<'a> {
+    pub kind: &'a str,
+    pub origin_path: &'a str,
+    pub path_key: &'a str,
+    pub display_name: &'a str,
+    pub last_opened_at: Option<&'a str>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LibrarySourceRecord {
+    pub id: i64,
+    pub kind: String,
+    pub origin_path: String,
+    pub display_name: String,
+    pub is_favorite: bool,
+    pub added_at: String,
+    pub last_opened_at: Option<String>,
+    pub last_scanned_at: Option<String>,
+    pub image_count: Option<i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -1057,6 +1263,37 @@ mod tests {
     }
 
     #[test]
+    fn gallery_library_survives_cache_rebuild() {
+        let (db, root) = new_db();
+        let path = "D:/photos";
+        let path_key = normalize_library_path_key(path);
+        db.upsert_library_sources(&[UpsertLibrarySourceParams {
+            kind: "folder",
+            origin_path: path,
+            path_key: &path_key,
+            display_name: "Photography",
+            last_opened_at: Some("2026-08-30T10:00:00Z"),
+        }])
+        .unwrap();
+        let id = db.get_library_sources().unwrap()[0].id;
+        db.update_library_source(id, None, Some(true)).unwrap();
+        db.mark_library_sources_scanned(&[path_key], Some(42))
+            .unwrap();
+        drop(db);
+
+        let cache_dir = root.path().join("cache");
+        Database::reset_cache_storage(&cache_dir, &cache_dir.join("cache.db")).unwrap();
+        let reopened = Database::new(&root.path().join("data"), &cache_dir).unwrap();
+        let sources = reopened.get_library_sources().unwrap();
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].display_name, "Photography");
+        assert!(sources[0].is_favorite);
+        assert_eq!(sources[0].image_count, Some(42));
+        assert!(sources[0].last_scanned_at.is_some());
+    }
+
+    #[test]
     fn unknown_cache_schema_is_rebuilt() {
         let root = tempdir().unwrap();
         let cache_dir = root.path().join("cache");
@@ -1150,6 +1387,15 @@ mod tests {
         let old_path = "D:/old/pack.zip";
         let new_path = "E:/new/pack.zip";
         let id = db.upsert_source(&source(old_path, "old-hash")).unwrap();
+        let old_path_key = normalize_library_path_key(old_path);
+        db.upsert_library_sources(&[UpsertLibrarySourceParams {
+            kind: "archive",
+            origin_path: old_path,
+            path_key: &old_path_key,
+            display_name: "Pack",
+            last_opened_at: None,
+        }])
+        .unwrap();
         db.set_source_pinned(id, true).unwrap();
         db.save_archive_secret_ref(old_path, "stable-vault-key")
             .unwrap();
@@ -1163,5 +1409,8 @@ mod tests {
             db.get_archive_secret_ref(new_path).unwrap().as_deref(),
             Some("stable-vault-key")
         );
+        let library = db.get_library_sources().unwrap();
+        assert_eq!(library.len(), 1);
+        assert_eq!(library[0].origin_path, new_path);
     }
 }

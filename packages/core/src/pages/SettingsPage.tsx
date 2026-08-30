@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { BackButton } from "@/components/BackButton";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
@@ -43,16 +42,9 @@ export default function SettingsPage() {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden bg-background sm:flex-row">
       <nav className="shrink-0 border-b p-3 sm:w-56 sm:border-r sm:border-b-0 sm:p-4">
-        <div className="mb-3 flex items-center gap-2 sm:block">
-          <BackButton
-            variant="ghost"
-            size="sm"
-            className="justify-start px-2 sm:mb-3"
-          />
-          <h1 className="text-lg font-semibold sm:mb-4">
-            {t("settings:preferences")}
-          </h1>
-        </div>
+        <h1 className="mb-3 px-2 text-lg font-semibold sm:mb-4">
+          {t("settings:preferences")}
+        </h1>
         <div className="flex gap-1 overflow-x-auto sm:grid">
           {supportedCategories.map((item) => (
             <Link

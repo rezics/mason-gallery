@@ -1,15 +1,26 @@
 import type {
   ImageBatch,
+  LibraryAccessStatus,
+  LibrarySource,
+  LibrarySourceInput,
+  LibrarySourcePatch,
   PlatformService,
   ScanParams,
 } from "@mason-gallery/core";
 import type { WebFileRegistry } from "../features/gallery/types";
 import { getInitialWebLanguage } from "../features/i18n/webLocaleRoutes";
 import {
-  loadDirectoryHandles,
+  addStoredLibrarySources,
+  type DirectoryHandleRow,
+  loadDirectoryHandleRows,
+  loadStoredLibrarySources,
   loadWebSettings,
-  replaceDirectoryHandles,
+  markStoredLibrarySourcesScanned,
+  registerDirectoryHandles,
+  removeStoredLibrarySources,
+  type StoredLibrarySource,
   saveWebSettings,
+  updateStoredLibrarySource,
 } from "../persistence/webDatabase";
 
 interface FileEntry {
@@ -100,10 +111,10 @@ function getExtension(name: string): string {
 }
 
 export function getWebImageSource(
-  rootIndex: number,
+  rootKey: string | number,
   relativePath: string,
 ): string {
-  return `web-file://${rootIndex}/${relativePath}`;
+  return `web-file://${encodeURIComponent(String(rootKey))}/${relativePath}`;
 }
 
 async function* walkDirectory(
@@ -155,7 +166,7 @@ async function getImageDimensions(
 const registry = new FileHandleRegistry();
 const IMAGE_PROBE_CONCURRENCY = 6;
 
-let storedDirHandles: FileSystemDirectoryHandle[] = [];
+let storedDirHandles: DirectoryHandleRow[] = [];
 let directoryHandlesLoaded = false;
 let directoryHandlesLoadPromise: Promise<void> | null = null;
 const permissionRequests = new WeakMap<
@@ -169,7 +180,7 @@ async function ensureDirectoryHandlesLoaded(): Promise<void> {
 
   directoryHandlesLoadPromise = (async () => {
     try {
-      const handles = await loadDirectoryHandles();
+      const handles = await loadDirectoryHandleRows();
       if (!directoryHandlesLoaded) {
         storedDirHandles = handles;
         directoryHandlesLoaded = true;
@@ -187,16 +198,13 @@ async function ensureDirectoryHandlesLoaded(): Promise<void> {
   }
 }
 
-async function replaceStoredDirectoryHandles(
+async function registerStoredDirectoryHandles(
   handles: FileSystemDirectoryHandle[],
-): Promise<void> {
-  storedDirHandles = handles;
+): Promise<DirectoryHandleRow[]> {
+  const registered = await registerDirectoryHandles(handles);
+  storedDirHandles = await loadDirectoryHandleRows();
   directoryHandlesLoaded = true;
-  try {
-    await replaceDirectoryHandles(handles);
-  } catch (error) {
-    console.warn("Failed to persist browser directory handles:", error);
-  }
+  return registered;
 }
 
 async function hasReadPermission(
@@ -224,6 +232,40 @@ async function hasReadPermission(
   }
 }
 
+async function getAccessStatus(
+  source: StoredLibrarySource,
+): Promise<LibraryAccessStatus> {
+  if (source.kind !== "folder") return "missing";
+  await ensureDirectoryHandlesLoaded();
+  const row = storedDirHandles.find(
+    (candidate) => candidate.sourcePath === source.path,
+  );
+  if (!row) return "missing";
+  try {
+    return (await row.handle.queryPermission({ mode: "read" })) === "granted"
+      ? "ready"
+      : "needs-access";
+  } catch {
+    return "needs-access";
+  }
+}
+
+async function listLibrarySourcesWithAccess(): Promise<LibrarySource[]> {
+  const sources = await loadStoredLibrarySources();
+  return Promise.all(
+    sources
+      .filter(
+        (source): source is StoredLibrarySource & { id: number } =>
+          source.id != null,
+      )
+      .map(async (source) => {
+        const accessStatus = await getAccessStatus(source);
+        const { pathKey: _pathKey, ...publicSource } = source;
+        return { ...publicSource, accessStatus };
+      }),
+  );
+}
+
 export const webPlatformService: PlatformService = {
   capabilities: {
     canDeleteFiles: false,
@@ -249,22 +291,23 @@ export const webPlatformService: PlatformService = {
       const batchSize = params.page_size;
 
       const fileHandles: {
-        rootIndex: number;
+        rootKey: string;
         name: string;
         path: string;
         handle: FileSystemFileHandle;
       }[] = [];
 
-      for (
-        let rootIndex = 0;
-        rootIndex < storedDirHandles.length;
-        rootIndex++
-      ) {
-        const dirHandle = storedDirHandles[rootIndex];
-        if (!dirHandle) continue;
-        if (!(await hasReadPermission(dirHandle))) continue;
-        for await (const entry of walkDirectory(dirHandle, formats)) {
-          fileHandles.push({ rootIndex, ...entry });
+      const requestedPaths = new Set(params.paths);
+      const selectedHandles = storedDirHandles.filter(
+        (row) =>
+          requestedPaths.size === 0 ||
+          requestedPaths.has(row.sourcePath) ||
+          requestedPaths.has(row.name),
+      );
+      for (const row of selectedHandles) {
+        if (!(await hasReadPermission(row.handle))) continue;
+        for await (const entry of walkDirectory(row.handle, formats)) {
+          fileHandles.push({ rootKey: row.sourcePath, ...entry });
         }
       }
 
@@ -285,7 +328,7 @@ export const webPlatformService: PlatformService = {
           entries.map(async (entry) => {
             const file = await entry.handle.getFile();
             const blobUrl = URL.createObjectURL(file);
-            const source = getWebImageSource(entry.rootIndex, entry.path);
+            const source = getWebImageSource(entry.rootKey, entry.path);
             const id = registry.register(source, entry.handle, blobUrl);
             const dims = await getImageDimensions(file);
             return {
@@ -324,8 +367,8 @@ export const webPlatformService: PlatformService = {
   async pickFolders(): Promise<string[] | null> {
     try {
       const dirHandle = await window.showDirectoryPicker({ mode: "read" });
-      await replaceStoredDirectoryHandles([dirHandle]);
-      return [dirHandle.name];
+      const registered = await registerStoredDirectoryHandles([dirHandle]);
+      return registered.map((row) => row.sourcePath);
     } catch {
       return null;
     }
@@ -353,8 +396,8 @@ export const webPlatformService: PlatformService = {
       }
 
       if (handles.length > 0) {
-        await replaceStoredDirectoryHandles(handles);
-        callback(handles.map((h) => h.name));
+        const registered = await registerStoredDirectoryHandles(handles);
+        callback(registered.map((row) => row.sourcePath));
       }
     };
 
@@ -383,7 +426,7 @@ export const webPlatformService: PlatformService = {
     await saveWebSettings(settings);
   },
 
-  async listDirectoryTree(): Promise<string[]> {
+  async listDirectoryTree(paths: string[]): Promise<string[]> {
     await ensureDirectoryHandlesLoaded();
     const directories: string[] = [];
 
@@ -400,12 +443,63 @@ export const webPlatformService: PlatformService = {
       }
     }
 
-    for (const dirHandle of storedDirHandles) {
-      if (!(await hasReadPermission(dirHandle))) continue;
-      await walkDirs(dirHandle, "");
+    const requestedPaths = new Set(paths);
+    for (const row of storedDirHandles) {
+      if (
+        requestedPaths.size > 0 &&
+        !requestedPaths.has(row.sourcePath) &&
+        !requestedPaths.has(row.name)
+      ) {
+        continue;
+      }
+      if (!(await hasReadPermission(row.handle))) continue;
+      await walkDirs(row.handle, "");
     }
 
     directories.sort();
     return directories;
+  },
+
+  async listLibrarySources(): Promise<LibrarySource[]> {
+    return listLibrarySourcesWithAccess();
+  },
+
+  async addLibrarySources(
+    sources: LibrarySourceInput[],
+  ): Promise<LibrarySource[]> {
+    await ensureDirectoryHandlesLoaded();
+    await addStoredLibrarySources(
+      sources.map((source) => {
+        const directory = storedDirHandles.find(
+          (row) => row.sourcePath === source.path || row.name === source.path,
+        );
+        return {
+          ...source,
+          path: directory?.sourcePath ?? source.path,
+          label: directory?.name ?? source.label,
+        };
+      }),
+    );
+    return listLibrarySourcesWithAccess();
+  },
+
+  async updateLibrarySource(
+    id: number,
+    patch: LibrarySourcePatch,
+  ): Promise<LibrarySource[]> {
+    await updateStoredLibrarySource(id, patch);
+    return listLibrarySourcesWithAccess();
+  },
+
+  async removeLibrarySources(ids: number[]): Promise<LibrarySource[]> {
+    await removeStoredLibrarySources(ids);
+    return listLibrarySourcesWithAccess();
+  },
+
+  async markLibrarySourcesScanned(
+    paths: string[],
+    imageCount?: number,
+  ): Promise<void> {
+    await markStoredLibrarySourcesScanned(paths, imageCount);
   },
 };

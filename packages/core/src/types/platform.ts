@@ -61,6 +61,35 @@ export interface GallerySourceShortcut {
   lastOpenedAt: string;
 }
 
+export type LibrarySourceKind = "folder" | "archive";
+export type LibraryAccessStatus = "ready" | "needs-access" | "missing";
+
+/** A durable gallery registered in the user's library. */
+export interface LibrarySource {
+  id: number;
+  kind: LibrarySourceKind;
+  path: string;
+  label: string;
+  isFavorite: boolean;
+  addedAt: string;
+  lastOpenedAt: string | null;
+  lastScannedAt: string | null;
+  imageCount: number | null;
+  accessStatus: LibraryAccessStatus;
+}
+
+export interface LibrarySourceInput {
+  kind: LibrarySourceKind;
+  path: string;
+  label?: string;
+  lastOpenedAt?: string | null;
+}
+
+export interface LibrarySourcePatch {
+  label?: string;
+  isFavorite?: boolean;
+}
+
 export interface Settings {
   formats: string[];
   sortMethod: SortMethod;
@@ -211,6 +240,7 @@ export interface PlatformService {
 
   // Archive operations (desktop-only)
   pickArchive?(): Promise<string | null>;
+  pickArchives?(): Promise<string[] | null>;
   scanArchive?(
     params: ScanArchiveParams,
     onBatch: (batch: ImageBatch) => void,
@@ -243,6 +273,19 @@ export interface PlatformService {
   setSourcePolicy?(
     sourceId: number,
     override: SourceOverride | null,
+  ): Promise<void>;
+
+  // Durable gallery-library operations.
+  listLibrarySources?(): Promise<LibrarySource[]>;
+  addLibrarySources?(sources: LibrarySourceInput[]): Promise<LibrarySource[]>;
+  updateLibrarySource?(
+    id: number,
+    patch: LibrarySourcePatch,
+  ): Promise<LibrarySource[]>;
+  removeLibrarySources?(ids: number[]): Promise<LibrarySource[]>;
+  markLibrarySourcesScanned?(
+    paths: string[],
+    imageCount?: number,
   ): Promise<void>;
 
   /**

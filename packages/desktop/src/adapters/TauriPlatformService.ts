@@ -4,6 +4,9 @@ import type {
   CachePolicy,
   CacheStats,
   ImageBatch,
+  LibrarySource,
+  LibrarySourceInput,
+  LibrarySourcePatch,
   MigrationCandidate,
   PasswordStorageMode,
   PlatformService,
@@ -35,6 +38,20 @@ async function getServerPort(): Promise<number> {
   if (cachedServerPort !== null) return cachedServerPort;
   cachedServerPort = await invoke<number>("get_image_server_port");
   return cachedServerPort;
+}
+
+async function pickArchivePaths(multiple: boolean): Promise<string[] | null> {
+  const selected = await open({
+    multiple,
+    filters: [
+      {
+        name: "Archives",
+        extensions: ["zip", "rar", "7z", "cbz", "cbr"],
+      },
+    ],
+  });
+  if (!selected) return null;
+  return Array.isArray(selected) ? selected : [selected];
 }
 
 function parseThumbUri(
@@ -235,17 +252,12 @@ export const tauriPlatformService: PlatformService = {
   },
 
   async pickArchive(): Promise<string | null> {
-    const selected = await open({
-      multiple: false,
-      filters: [
-        {
-          name: "Archives",
-          extensions: ["zip", "rar", "7z", "cbz", "cbr"],
-        },
-      ],
-    });
-    if (!selected) return null;
-    return Array.isArray(selected) ? (selected[0] ?? null) : selected;
+    const selected = await pickArchivePaths(false);
+    return selected?.[0] ?? null;
+  },
+
+  async pickArchives(): Promise<string[] | null> {
+    return pickArchivePaths(true);
   },
 
   async scanArchive(
@@ -362,6 +374,37 @@ export const tauriPlatformService: PlatformService = {
     await invoke("set_source_policy", {
       sourceId,
       policyOverride: override,
+    });
+  },
+
+  async listLibrarySources(): Promise<LibrarySource[]> {
+    return invoke<LibrarySource[]>("list_library_sources");
+  },
+
+  async addLibrarySources(
+    sources: LibrarySourceInput[],
+  ): Promise<LibrarySource[]> {
+    return invoke<LibrarySource[]>("add_library_sources", { sources });
+  },
+
+  async updateLibrarySource(
+    id: number,
+    patch: LibrarySourcePatch,
+  ): Promise<LibrarySource[]> {
+    return invoke<LibrarySource[]>("update_library_source", { id, patch });
+  },
+
+  async removeLibrarySources(ids: number[]): Promise<LibrarySource[]> {
+    return invoke<LibrarySource[]>("remove_library_sources", { ids });
+  },
+
+  async markLibrarySourcesScanned(
+    paths: string[],
+    imageCount?: number,
+  ): Promise<void> {
+    await invoke("mark_library_sources_scanned", {
+      paths,
+      imageCount: imageCount ?? null,
     });
   },
 

@@ -1,10 +1,21 @@
-import { Pin, PinOff, Settings, Trash2 } from "lucide-react";
+import { Database, Pin, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BackButton } from "@/components/BackButton";
+import { CacheSourceTable } from "@/components/CacheSourceTable";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { NativeSelect as Select } from "@/components/ui/native-select";
+import {
+  NativeSelectOption,
+  NativeSelect as Select,
+} from "@/components/ui/native-select";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -241,7 +252,7 @@ function CustomizeDialog({
         />
         {widthsError && (
           <p className="text-xs text-destructive">
-            Enter at least one positive integer up to 4096, or leave empty.
+            {t("cache:thumbnailWidthsError")}
           </p>
         )}
         <div className="rounded-md bg-muted p-3 font-mono text-xs">
@@ -259,171 +270,287 @@ export default function CachePage() {
   const t = useI18n();
   const platform = usePlatform();
   const [stats, setStats] = useState<CacheStats[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | CacheStats["kind"]>(
+    "all",
+  );
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [customizeFor, setCustomizeFor] = useState<CacheStats | null>(null);
   const [confirmAction, setConfirmAction] = useState<
     | null
-    | { type: "source"; id: number }
+    | { type: "sources"; ids: number[] }
     | { type: "unpinned" }
     | { type: "all" }
   >(null);
   const basePolicy = useSettingsStore((s) => s.cachePolicy);
 
   const refresh = useCallback(async () => {
-    if (platform.getCacheStats) {
-      setStats(await platform.getCacheStats());
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (platform.getCacheStats) {
+        setStats(await platform.getCacheStats());
+      }
+    } catch (nextError) {
+      setError(String(nextError));
+    } finally {
+      setIsLoading(false);
     }
   }, [platform]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const ids = new Set(stats.map((source) => source.id));
+    setSelected((current) => new Set([...current].filter((id) => ids.has(id))));
+  }, [stats]);
 
   const totalSize = stats.reduce(
     (sum, s) => sum + s.thumbCacheSize + s.extractedCacheSize,
     0,
   );
+  const pinnedCount = stats.filter((source) => source.isPinned).length;
+  const visibleStats = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    return stats
+      .filter(
+        (source) =>
+          (kindFilter === "all" || source.kind === kindFilter) &&
+          (!normalizedQuery ||
+            source.originPath.toLocaleLowerCase().includes(normalizedQuery)),
+      )
+      .sort(
+        (left, right) =>
+          Number(right.isPinned) - Number(left.isPinned) ||
+          (right.lastAccessed ?? "").localeCompare(left.lastAccessed ?? ""),
+      );
+  }, [kindFilter, query, stats]);
 
-  const handleDelete = useCallback(
-    async (id: number) => {
-      await platform.clearThumbnails?.(id);
-      await platform.clearExtracted?.(id);
-      refresh();
+  const clearSources = useCallback(
+    async (ids: number[]) => {
+      const operations: Promise<void>[] = [];
+      for (const id of ids) {
+        if (platform.clearThumbnails) {
+          operations.push(platform.clearThumbnails(id));
+        }
+        if (platform.clearExtracted) {
+          operations.push(platform.clearExtracted(id));
+        }
+      }
+      await Promise.all(operations);
+      await refresh();
     },
     [platform, refresh],
   );
 
-  const handleTogglePin = useCallback(
-    async (id: number, currentlyPinned: boolean) => {
-      if (platform.pinCache) {
-        await platform.pinCache(id, !currentlyPinned);
-        refresh();
-      }
+  const setPinned = useCallback(
+    async (ids: number[], pinned: boolean) => {
+      if (!platform.pinCache) return;
+      await Promise.all(ids.map((id) => platform.pinCache?.(id, pinned)));
+      await refresh();
     },
     [platform, refresh],
   );
 
   const handleClearUnpinned = useCallback(async () => {
-    for (const item of stats.filter((s) => !s.isPinned)) {
-      await platform.clearThumbnails?.(item.id);
-      await platform.clearExtracted?.(item.id);
-    }
-    refresh();
-  }, [platform, stats, refresh]);
+    await clearSources(
+      stats.filter((source) => !source.isPinned).map((source) => source.id),
+    );
+  }, [clearSources, stats]);
 
   const handleClearAll = useCallback(async () => {
-    await platform.clearThumbnails?.();
-    await platform.clearExtracted?.();
-    refresh();
+    await Promise.all([
+      platform.clearThumbnails?.(),
+      platform.clearExtracted?.(),
+    ]);
+    await refresh();
   }, [platform, refresh]);
 
   const handleSaveOverride = useCallback(
     async (sourceId: number, override: SourceOverride | null) => {
       if (platform.setSourcePolicy) {
         await platform.setSourcePolicy(sourceId, override);
-        refresh();
+        await refresh();
       }
     },
     [platform, refresh],
   );
 
   return (
-    <div className="h-full overflow-auto p-6">
-      <main className="mx-auto max-w-4xl space-y-5">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <BackButton
-              variant="ghost"
-              size="sm"
-              className="mb-2 -ml-2 justify-start px-2"
-            />
-            <h1 className="text-2xl font-semibold">
-              {t("archive:cacheManagement")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("archive:totalCacheSize")}: {formatSize(totalSize)}
-            </p>
-          </div>
-        </header>
-
-        {stats.length === 0 ? (
-          <p className="text-muted-foreground">{t("archive:noCache")}</p>
-        ) : (
+    <div className="flex h-full min-w-0 flex-col bg-background">
+      <PageHeader
+        title={t("cache:title")}
+        description={t("cache:description")}
+        actions={
           <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoading}
+              onClick={() => void refresh()}
+            >
+              <RefreshCw className={isLoading ? "animate-spin" : undefined} />
+              {t("cache:refresh")}
+            </Button>
+            {stats.length > 0 && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmAction({ type: "unpinned" })}
+                >
+                  {t("archive:clearUnpinned")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setConfirmAction({ type: "all" })}
+                >
+                  {t("archive:clearAll")}
+                </Button>
+              </>
+            )}
+          </>
+        }
+      />
+
+      <main className="min-h-0 flex-1 overflow-auto px-5 py-5 sm:px-7">
+        <section className="mb-5 grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-border">
+          {[
+            [t("cache:totalSources"), String(stats.length)],
+            [t("cache:totalSize"), formatSize(totalSize)],
+            [t("cache:pinnedSources"), String(pinnedCount)],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="border-b border-border px-4 py-4 last:border-b-0 sm:border-b-0"
+            >
+              <p className="text-xs font-medium text-muted-foreground">
+                {label}
+              </p>
+              <p className="mt-1 text-xl font-semibold">{value}</p>
+            </div>
+          ))}
+        </section>
+
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label
+            htmlFor="cache-search"
+            className="relative min-w-0 flex-1 sm:max-w-sm"
+          >
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <span className="sr-only">{t("cache:searchPlaceholder")}</span>
+            <Input
+              id="cache-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("cache:searchPlaceholder")}
+              className="pl-9"
+            />
+          </label>
+          <Select
+            value={kindFilter}
+            onChange={(event) =>
+              setKindFilter(event.target.value as typeof kindFilter)
+            }
+            className="w-full sm:w-44"
+          >
+            <NativeSelectOption value="all">
+              {t("cache:allSources")}
+            </NativeSelectOption>
+            <NativeSelectOption value="folder">
+              {t("cache:folders")}
+            </NativeSelectOption>
+            <NativeSelectOption value="archive">
+              {t("cache:archives")}
+            </NativeSelectOption>
+          </Select>
+        </div>
+
+        {selected.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/35 px-3 py-2">
+            <span className="text-sm font-medium">
+              {t("cache:selected", { count: selected.size })}
+            </span>
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setConfirmAction({ type: "unpinned" })}
+                size="sm"
+                onClick={() => void setPinned([...selected], true)}
               >
-                {t("archive:clearUnpinned")}
+                <Pin />
+                {t("cache:pinSelected")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void setPinned([...selected], false)}
+              >
+                {t("cache:unpinSelected")}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
-                onClick={() => setConfirmAction({ type: "all" })}
+                size="sm"
+                onClick={() =>
+                  setConfirmAction({
+                    type: "sources",
+                    ids: [...selected],
+                  })
+                }
               >
-                {t("archive:clearAll")}
+                <Trash2 />
+                {t("cache:clearSelected")}
               </Button>
             </div>
+          </div>
+        )}
 
-            <div className="grid gap-2">
-              {stats.map((item) => {
-                const hasOverride = !!parseOverride(item.policyOverride);
-                return (
-                  <article
-                    key={item.id}
-                    className="grid gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground md:grid-cols-[1fr_auto]"
-                  >
-                    <div className="min-w-0">
-                      <h2 className="truncate text-sm font-semibold">
-                        [{item.kind}] {item.originPath}
-                      </h2>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {t("cache:thumbCache")}:{" "}
-                        {formatSize(item.thumbCacheSize)} |{" "}
-                        {t("cache:extractedCache")}:{" "}
-                        {formatSize(item.extractedCacheSize)} |{" "}
-                        {item.entryCount ?? 0} {t("archive:entries")}
-                        {item.lastAccessed
-                          ? ` | ${t("archive:lastAccessed")}: ${item.lastAccessed}`
-                          : ""}
-                        {hasOverride ? " | custom" : ""}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        variant={hasOverride ? "default" : "ghost"}
-                        size="icon"
-                        title={t("cache:customize")}
-                        onClick={() => setCustomizeFor(item)}
-                      >
-                        <Settings />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleTogglePin(item.id, item.isPinned)}
-                      >
-                        {item.isPinned ? <Pin /> : <PinOff />}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setConfirmAction({ type: "source", id: item.id })
-                        }
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </>
+        {error && (
+          <p className="mb-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
+        {stats.length === 0 && !isLoading ? (
+          <Empty className="min-h-72 border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Database />
+              </EmptyMedia>
+              <EmptyTitle>{t("cache:emptyTitle")}</EmptyTitle>
+              <EmptyDescription>{t("cache:emptyDescription")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : visibleStats.length === 0 && !isLoading ? (
+          <Empty className="min-h-72 border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Search />
+              </EmptyMedia>
+              <EmptyTitle>{t("cache:noResults")}</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <CacheSourceTable
+            stats={visibleStats}
+            selected={selected}
+            formatSize={formatSize}
+            onSelectionChange={setSelected}
+            onCustomize={setCustomizeFor}
+            onTogglePin={(source) =>
+              void setPinned([source.id], !source.isPinned)
+            }
+            onClear={(source) =>
+              setConfirmAction({ type: "sources", ids: [source.id] })
+            }
+          />
         )}
 
         <ConfirmDialog
@@ -433,7 +560,7 @@ export default function CachePage() {
               ? t("archive:clearAll")
               : confirmAction?.type === "unpinned"
                 ? t("archive:clearUnpinned")
-                : t("cache:clearExtracted")
+                : t("cache:clearCache")
           }
           cancelLabel={t("archive:cancel")}
           confirmLabel={t("cache:confirm")}
@@ -445,15 +572,25 @@ export default function CachePage() {
             if (!action) return;
             if (action.type === "all") await handleClearAll();
             if (action.type === "unpinned") await handleClearUnpinned();
-            if (action.type === "source") await handleDelete(action.id);
+            if (action.type === "sources") {
+              await clearSources(action.ids);
+              setSelected((current) => {
+                const next = new Set(current);
+                for (const id of action.ids) next.delete(id);
+                return next;
+              });
+            }
           }}
         >
           <p>
             {confirmAction?.type === "all"
-              ? t("cache:clearExtractedConfirm")
+              ? t("cache:clearAllConfirm")
               : confirmAction?.type === "unpinned"
-                ? t("archive:clearUnpinned")
-                : t("cache:clearThumbsConfirm")}
+                ? t("cache:clearUnpinnedConfirm")
+                : confirmAction?.type === "sources" &&
+                    confirmAction.ids.length > 1
+                  ? t("cache:clearSelectedConfirm")
+                  : t("cache:clearSourceConfirm")}
           </p>
         </ConfirmDialog>
 

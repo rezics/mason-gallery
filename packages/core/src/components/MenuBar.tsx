@@ -67,7 +67,15 @@ export default function MenuBar({
 
   const openArchive = async () => {
     const path = await platform.pickArchive?.();
-    if (path) startArchiveScan(path);
+    if (path) {
+      navigate("/gallery");
+      void startArchiveScan(path);
+    }
+  };
+
+  const openFolder = () => {
+    navigate("/gallery");
+    void openFolderAndScan();
   };
 
   return (
@@ -84,7 +92,7 @@ export default function MenuBar({
       <DropdownMenu>
         <MenuButton>{t("menu:file")}</MenuButton>
         <DropdownMenuContent className="min-w-56">
-          <DropdownMenuItem onClick={() => openFolderAndScan()}>
+          <DropdownMenuItem onClick={openFolder}>
             <FolderOpen data-icon="inline-start" />
             {t("menu:openFolder")}
           </DropdownMenuItem>
@@ -98,7 +106,7 @@ export default function MenuBar({
           <DropdownMenuItem
             onClick={() => {
               resetToDropZone();
-              navigate("/");
+              navigate("/library");
             }}
           >
             <RotateCcw data-icon="inline-start" />
@@ -120,7 +128,7 @@ export default function MenuBar({
       <DropdownMenu>
         <MenuButton>{t("menu:view")}</MenuButton>
         <DropdownMenuContent className="min-w-56">
-          <DropdownMenuItem onClick={() => navigate("/")}>
+          <DropdownMenuItem onClick={() => navigate("/library")}>
             <Home data-icon="inline-start" />
             {t("actions:gallery")}
           </DropdownMenuItem>

@@ -183,7 +183,7 @@ function Dialog({
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
         )}
-        <div className="space-y-3">{children}</div>
+        <div className="flex flex-col gap-3">{children}</div>
         {actions && <DialogFooter>{actions}</DialogFooter>}
       </DialogContent>
     </DialogRoot>

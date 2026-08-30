@@ -1,0 +1,166 @@
+import {
+  CircleHelp,
+  Clock,
+  Database,
+  Images,
+  Library,
+  Plus,
+  Settings,
+  Star,
+} from "lucide-react";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { AddGalleriesDialog } from "@/components/AddGalleriesDialog";
+import { Button } from "@/components/ui/button";
+import { usePlatform } from "@/context/PlatformContext";
+import { useI18n } from "@/i18n";
+import { cn } from "@/lib/utils";
+
+function SidebarLink({
+  href,
+  label,
+  icon,
+  active,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  active: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex h-9 items-center gap-2.5 rounded-xl px-3 text-sm text-sidebar-foreground/70 outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        active &&
+          "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+      )}
+    >
+      <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:size-4">
+        {icon}
+      </span>
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
+
+export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const t = useI18n();
+  const platform = usePlatform();
+  const [location] = useLocation();
+  const [isAdding, setIsAdding] = useState(false);
+  const libraryRoot =
+    location === "/" || location === "/library" || location === "/library/";
+
+  const links = [
+    {
+      href: "/library",
+      label: t("library:allGalleries"),
+      icon: <Library />,
+      active: libraryRoot,
+    },
+    {
+      href: "/library/favorites",
+      label: t("library:favorites"),
+      icon: <Star />,
+      active: location.startsWith("/library/favorites"),
+    },
+    {
+      href: "/library/recent",
+      label: t("library:recent"),
+      icon: <Clock />,
+      active: location.startsWith("/library/recent"),
+    },
+    {
+      href: "/gallery",
+      label: t("library:browse"),
+      icon: <Images />,
+      active: location.startsWith("/gallery"),
+    },
+  ];
+
+  return (
+    <>
+      <div className="flex h-full flex-col bg-sidebar px-3 py-4 text-sidebar-foreground">
+        <Link
+          href="/library"
+          onClick={onNavigate}
+          className="flex h-10 items-center gap-2.5 rounded-xl px-2 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
+          <img
+            src="/logo/logo.svg"
+            alt=""
+            className="size-7 shrink-0"
+            aria-hidden="true"
+          />
+          <span className="truncate text-sm font-semibold">
+            {t("common:appName")}
+          </span>
+        </Link>
+        <Button
+          type="button"
+          variant="brand"
+          className="mt-4 w-full justify-start"
+          onClick={() => setIsAdding(true)}
+        >
+          <Plus />
+          {t("library:addGalleries")}
+        </Button>
+
+        <nav className="mt-5 flex flex-1 flex-col gap-5 overflow-y-auto">
+          <section className="flex flex-col gap-1">
+            <h2 className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+              {t("library:library")}
+            </h2>
+            {links.map((link) => (
+              <SidebarLink key={link.href} {...link} onNavigate={onNavigate} />
+            ))}
+          </section>
+
+          <section className="flex flex-col gap-1">
+            <h2 className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+              {t("library:manage")}
+            </h2>
+            {platform.capabilities.canBrowseArchives && (
+              <SidebarLink
+                href="/manage/cache"
+                label={t("archive:cacheManagement")}
+                icon={<Database />}
+                active={
+                  location.startsWith("/manage/cache") || location === "/cache"
+                }
+                onNavigate={onNavigate}
+              />
+            )}
+            <SidebarLink
+              href="/settings/gallery"
+              label={t("settings:preferences")}
+              icon={<Settings />}
+              active={location.startsWith("/settings")}
+              onNavigate={onNavigate}
+            />
+          </section>
+          <section className="flex flex-col gap-1">
+            <SidebarLink
+              href="/about"
+              label={t("menu:about")}
+              icon={<CircleHelp />}
+              active={location.startsWith("/about")}
+              onNavigate={onNavigate}
+            />
+          </section>
+        </nav>
+
+        <p className="border-t border-sidebar-border px-3 pt-3 text-xs text-sidebar-foreground/45">
+          {t("about:version")} 2.1.0
+        </p>
+      </div>
+      <AddGalleriesDialog open={isAdding} onOpenChange={setIsAdding} />
+    </>
+  );
+}

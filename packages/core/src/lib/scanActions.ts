@@ -1,5 +1,6 @@
 import { getPlatform } from "@/context/PlatformContext";
 import { useAppStore } from "@/stores/appStore";
+import { useLibraryStore } from "@/stores/libraryStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ScanParams, WImage } from "@/types";
@@ -34,6 +35,36 @@ function rememberRecentSources(
       lastOpenedAt,
     });
   }
+}
+
+async function rememberLibrarySources(
+  paths: string[],
+  kind: "folder" | "archive",
+): Promise<void> {
+  const lastOpenedAt = new Date().toISOString();
+  try {
+    await useLibraryStore.getState().addSources(
+      paths.map((path) => ({
+        kind,
+        path,
+        label: getSourceLabel(path),
+        lastOpenedAt,
+      })),
+    );
+  } catch (error) {
+    console.error("Failed to remember gallery sources:", error);
+  }
+}
+
+function markLibrarySourcesScanned(paths: string[], imageCount?: number): void {
+  const platform = getPlatform();
+  if (!platform.markLibrarySourcesScanned) return;
+  void platform
+    .markLibrarySourcesScanned(paths, imageCount)
+    .then(() => useLibraryStore.getState().refresh())
+    .catch((error) =>
+      console.error("Failed to update gallery scan metadata:", error),
+    );
 }
 
 export async function requestArchiveUnlock(archivePath: string): Promise<void> {
@@ -104,7 +135,10 @@ export async function startScan(paths: string[], isRescan = false) {
     resetDirectoryState();
   }
   setFolders(paths);
-  if (!isRescan) rememberRecentSources(paths, "folder");
+  if (!isRescan) {
+    rememberRecentSources(paths, "folder");
+    await rememberLibrarySources(paths, "folder");
+  }
   useAppStore.setState({ isSidebarOpen: openGallerySidebarByDefault });
 
   const params: ScanParams = {
@@ -116,6 +150,7 @@ export async function startScan(paths: string[], isRescan = false) {
   };
 
   const platform = getPlatform();
+  let latestTotal: number | undefined;
 
   // Fetch directory tree in parallel with image scan
   platform
@@ -139,10 +174,19 @@ export async function startScan(paths: string[], isRescan = false) {
         }
       },
       () => {
-        if (isActiveScan(operation)) setScanning(false);
+        if (isActiveScan(operation)) {
+          setScanning(false);
+          markLibrarySourcesScanned(
+            paths,
+            paths.length === 1 ? latestTotal : undefined,
+          );
+        }
       },
       (total) => {
-        if (isActiveScan(operation)) setTotalCount(total);
+        if (isActiveScan(operation)) {
+          latestTotal = total;
+          setTotalCount(total);
+        }
       },
       (progress) => {
         if (isActiveScan(operation)) setInfoProgress(progress);
@@ -268,6 +312,7 @@ export async function startArchiveScan(archivePath: string, password?: string) {
   resetDirectoryState();
   setFolders([archivePath]);
   rememberRecentSources([archivePath], "archive");
+  await rememberLibrarySources([archivePath], "archive");
   useAppStore.setState({ archivePath, isSidebarOpen: false });
 
   const platform = getPlatform();
@@ -317,6 +362,7 @@ export async function executeArchiveScan(
 
   const platform = getPlatform();
   if (!platform.scanArchive) return;
+  let latestTotal: number | undefined;
 
   // Check if solid and warn
   if (platform.getArchiveInfo) {
@@ -352,10 +398,16 @@ export async function executeArchiveScan(
         }
       },
       () => {
-        if (isActiveScan(operation)) setScanning(false);
+        if (isActiveScan(operation)) {
+          setScanning(false);
+          markLibrarySourcesScanned([archivePath], latestTotal);
+        }
       },
       (total) => {
-        if (isActiveScan(operation)) setTotalCount(total);
+        if (isActiveScan(operation)) {
+          latestTotal = total;
+          setTotalCount(total);
+        }
       },
       (progress) => {
         if (isActiveScan(operation)) setInfoProgress(progress);

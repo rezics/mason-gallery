@@ -3,6 +3,7 @@ mod archive_commands;
 pub mod archive_scan;
 pub mod commands;
 pub mod database;
+mod library_commands;
 mod password;
 mod server;
 pub mod services;
@@ -160,6 +161,11 @@ pub fn run() {
             archive_commands::startup_cache_cleanup,
             archive_commands::set_cache_policy,
             archive_commands::set_source_policy,
+            library_commands::list_library_sources,
+            library_commands::add_library_sources,
+            library_commands::update_library_source,
+            library_commands::remove_library_sources,
+            library_commands::mark_library_sources_scanned,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

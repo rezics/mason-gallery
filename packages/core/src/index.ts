@@ -1,12 +1,16 @@
+export { AppShell } from "./components/AppShell";
 export { BackButton } from "./components/BackButton";
 export { default as DropZone } from "./components/DropZone";
 export { default as ImageViewer } from "./components/ImageViewer";
+export { default as MenuBar } from "./components/MenuBar";
 export { default as QuickGalleryPanel } from "./components/QuickGalleryPanel";
 export * from "./components/settings";
 export * from "./components/ui/alert-dialog";
+export * from "./components/ui/badge";
 export { Button, buttonVariants } from "./components/ui/button";
 export { Checkbox } from "./components/ui/checkbox";
 export * from "./components/ui/dialog";
+export * from "./components/ui/empty";
 export * from "./components/ui/field";
 export { Input } from "./components/ui/input";
 export {
@@ -15,7 +19,9 @@ export {
 } from "./components/ui/native-select";
 export { Progress } from "./components/ui/progress";
 export { Switch } from "./components/ui/switch";
+export * from "./components/ui/table";
 export { Toaster, toast } from "./components/ui/toast";
+export * from "./components/ui/tooltip";
 export { default as WaterfallGrid } from "./components/WaterfallGrid";
 export {
   getPlatform,
@@ -46,6 +52,7 @@ export {
   settingsEnvelopeSchema,
   settingsSchema,
 } from "./persistence/settingsSchema";
+export { useLibraryStore } from "./stores/libraryStore";
 export { useSettingsStore } from "./stores/settingsStore";
 export type {
   ColumnBreakpoints,
@@ -65,6 +72,11 @@ export type {
   ExtractedPolicy,
   FolderThumbnailsMode,
   ImageBatch as PlatformImageBatch,
+  LibraryAccessStatus,
+  LibrarySource,
+  LibrarySourceInput,
+  LibrarySourceKind,
+  LibrarySourcePatch,
   MigrationCandidate,
   PasswordStorageMode,
   PlatformCapabilities,
