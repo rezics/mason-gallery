@@ -1,14 +1,15 @@
-import type * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { useMemo } from "react";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-export function Input({
-  className,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
   return (
-    <input
+    <fieldset
+      data-slot="field-set"
       className={cn(
-        "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "flex flex-col gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3",
         className,
       )}
       {...props}
@@ -16,14 +17,17 @@ export function Input({
   );
 }
 
-export function Select({
+function FieldLegend({
   className,
+  variant = "legend",
   ...props
-}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+}: React.ComponentProps<"legend"> & { variant?: "legend" | "label" }) {
   return (
-    <select
+    <legend
+      data-slot="field-legend"
+      data-variant={variant}
       className={cn(
-        "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "mb-3 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
         className,
       )}
       {...props}
@@ -31,15 +35,12 @@ export function Select({
   );
 }
 
-export function Checkbox({
-  className,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+function FieldGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <input
-      type="checkbox"
+    <div
+      data-slot="field-group"
       className={cn(
-        "size-4 rounded border border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group/field-group @container/field-group flex w-full flex-col gap-6 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4",
         className,
       )}
       {...props}
@@ -47,22 +48,191 @@ export function Checkbox({
   );
 }
 
-export function Switch({
+const fieldVariants = cva(
+  "group/field flex w-full gap-3 data-[invalid=true]:text-destructive",
+  {
+    variants: {
+      orientation: {
+        vertical: "flex-col *:w-full [&>.sr-only]:w-auto",
+        horizontal:
+          "flex-row items-center has-[>[data-slot=field-content]]:items-start *:data-[slot=field-label]:flex-auto has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px",
+        responsive:
+          "flex-col *:w-full @md/field-group:flex-row @md/field-group:items-center @md/field-group:*:w-auto @md/field-group:has-[>[data-slot=field-content]]:items-start @md/field-group:*:data-[slot=field-label]:flex-auto [&>.sr-only]:w-auto @md/field-group:has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px",
+      },
+    },
+    defaultVariants: {
+      orientation: "vertical",
+    },
+  },
+);
+
+function Field({
   className,
-  checked,
+  orientation = "vertical",
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+}: React.ComponentProps<"fieldset"> & VariantProps<typeof fieldVariants>) {
   return (
-    <input
-      type="checkbox"
-      role="switch"
-      checked={checked}
-      aria-checked={checked === true}
+    <fieldset
+      data-slot="field"
+      data-orientation={orientation}
       className={cn(
-        "h-5 w-9 cursor-pointer appearance-none rounded-full bg-muted shadow-inner transition-colors checked:bg-primary before:block before:size-4 before:translate-x-0.5 before:translate-y-0.5 before:rounded-full before:bg-background before:shadow before:transition-transform checked:before:translate-x-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "m-0 min-w-0 border-0 p-0",
+        fieldVariants({ orientation }),
         className,
       )}
       {...props}
     />
   );
 }
+
+function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="field-content"
+      className={cn(
+        "group/field-content flex flex-1 flex-col gap-1 leading-snug",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function FieldLabel({
+  className,
+  ...props
+}: React.ComponentProps<typeof Label>) {
+  return (
+    <Label
+      data-slot="field-label"
+      className={cn(
+        "group/field-label peer/field-label flex w-fit gap-2 leading-snug group-data-[disabled=true]/field:opacity-50 has-data-checked:bg-input/30 has-[>[data-slot=field]]:rounded-2xl has-[>[data-slot=field]]:border has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:bg-input/40 has-[>[data-slot=field]]:has-[:focus-visible]:border-ring has-[>[data-slot=field]]:has-[:focus-visible]:ring-3 has-[>[data-slot=field]]:has-[:focus-visible]:ring-ring/50 *:data-[slot=field]:p-4",
+        "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="field-label"
+      className={cn(
+        "flex w-fit items-center gap-2 text-sm font-medium group-data-[disabled=true]/field:opacity-50",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
+  return (
+    <p
+      data-slot="field-description"
+      className={cn(
+        "text-left text-sm leading-normal font-normal text-muted-foreground group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
+        "last:mt-0 nth-last-2:-mt-1",
+        "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function FieldSeparator({
+  children,
+  className,
+  ...props
+}: React.ComponentProps<"div"> & {
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      data-slot="field-separator"
+      data-content={!!children}
+      className={cn(
+        "relative -my-2 h-5 text-sm group-data-[variant=outline]/field-group:-mb-2",
+        className,
+      )}
+      {...props}
+    >
+      <Separator className="absolute inset-0 top-1/2" />
+      {children && (
+        <span
+          className="relative mx-auto block w-fit bg-background px-2 text-muted-foreground"
+          data-slot="field-separator-content"
+        >
+          {children}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function FieldError({
+  className,
+  children,
+  errors,
+  ...props
+}: React.ComponentProps<"div"> & {
+  errors?: Array<{ message?: string } | undefined>;
+}) {
+  const content = useMemo(() => {
+    if (children) {
+      return children;
+    }
+
+    if (!errors?.length) {
+      return null;
+    }
+
+    const uniqueErrors = [
+      ...new Map(errors.map((error) => [error?.message, error])).values(),
+    ];
+
+    if (uniqueErrors?.length === 1) {
+      return uniqueErrors[0]?.message;
+    }
+
+    return (
+      <ul className="ml-4 flex list-disc flex-col gap-1">
+        {uniqueErrors.map(
+          (error) =>
+            error?.message && <li key={error.message}>{error.message}</li>,
+        )}
+      </ul>
+    );
+  }, [children, errors]);
+
+  if (!content) {
+    return null;
+  }
+
+  return (
+    <div
+      role="alert"
+      data-slot="field-error"
+      className={cn("text-sm font-normal text-destructive", className)}
+      {...props}
+    >
+      {content}
+    </div>
+  );
+}
+
+export {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
+  FieldTitle,
+};

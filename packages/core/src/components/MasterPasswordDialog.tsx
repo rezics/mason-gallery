@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/i18n";
 
 interface MasterPasswordDialogProps {

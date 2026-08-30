@@ -1,4 +1,6 @@
-import { Input, Select, Switch } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect as Select } from "@/components/ui/native-select";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { SortMethod } from "@/types";
@@ -47,17 +49,17 @@ export function GallerySettingsSection() {
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:showGridPosition")}</span>
         <Switch
+          aria-label={t("settings:showGridPosition")}
           checked={showGridPosition}
-          onChange={(event) => setShowGridPosition(event.currentTarget.checked)}
+          onCheckedChange={setShowGridPosition}
         />
       </div>
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:openGallerySidebarByDefault")}</span>
         <Switch
+          aria-label={t("settings:openGallerySidebarByDefault")}
           checked={openGallerySidebarByDefault}
-          onChange={(event) =>
-            setOpenGallerySidebarByDefault(event.currentTarget.checked)
-          }
+          onCheckedChange={setOpenGallerySidebarByDefault}
         />
       </div>
       <SettingsField label={t("settings:columns")}>

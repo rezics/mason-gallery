@@ -48,7 +48,7 @@ function SourceRow({
         variant="ghost"
         size="icon"
         title={isFavorite ? t("home:removeFavorite") : t("home:addFavorite")}
-        className={cn(isFavorite && "text-primary")}
+        className={cn(isFavorite && "text-brand")}
         onClick={() => onToggleFavorite(source)}
       >
         <Star className={cn(isFavorite && "fill-current")} />

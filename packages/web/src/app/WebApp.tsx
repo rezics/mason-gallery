@@ -1,5 +1,6 @@
 import {
   QuickGalleryPanel,
+  Toaster,
   useCoreRuntime,
   useI18n,
 } from "@mason-gallery/core";
@@ -63,6 +64,7 @@ export function WebApp() {
           </Switch>
         </main>
         <QuickGalleryPanel />
+        <Toaster />
       </div>
     </Router>
   );

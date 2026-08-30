@@ -1,11 +1,7 @@
 import { useEffect, useRef } from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { setI18nLanguage } from "@/i18n";
-import {
-  applyThemeTokens,
-  resolveThemeMode,
-  resolveThemeTokens,
-} from "@/lib/theme";
+import { applyThemeMode, resolveThemeMode } from "@/lib/theme";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 
@@ -24,10 +20,6 @@ export function useCoreRuntime({
 }: CoreRuntimeOptions = {}) {
   const language = useSettingsStore((s) => s.language);
   const theme = useSettingsStore((s) => s.theme);
-  const themePreset = useSettingsStore((s) => s.themePreset);
-  const accentPreset = useSettingsStore((s) => s.accentPreset);
-  const customAccent = useSettingsStore((s) => s.customAccent);
-  const customTheme = useSettingsStore((s) => s.customTheme);
   const cacheCleanupStrategy = useSettingsStore((s) => s.cacheCleanupStrategy);
   const hydrate = useSettingsStore((s) => s.hydrate);
   const hydrated = useSettingsStore((s) => s._hydrated);
@@ -60,26 +52,13 @@ export function useCoreRuntime({
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const applyResolvedTheme = () => {
       const mode = resolveThemeMode(theme, media.matches);
-      const tokens = resolveThemeTokens({
-        mode,
-        preset: themePreset,
-        accentPreset,
-        customAccent,
-        customTheme,
-      });
-      applyThemeTokens(
-        document.documentElement,
-        tokens,
-        mode,
-        themePreset,
-        accentPreset,
-      );
+      applyThemeMode(document.documentElement, mode);
     };
 
     applyResolvedTheme();
     media.addEventListener("change", applyResolvedTheme);
     return () => media.removeEventListener("change", applyResolvedTheme);
-  }, [theme, themePreset, accentPreset, customAccent, customTheme]);
+  }, [theme]);
 
   useEffect(() => {
     if (

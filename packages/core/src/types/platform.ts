@@ -53,29 +53,6 @@ export const DEFAULT_CACHE_POLICY: CachePolicy = {
 export type FolderThumbnailsMode = "off" | "lazy";
 
 export type ThemePreference = "system" | "light" | "dark";
-export type ThemePreset =
-  | "mason"
-  | "graphite"
-  | "midnight"
-  | "paper"
-  | "custom";
-export type AccentPreset =
-  | "rose"
-  | "blue"
-  | "amber"
-  | "emerald"
-  | "violet"
-  | "custom";
-
-export interface ThemeTokenOverrides {
-  background?: string;
-  foreground?: string;
-  card?: string;
-  popover?: string;
-  muted?: string;
-  mutedForeground?: string;
-  border?: string;
-}
 
 export interface GallerySourceShortcut {
   kind: "folder" | "archive";
@@ -90,13 +67,6 @@ export interface Settings {
   pageSize: number;
   language: Locale;
   theme: ThemePreference;
-  themePreset: ThemePreset;
-  accentPreset: AccentPreset;
-  customAccent: string;
-  customTheme: {
-    light?: ThemeTokenOverrides;
-    dark?: ThemeTokenOverrides;
-  };
   breakpoints: ColumnBreakpoints;
   showGridPosition: boolean;
   openGallerySidebarByDefault: boolean;

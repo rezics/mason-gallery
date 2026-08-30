@@ -71,7 +71,7 @@ export default function DropZone({
           </p>
         </div>
         <div className="grid w-full max-w-md gap-3 sm:grid-cols-2">
-          <Button type="button" onClick={handleSelectFolder}>
+          <Button type="button" variant="brand" onClick={handleSelectFolder}>
             <FolderOpen />
             {t("home:selectFolder")}
           </Button>

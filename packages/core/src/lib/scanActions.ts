@@ -4,6 +4,17 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ScanParams, WImage } from "@/types";
 
+let activeScanOperation = 0;
+
+function beginScanOperation(): number {
+  activeScanOperation += 1;
+  return activeScanOperation;
+}
+
+function isActiveScan(operation: number): boolean {
+  return operation === activeScanOperation;
+}
+
 function getSourceLabel(path: string): string {
   const normalized = path.replace(/\\/g, "/").replace(/\/+$/g, "");
   return normalized.split("/").pop() || path;
@@ -60,6 +71,7 @@ function computeBatchFolderCounts(
 }
 
 export async function startScan(paths: string[], isRescan = false) {
+  const operation = beginScanOperation();
   const {
     resetAndScan,
     setScanning,
@@ -108,13 +120,16 @@ export async function startScan(paths: string[], isRescan = false) {
   // Fetch directory tree in parallel with image scan
   platform
     .listDirectoryTree(paths)
-    .then((tree) => setDirectoryTree(tree))
+    .then((tree) => {
+      if (isActiveScan(operation)) setDirectoryTree(tree);
+    })
     .catch((e) => console.error("Failed to list directory tree:", e));
 
   try {
     await platform.scanImages(
       params,
       (batch) => {
+        if (!isActiveScan(operation)) return;
         if (batch.images.length > 0) {
           appendImages(batch.images);
           const counts = computeBatchFolderCounts(batch.images);
@@ -124,17 +139,21 @@ export async function startScan(paths: string[], isRescan = false) {
         }
       },
       () => {
-        setScanning(false);
+        if (isActiveScan(operation)) setScanning(false);
       },
       (total) => {
-        setTotalCount(total);
+        if (isActiveScan(operation)) setTotalCount(total);
       },
-      setInfoProgress,
-      setThumbProgress,
+      (progress) => {
+        if (isActiveScan(operation)) setInfoProgress(progress);
+      },
+      (progress) => {
+        if (isActiveScan(operation)) setThumbProgress(progress);
+      },
     );
   } catch (e) {
     console.error("Scan failed:", e);
-    setScanning(false);
+    if (isActiveScan(operation)) setScanning(false);
   }
 }
 
@@ -161,6 +180,7 @@ export async function incrementalRefresh() {
   const { relayout, getCurrentPaths, mergeImages, setScanning } = viewerState;
   const { setDirectoryTree } = useAppStore.getState();
   const { formats, sortMethod, pageSize } = useSettingsStore.getState();
+  const operation = beginScanOperation();
 
   // Phase 1: Instant re-layout (re-sort existing images, preserve scroll)
   relayout();
@@ -185,7 +205,9 @@ export async function incrementalRefresh() {
   // Refresh directory tree in parallel with the scan
   platform
     .listDirectoryTree(folders)
-    .then((tree) => setDirectoryTree(tree))
+    .then((tree) => {
+      if (isActiveScan(operation)) setDirectoryTree(tree);
+    })
     .catch((e) => console.error("Failed to list directory tree:", e));
 
   try {
@@ -193,12 +215,14 @@ export async function incrementalRefresh() {
     await platform.scanImages(
       params,
       (batch) => {
-        scannedImages.push(...batch.images);
+        if (isActiveScan(operation)) scannedImages.push(...batch.images);
       },
       () => {
         // Stale scan guard: discard if scanId changed
-        if (useViewerStore.getState().scanId !== startScanId) {
-          setScanning(false);
+        if (
+          !isActiveScan(operation) ||
+          useViewerStore.getState().scanId !== startScanId
+        ) {
           return;
         }
 
@@ -231,11 +255,12 @@ export async function incrementalRefresh() {
     );
   } catch (e) {
     console.error("Incremental refresh failed:", e);
-    setScanning(false);
+    if (isActiveScan(operation)) setScanning(false);
   }
 }
 
 export async function startArchiveScan(archivePath: string, password?: string) {
+  beginScanOperation();
   const { resetAndScan, setScanning } = useViewerStore.getState();
   const { setFolders, resetDirectoryState } = useAppStore.getState();
 
@@ -279,6 +304,7 @@ export async function executeArchiveScan(
   archivePath: string,
   password?: string,
 ) {
+  const operation = beginScanOperation();
   const {
     resetAndScan,
     setScanning,
@@ -320,18 +346,23 @@ export async function executeArchiveScan(
         password,
       },
       (batch) => {
+        if (!isActiveScan(operation)) return;
         if (batch.images.length > 0) {
           appendImages(batch.images);
         }
       },
       () => {
-        setScanning(false);
+        if (isActiveScan(operation)) setScanning(false);
       },
       (total) => {
-        setTotalCount(total);
+        if (isActiveScan(operation)) setTotalCount(total);
       },
-      setInfoProgress,
-      setThumbProgress,
+      (progress) => {
+        if (isActiveScan(operation)) setInfoProgress(progress);
+      },
+      (progress) => {
+        if (isActiveScan(operation)) setThumbProgress(progress);
+      },
     );
   } catch (e) {
     const errorMsg = String(e);
@@ -343,11 +374,12 @@ export async function executeArchiveScan(
     } else {
       console.error("Archive scan failed:", e);
     }
-    setScanning(false);
+    if (isActiveScan(operation)) setScanning(false);
   }
 }
 
 export function resetToDropZone() {
+  beginScanOperation();
   useViewerStore.getState().reset();
   useAppStore.getState().setFolders([]);
   useAppStore.setState({ isSidebarOpen: false });

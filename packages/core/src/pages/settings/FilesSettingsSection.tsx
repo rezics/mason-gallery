@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Input, Switch } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { SettingsField, SettingsSection } from "./SettingsField";
@@ -49,15 +50,17 @@ export function FilesSettingsSection() {
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:confirmDelete")}</span>
         <Switch
+          aria-label={t("settings:confirmDelete")}
           checked={confirmDelete}
-          onChange={(event) => setConfirmDelete(event.currentTarget.checked)}
+          onCheckedChange={setConfirmDelete}
         />
       </div>
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:showDeleteToast")}</span>
         <Switch
+          aria-label={t("settings:showDeleteToast")}
           checked={showDeleteToast}
-          onChange={(event) => setShowDeleteToast(event.currentTarget.checked)}
+          onCheckedChange={setShowDeleteToast}
         />
       </div>
     </SettingsSection>

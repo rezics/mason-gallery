@@ -3,9 +3,19 @@ export { default as DropZone } from "./components/DropZone";
 export { default as ImageViewer } from "./components/ImageViewer";
 export { default as QuickGalleryPanel } from "./components/QuickGalleryPanel";
 export * from "./components/settings";
+export * from "./components/ui/alert-dialog";
 export { Button, buttonVariants } from "./components/ui/button";
-export { ConfirmDialog, Dialog } from "./components/ui/dialog";
-export { Checkbox, Input, Select, Switch } from "./components/ui/field";
+export { Checkbox } from "./components/ui/checkbox";
+export * from "./components/ui/dialog";
+export * from "./components/ui/field";
+export { Input } from "./components/ui/input";
+export {
+  NativeSelect,
+  NativeSelectOption,
+} from "./components/ui/native-select";
+export { Progress } from "./components/ui/progress";
+export { Switch } from "./components/ui/switch";
+export { Toaster, toast } from "./components/ui/toast";
 export { default as WaterfallGrid } from "./components/WaterfallGrid";
 export {
   getPlatform,
@@ -47,7 +57,6 @@ export type {
   WImage,
 } from "./types/index";
 export type {
-  AccentPreset,
   ArchiveInfo,
   CacheCleanupStrategy,
   CachePolicy,
@@ -67,8 +76,6 @@ export type {
   Settings,
   SourceOverride,
   ThemePreference,
-  ThemePreset,
-  ThemeTokenOverrides,
   ThumbnailPolicy,
   ThumbRetain,
 } from "./types/platform";

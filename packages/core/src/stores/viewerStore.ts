@@ -1,4 +1,10 @@
 import { create } from "zustand";
+import {
+  clearThumbnailCache,
+  deleteCachedThumbnails,
+  setCachedThumbnails,
+  thumbnailKey,
+} from "@/lib/thumbnailCache";
 import type { Thumbnail, WImage } from "@/types";
 import type { ScanInfoProgress, ScanThumbProgress } from "@/types/platform";
 
@@ -53,10 +59,6 @@ interface ViewerState {
   replaceLockedArchive: (archivePath: string, added: WImage[]) => void;
 }
 
-function thumbKey(sourceId: number, entryPath: string): string {
-  return `${sourceId}:${entryPath}`;
-}
-
 export const useViewerStore = create<ViewerState>((set, get) => ({
   images: [],
   currentIndex: 0,
@@ -91,14 +93,20 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   setThumbProgress: ({ generated, total }) =>
     set({ thumbGenerated: generated, thumbTotal: total }),
 
-  removeImage: (index) =>
+  removeImage: (index) => {
+    const removed = get().images[index];
+    if (removed) {
+      deleteCachedThumbnails(removed.sourceId, removed.relativePath);
+    }
     set((state) => {
       const images = state.images.filter((_, i) => i !== index);
       const currentIndex = Math.min(state.currentIndex, images.length - 1);
       return { images, currentIndex: Math.max(0, currentIndex) };
-    }),
+    });
+  },
 
-  resetAndScan: () =>
+  resetAndScan: () => {
+    clearThumbnailCache();
     set((state) => ({
       images: [],
       currentIndex: 0,
@@ -113,9 +121,11 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       thumbTotal: 0,
       skippedThumbs: new Set<string>(),
       requestedThumbs: new Set<string>(),
-    })),
+    }));
+  },
 
-  reset: () =>
+  reset: () => {
+    clearThumbnailCache();
     set({
       images: [],
       currentIndex: 0,
@@ -128,7 +138,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       thumbTotal: 0,
       skippedThumbs: new Set<string>(),
       requestedThumbs: new Set<string>(),
-    }),
+    });
+  },
 
   relayout: () =>
     set((state) => ({
@@ -155,26 +166,20 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
     return new Set(images.map((img) => img.source));
   },
 
-  patchThumbnails: (sourceId, entryPath, thumbnails) =>
+  patchThumbnails: (sourceId, entryPath, thumbnails) => {
+    setCachedThumbnails(sourceId, entryPath, thumbnails);
     set((state) => {
-      let patched = false;
-      const images = state.images.map((img) => {
-        if (img.sourceId === sourceId && img.relativePath === entryPath) {
-          patched = true;
-          return { ...img, thumbnails };
-        }
-        return img;
-      });
-      if (!patched) return state;
-      const key = thumbKey(sourceId, entryPath);
+      const key = thumbnailKey(sourceId, entryPath);
+      if (!state.requestedThumbs.has(key)) return state;
       const requestedThumbs = new Set(state.requestedThumbs);
       requestedThumbs.delete(key);
-      return { images, requestedThumbs };
-    }),
+      return { requestedThumbs };
+    });
+  },
 
   markSkipped: (sourceId, entryPath) =>
     set((state) => {
-      const key = thumbKey(sourceId, entryPath);
+      const key = thumbnailKey(sourceId, entryPath);
       if (state.skippedThumbs.has(key)) return state;
       const skippedThumbs = new Set(state.skippedThumbs);
       skippedThumbs.add(key);
@@ -185,7 +190,7 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
 
   markRequested: (sourceId, entryPath) =>
     set((state) => {
-      const key = thumbKey(sourceId, entryPath);
+      const key = thumbnailKey(sourceId, entryPath);
       if (state.requestedThumbs.has(key)) return state;
       const requestedThumbs = new Set(state.requestedThumbs);
       requestedThumbs.add(key);
@@ -194,7 +199,7 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
 
   clearRequested: (sourceId, entryPath) =>
     set((state) => {
-      const key = thumbKey(sourceId, entryPath);
+      const key = thumbnailKey(sourceId, entryPath);
       if (!state.requestedThumbs.has(key)) return state;
       const requestedThumbs = new Set(state.requestedThumbs);
       requestedThumbs.delete(key);

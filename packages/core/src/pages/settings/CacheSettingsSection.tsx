@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect as Select } from "@/components/ui/native-select";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type {

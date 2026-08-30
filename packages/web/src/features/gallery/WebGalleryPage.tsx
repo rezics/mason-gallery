@@ -1,6 +1,8 @@
 import {
+  Button,
   ImageViewer,
   openFolderAndScan,
+  Progress,
   resetToDropZone,
   startScan,
   useAppStore,
@@ -266,7 +268,7 @@ function WebEmptyGallery() {
         className="pointer-events-none absolute inset-0 [background-size:28px_28px] [mask-image:linear-gradient(90deg,black,transparent_28%,transparent_72%,black)]"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 0% 36%, hsl(var(--primary) / 0.1) 0 2px, transparent 3px)",
+            "radial-gradient(circle at 0% 36%, color-mix(in oklch, var(--brand) 12%, transparent) 0 2px, transparent 3px)",
         }}
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-background to-transparent" />
@@ -280,14 +282,15 @@ function WebEmptyGallery() {
           </p>
 
           <div className="mt-8 max-w-[420px]">
-            <button
+            <Button
               type="button"
-              className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-md bg-primary px-6 text-lg font-semibold text-primary-foreground shadow-[0_16px_32px_hsl(var(--primary)/0.22)] transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20"
+              variant="brand"
+              className="h-14 w-full rounded-2xl px-6 text-lg shadow-lg shadow-brand/20"
               onClick={openFolderAndScan}
             >
-              <FolderOpen className="size-6" />
+              <FolderOpen className="size-6" data-icon="inline-start" />
               {t("home:webOpenFolder")}
-            </button>
+            </Button>
 
             <div className="my-9 flex items-center gap-7 text-base font-medium text-muted-foreground">
               <span className="h-px flex-1 bg-border" />
@@ -295,11 +298,8 @@ function WebEmptyGallery() {
               <span className="h-px flex-1 bg-border" />
             </div>
 
-            <div
-              className="flex min-h-[176px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-card/70 px-8 text-center shadow-[0_20px_70px_hsl(var(--primary)/0.10)] backdrop-blur"
-              style={{ borderColor: "hsl(var(--primary) / 0.42)" }}
-            >
-              <UploadCloud className="size-11 text-primary" strokeWidth={1.8} />
+            <div className="flex min-h-[176px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand/40 bg-card/70 px-8 text-center shadow-lg shadow-brand/10 backdrop-blur">
+              <UploadCloud className="size-11 text-brand" strokeWidth={1.8} />
               <p className="mt-5 text-xl font-semibold text-foreground">
                 {t("home:webDropTitle")}
               </p>
@@ -343,12 +343,11 @@ export function WebGalleryPage() {
   return (
     <div className="flex h-full flex-col bg-background">
       {isScanning && (
-        <div className="h-1 overflow-hidden bg-secondary">
-          <div
-            className={`h-full bg-primary ${totalCount > 0 ? "" : "animate-pulse"}`}
-            style={{ width: `${progressValue}%` }}
-          />
-        </div>
+        <Progress
+          aria-label={t("home:scanning")}
+          value={totalCount > 0 ? progressValue : null}
+          className="gap-0 [&_[data-slot=progress-track]]:h-1 [&_[data-slot=progress-track]]:rounded-none"
+        />
       )}
 
       {showEmptyGallery ? (

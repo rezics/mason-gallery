@@ -19,10 +19,6 @@ import type {
 export interface ThemeSettings {
   language: Locale;
   theme: Settings["theme"];
-  themePreset: Settings["themePreset"];
-  accentPreset: Settings["accentPreset"];
-  customAccent: Settings["customAccent"];
-  customTheme: Settings["customTheme"];
 }
 
 export interface GalleryDisplaySettings {

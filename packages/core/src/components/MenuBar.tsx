@@ -13,9 +13,16 @@ import {
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import {
@@ -35,54 +42,13 @@ interface MenuBarProps {
   draggable?: boolean;
 }
 
-type MenuName = "file" | "view" | "help" | null;
-
-function MenuSeparator() {
-  return <div className="my-1 border-t border-border/70" />;
-}
-
-function MenuShortcut({ children }: { children: ReactNode }) {
+function MenuButton({ children }: { children: ReactNode }) {
   return (
-    <span className="ml-auto pl-6 text-xs text-muted-foreground">
-      {children}
-    </span>
-  );
-}
-
-function MenuItem({
-  icon,
-  children,
-  shortcut,
-  disabled,
-  onClick,
-}: {
-  icon: ReactNode;
-  children: ReactNode;
-  shortcut?: ReactNode;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      className="flex h-8 w-full items-center gap-2 rounded-sm px-2.5 text-left text-sm text-popover-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground disabled:pointer-events-none disabled:opacity-45"
-      onClick={onClick}
+    <DropdownMenuTrigger
+      render={<Button type="button" variant="ghost" size="sm" />}
     >
-      <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1 truncate">{children}</span>
-      {shortcut && <MenuShortcut>{shortcut}</MenuShortcut>}
-    </button>
-  );
-}
-
-function MenuPanel({ children }: { children: ReactNode }) {
-  return (
-    <div className="absolute left-0 top-8 z-50 min-w-56 origin-top-left overflow-hidden rounded-md border border-border bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/15 outline-none animate-menu-in">
       {children}
-    </div>
+    </DropdownMenuTrigger>
   );
 }
 
@@ -94,34 +60,10 @@ export default function MenuBar({
 }: MenuBarProps) {
   const t = useI18n();
   const platform = usePlatform();
-  const toggleQuickPanel = useAppStore((s) => s.toggleQuickPanel);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-  const hasGallery = useViewerStore((s) => s.images.length > 0);
+  const toggleQuickPanel = useAppStore((state) => state.toggleQuickPanel);
+  const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const hasGallery = useViewerStore((state) => state.images.length > 0);
   const [, navigate] = useLocation();
-  const [openMenu, setOpenMenu] = useState<MenuName>(null);
-  const barRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (!openMenu) return;
-
-    const closeOnPointerDown = (event: PointerEvent) => {
-      if (!barRef.current?.contains(event.target as Node)) {
-        setOpenMenu(null);
-      }
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpenMenu(null);
-      }
-    };
-
-    document.addEventListener("pointerdown", closeOnPointerDown);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnPointerDown);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [openMenu]);
 
   const openArchive = async () => {
     const path = await platform.pickArchive?.();
@@ -130,8 +72,7 @@ export default function MenuBar({
 
   return (
     <header
-      ref={barRef}
-      className="fixed left-0 right-0 top-0 z-50 flex h-9 items-center border-b border-border bg-popover/95 px-2 text-popover-foreground shadow-sm backdrop-blur"
+      className="fixed inset-x-0 top-0 z-50 flex h-9 items-center border-b bg-popover/95 px-2 text-popover-foreground shadow-xs backdrop-blur"
       {...(draggable ? { "data-tauri-drag-region": true } : {})}
     >
       <img
@@ -140,182 +81,93 @@ export default function MenuBar({
         className="mr-1 size-5 shrink-0"
       />
 
-      <div className="relative">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setOpenMenu(openMenu === "file" ? null : "file")}
-          onPointerEnter={() => openMenu && setOpenMenu("file")}
-        >
-          {t("menu:file")}
-        </Button>
-        {openMenu === "file" && (
-          <MenuPanel>
-            <MenuItem
-              icon={<FolderOpen />}
-              onClick={() => {
-                setOpenMenu(null);
-                openFolderAndScan();
-              }}
-            >
-              {t("menu:openFolder")}
-            </MenuItem>
-            {platform.capabilities.canBrowseArchives &&
-              platform.pickArchive && (
-                <MenuItem
-                  icon={<Archive />}
-                  onClick={async () => {
-                    setOpenMenu(null);
-                    await openArchive();
-                  }}
-                >
-                  {t("archive:openArchive")}
-                </MenuItem>
-              )}
-            <MenuSeparator />
-            <MenuItem
-              icon={<RotateCcw />}
-              onClick={() => {
-                setOpenMenu(null);
-                resetToDropZone();
-                navigate("/");
-              }}
-            >
-              {t("menu:reset")}
-            </MenuItem>
-            {onQuit && (
-              <>
-                <MenuSeparator />
-                <MenuItem
-                  icon={<X />}
-                  shortcut="Alt+F4"
-                  onClick={() => {
-                    setOpenMenu(null);
-                    onQuit();
-                  }}
-                >
-                  {t("menu:quit")}
-                </MenuItem>
-              </>
-            )}
-          </MenuPanel>
-        )}
-      </div>
+      <DropdownMenu>
+        <MenuButton>{t("menu:file")}</MenuButton>
+        <DropdownMenuContent className="min-w-56">
+          <DropdownMenuItem onClick={() => openFolderAndScan()}>
+            <FolderOpen data-icon="inline-start" />
+            {t("menu:openFolder")}
+          </DropdownMenuItem>
+          {platform.capabilities.canBrowseArchives && platform.pickArchive && (
+            <DropdownMenuItem onClick={() => void openArchive()}>
+              <Archive data-icon="inline-start" />
+              {t("archive:openArchive")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => {
+              resetToDropZone();
+              navigate("/");
+            }}
+          >
+            <RotateCcw data-icon="inline-start" />
+            {t("menu:reset")}
+          </DropdownMenuItem>
+          {onQuit && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={onQuit}>
+                <X data-icon="inline-start" />
+                {t("menu:quit")}
+                <DropdownMenuShortcut>Alt+F4</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      <div className="relative">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setOpenMenu(openMenu === "view" ? null : "view")}
-          onPointerEnter={() => openMenu && setOpenMenu("view")}
-        >
-          {t("menu:view")}
-        </Button>
-        {openMenu === "view" && (
-          <MenuPanel>
-            <MenuItem
-              icon={<Home />}
-              onClick={() => {
-                setOpenMenu(null);
-                navigate("/");
-              }}
-            >
-              {t("actions:gallery")}
-            </MenuItem>
-            <MenuItem
-              icon={<Folder />}
-              disabled={!hasGallery}
-              onClick={() => {
-                if (!hasGallery) return;
-                setOpenMenu(null);
-                toggleSidebar();
-              }}
-            >
-              {t("sidebar:folders")}
-            </MenuItem>
-            <MenuItem
-              icon={<Settings />}
-              onClick={() => {
-                setOpenMenu(null);
-                toggleQuickPanel();
-              }}
-            >
-              {t("actions:quickControls")}
-            </MenuItem>
-            <MenuItem
-              icon={<RefreshCw />}
-              onClick={() => {
-                setOpenMenu(null);
-                incrementalRefresh();
-              }}
-            >
-              {t("actions:refresh")}
-            </MenuItem>
-            {platform.capabilities.canBrowseArchives && (
-              <MenuItem
-                icon={<Database />}
-                onClick={() => {
-                  setOpenMenu(null);
-                  navigate("/manage/cache");
-                }}
-              >
-                {t("archive:manageCache")}
-              </MenuItem>
-            )}
-            <MenuSeparator />
-            <MenuItem
-              icon={<SlidersHorizontal />}
-              onClick={() => {
-                setOpenMenu(null);
-                navigate("/settings/gallery");
-              }}
-            >
-              {t("actions:preferences")}
-            </MenuItem>
-            {onDevTools && (
-              <>
-                <MenuSeparator />
-                <MenuItem
-                  icon={<MonitorCog />}
-                  onClick={() => {
-                    setOpenMenu(null);
-                    onDevTools();
-                  }}
-                >
-                  {t("menu:devTools")}
-                </MenuItem>
-              </>
-            )}
-          </MenuPanel>
-        )}
-      </div>
+      <DropdownMenu>
+        <MenuButton>{t("menu:view")}</MenuButton>
+        <DropdownMenuContent className="min-w-56">
+          <DropdownMenuItem onClick={() => navigate("/")}>
+            <Home data-icon="inline-start" />
+            {t("actions:gallery")}
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={!hasGallery} onClick={toggleSidebar}>
+            <Folder data-icon="inline-start" />
+            {t("sidebar:folders")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={toggleQuickPanel}>
+            <Settings data-icon="inline-start" />
+            {t("actions:quickControls")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => incrementalRefresh()}>
+            <RefreshCw data-icon="inline-start" />
+            {t("actions:refresh")}
+          </DropdownMenuItem>
+          {platform.capabilities.canBrowseArchives && (
+            <DropdownMenuItem onClick={() => navigate("/manage/cache")}>
+              <Database data-icon="inline-start" />
+              {t("archive:manageCache")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate("/settings/gallery")}>
+            <SlidersHorizontal data-icon="inline-start" />
+            {t("actions:preferences")}
+          </DropdownMenuItem>
+          {onDevTools && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onDevTools}>
+                <MonitorCog data-icon="inline-start" />
+                {t("menu:devTools")}
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      <div className="relative">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setOpenMenu(openMenu === "help" ? null : "help")}
-          onPointerEnter={() => openMenu && setOpenMenu("help")}
-        >
-          {t("menu:help")}
-        </Button>
-        {openMenu === "help" && (
-          <MenuPanel>
-            <MenuItem
-              icon={<Info />}
-              onClick={() => {
-                setOpenMenu(null);
-                navigate("/about");
-              }}
-            >
-              {t("menu:about")}
-            </MenuItem>
-          </MenuPanel>
-        )}
-      </div>
+      <DropdownMenu>
+        <MenuButton>{t("menu:help")}</MenuButton>
+        <DropdownMenuContent className="min-w-40">
+          <DropdownMenuItem onClick={() => navigate("/about")}>
+            <Info data-icon="inline-start" />
+            {t("menu:about")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <div
         className="min-w-4 flex-1"
@@ -328,9 +180,7 @@ export default function MenuBar({
         size="icon"
         title={t("sidebar:folders")}
         disabled={!hasGallery}
-        onClick={() => {
-          if (hasGallery) toggleSidebar();
-        }}
+        onClick={toggleSidebar}
       >
         <Folder />
       </Button>

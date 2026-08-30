@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/field";
+import { NativeSelect as Select } from "@/components/ui/native-select";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type {

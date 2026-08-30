@@ -22,12 +22,12 @@ class FileHandleRegistry implements WebFileRegistry {
   private pendingEntries: Map<string, FileEntry> | null = null;
 
   beginScan(preserveExistingUrls: boolean): void {
-    this.abortScan();
     if (preserveExistingUrls) {
-      this.pendingEntries = new Map();
-      return;
+      this.abortScan();
+    } else {
+      this.clear();
     }
-    this.clear();
+    this.pendingEntries = new Map();
   }
 
   register(id: string, handle: FileSystemFileHandle, blobUrl: string): string {
@@ -153,6 +153,7 @@ async function getImageDimensions(
 }
 
 const registry = new FileHandleRegistry();
+const IMAGE_PROBE_CONCURRENCY = 6;
 
 let storedDirHandles: FileSystemDirectoryHandle[] = [];
 let directoryHandlesLoaded = false;
@@ -271,23 +272,35 @@ export const webPlatformService: PlatformService = {
 
       let batch: ImageBatch["images"] = [];
 
-      for (const entry of fileHandles) {
-        const file = await entry.handle.getFile();
-        const blobUrl = URL.createObjectURL(file);
-        const source = getWebImageSource(entry.rootIndex, entry.path);
-        const id = registry.register(source, entry.handle, blobUrl);
-        const dims = await getImageDimensions(file);
+      for (
+        let offset = 0;
+        offset < fileHandles.length;
+        offset += IMAGE_PROBE_CONCURRENCY
+      ) {
+        const entries = fileHandles.slice(
+          offset,
+          offset + IMAGE_PROBE_CONCURRENCY,
+        );
+        const images = await Promise.all(
+          entries.map(async (entry) => {
+            const file = await entry.handle.getFile();
+            const blobUrl = URL.createObjectURL(file);
+            const source = getWebImageSource(entry.rootIndex, entry.path);
+            const id = registry.register(source, entry.handle, blobUrl);
+            const dims = await getImageDimensions(file);
+            return {
+              source: id,
+              relativePath: entry.path,
+              width: dims?.width ?? null,
+              height: dims?.height ?? null,
+            };
+          }),
+        );
 
-        batch.push({
-          source: id,
-          relativePath: entry.path,
-          width: dims?.width ?? null,
-          height: dims?.height ?? null,
-        });
-
-        if (batch.length >= batchSize) {
-          onBatch({ images: batch, done: false });
-          batch = [];
+        batch.push(...images);
+        while (batch.length >= batchSize) {
+          onBatch({ images: batch.slice(0, batchSize), done: false });
+          batch = batch.slice(batchSize);
         }
       }
 

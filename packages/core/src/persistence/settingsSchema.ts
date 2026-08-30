@@ -31,18 +31,6 @@ const columnBreakpointsSchema = z.custom<ColumnBreakpoints>(
   { message: "Expected positive column counts keyed by non-negative widths" },
 );
 
-const themeTokenOverridesSchema = z
-  .object({
-    background: z.string().min(1).optional(),
-    foreground: z.string().min(1).optional(),
-    card: z.string().min(1).optional(),
-    popover: z.string().min(1).optional(),
-    muted: z.string().min(1).optional(),
-    mutedForeground: z.string().min(1).optional(),
-    border: z.string().min(1).optional(),
-  })
-  .strict();
-
 const gallerySourceShortcutSchema = z
   .object({
     kind: z.enum(["folder", "archive"]),
@@ -74,22 +62,6 @@ export const settingsSchema: z.ZodType<Settings> = z
     pageSize: z.number().int().positive().max(1000),
     language: z.enum(["en", "zh-hans", "zh-hant", "ja"]),
     theme: z.enum(["system", "light", "dark"]),
-    themePreset: z.enum(["mason", "graphite", "midnight", "paper", "custom"]),
-    accentPreset: z.enum([
-      "rose",
-      "blue",
-      "amber",
-      "emerald",
-      "violet",
-      "custom",
-    ]),
-    customAccent: z.string().regex(/^#[0-9a-f]{6}$/),
-    customTheme: z
-      .object({
-        light: themeTokenOverridesSchema.optional(),
-        dark: themeTokenOverridesSchema.optional(),
-      })
-      .strict(),
     breakpoints: columnBreakpointsSchema,
     showGridPosition: z.boolean(),
     openGallerySidebarByDefault: z.boolean(),
@@ -125,10 +97,6 @@ const DEFAULT_SETTINGS: Settings = settingsSchema.parse({
   pageSize: 50,
   language: "en",
   theme: "system",
-  themePreset: "mason",
-  accentPreset: "rose",
-  customAccent: "#e75b73",
-  customTheme: {},
   breakpoints: {
     0: 1,
     500: 2,

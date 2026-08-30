@@ -10,6 +10,7 @@ import MigrationConfirmDialog from "@/components/MigrationConfirmDialog";
 import PasswordDialog from "@/components/PasswordDialog";
 import SidebarHome from "@/components/SidebarHome";
 import SolidArchiveWarningDialog from "@/components/SolidArchiveWarningDialog";
+import { Progress } from "@/components/ui/progress";
 import WaterfallGrid from "@/components/WaterfallGrid";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
@@ -316,14 +317,11 @@ export default function HomePage() {
   return (
     <div className="flex h-full flex-col">
       {isScanning && (
-        <div className="h-1 overflow-hidden bg-muted">
-          <div
-            className={`h-full bg-primary ${
-              progressValue === undefined ? "animate-pulse" : ""
-            }`}
-            style={{ width: `${progressValue ?? 35}%` }}
-          />
-        </div>
+        <Progress
+          aria-label={t("home:scanning")}
+          value={progressValue ?? null}
+          className="gap-0 [&_[data-slot=progress-track]]:h-1 [&_[data-slot=progress-track]]:rounded-none"
+        />
       )}
 
       {showDropZone ? (

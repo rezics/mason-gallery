@@ -30,6 +30,21 @@ describe("settings schema", () => {
     expect(settingsSchema.safeParse(oldDocument).success).toBe(false);
   });
 
+  test("keeps schema v1 while invalidating the unpublished theme presets", () => {
+    const oldV1Envelope = {
+      version: 1,
+      settings: {
+        ...createDefaultSettings(),
+        themePreset: "mason",
+        accentPreset: "rose",
+        customAccent: "#e75b73",
+        customTheme: {},
+      },
+    };
+
+    expect(() => migrateSettingsEnvelope(oldV1Envelope)).toThrow();
+  });
+
   test("rejects the removed plaintext password mode", () => {
     expect(
       settingsSchema.safeParse({

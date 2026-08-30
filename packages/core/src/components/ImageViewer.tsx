@@ -1,13 +1,13 @@
 import { FolderOpen, Info, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import Counter from "yet-another-react-lightbox/plugins/counter";
 import "yet-another-react-lightbox/plugins/counter.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
-import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/dialog";
+import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -53,7 +53,6 @@ export default function ImageViewer() {
   const showDeleteToast = useSettingsStore((s) => s.showDeleteToast);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [toastOpen, setToastOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
 
   const currentImage = images[currentIndex];
@@ -62,11 +61,15 @@ export default function ImageViewer() {
   const canReveal =
     platform.capabilities.canRevealFile && !!platform.revealFile;
 
-  const slides = images.map((img) => ({
-    src: platform.getImageUrl(img.source),
-    width: img.width ?? undefined,
-    height: img.height ?? undefined,
-  }));
+  const slides = useMemo(
+    () =>
+      images.map((img) => ({
+        src: platform.getImageUrl(img.source),
+        width: img.width ?? undefined,
+        height: img.height ?? undefined,
+      })),
+    [images, platform],
+  );
 
   const executeDelete = useCallback(async () => {
     if (!canDelete || !platform.deleteFile) return;
@@ -75,7 +78,9 @@ export default function ImageViewer() {
     try {
       await platform.deleteFile(img.source);
       removeImage(currentIndex);
-      if (showDeleteToast) setToastOpen(true);
+      if (showDeleteToast) {
+        toast.add({ title: t("viewer:deleteSuccess"), type: "success" });
+      }
       if (images.length <= 1) closeViewer();
     } catch (error) {
       console.error("Failed to delete:", error);
@@ -88,6 +93,7 @@ export default function ImageViewer() {
     removeImage,
     closeViewer,
     showDeleteToast,
+    t,
   ]);
 
   const requestDelete = useCallback(() => {
@@ -113,12 +119,6 @@ export default function ImageViewer() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isViewerOpen, handleKeyDown]);
-
-  useEffect(() => {
-    if (!toastOpen) return;
-    const id = window.setTimeout(() => setToastOpen(false), 3000);
-    return () => window.clearTimeout(id);
-  }, [toastOpen]);
 
   if (!isViewerOpen) return null;
 
@@ -178,19 +178,12 @@ export default function ImageViewer() {
         toolbar={{ buttons: toolbarButtons }}
       />
 
-      {infoOpen && currentImage && (
-        <div className="fixed right-4 top-16 z-[10000] max-w-md rounded-lg border border-border bg-popover p-4 text-sm text-popover-foreground shadow-xl">
-          <div className="mb-2 flex items-center justify-between gap-4">
-            <h2 className="font-semibold">{t("viewer:info")}</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setInfoOpen(false)}
-            >
-              {t("actions:close")}
-            </Button>
-          </div>
+      {currentImage && (
+        <Dialog
+          open={infoOpen}
+          title={t("viewer:info")}
+          onClose={() => setInfoOpen(false)}
+        >
           <p>
             {t("viewer:fileName")}: {getFileName(currentImage.source)}
           </p>
@@ -203,7 +196,7 @@ export default function ImageViewer() {
           <p className="break-all text-muted-foreground">
             {t("viewer:filePath")}: {currentImage.source}
           </p>
-        </div>
+        </Dialog>
       )}
 
       <ConfirmDialog
@@ -220,12 +213,6 @@ export default function ImageViewer() {
       >
         <p>{getFileName(currentImage?.source ?? "")}</p>
       </ConfirmDialog>
-
-      {toastOpen && (
-        <div className="fixed bottom-4 right-4 z-[10000] rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg">
-          {t("viewer:deleteSuccess")}
-        </div>
-      )}
     </>
   );
 }

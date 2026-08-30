@@ -10,6 +10,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { useThumbnailRequest } from "@/hooks/useThumbnailRequest";
 import { requestArchiveUnlock } from "@/lib/scanActions";
+import { useEntryThumbnails } from "@/lib/thumbnailCache";
 import { useAppStore } from "@/stores/appStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
@@ -98,7 +99,11 @@ function ImageCell({
   const openViewer = useViewerStore((s) => s.openViewer);
   const platform = usePlatform();
   const folderThumbnails = useSettingsStore((s) => s.folderThumbnails);
-  const entry = useViewerStore((s) => s.images[data.globalIndex]) ?? data;
+  const liveThumbnails = useEntryThumbnails(data);
+  const entry =
+    liveThumbnails === data.thumbnails
+      ? data
+      : { ...data, thumbnails: liveThumbnails };
 
   const hookEnabled =
     folderThumbnails === "lazy" &&
@@ -199,31 +204,27 @@ export default function WaterfallGrid({
   const { width, height } = useContainerSize(scrollContainerRef);
 
   const containerRef = useRef<HTMLElement>(null);
-  const savedScrollRef = useRef<number | null>(null);
   const prevScanIdRef = useRef(scanId);
-
-  if (scanId !== prevScanIdRef.current) {
-    if (isRelayout && scrollContainerRef.current) {
-      savedScrollRef.current = scrollContainerRef.current.scrollTop;
-    } else {
-      savedScrollRef.current = null;
-    }
-    prevScanIdRef.current = scanId;
-  }
+  const prevFolderRef = useRef(selectedFolder);
+  const [, forceMeasurementRender] = useState(0);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scanId triggers restore
   useLayoutEffect(() => {
-    if (savedScrollRef.current !== null && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = savedScrollRef.current;
-      savedScrollRef.current = null;
-    }
+    if (scanId === prevScanIdRef.current) return;
+    const savedScroll =
+      isRelayout && scrollContainerRef.current
+        ? scrollContainerRef.current.scrollTop
+        : null;
+    prevScanIdRef.current = scanId;
+    if (savedScroll !== null && scrollContainerRef.current)
+      scrollContainerRef.current.scrollTop = savedScroll;
   }, [scanId, scrollContainerRef]);
 
-  const prevFolderRef = useRef(selectedFolder);
-  if (selectedFolder !== prevFolderRef.current) {
+  useLayoutEffect(() => {
+    if (selectedFolder === prevFolderRef.current) return;
     prevFolderRef.current = selectedFolder;
     if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
-  }
+  }, [selectedFolder, scrollContainerRef]);
 
   const safeWidth = Math.max(width, 1);
   const columnCount = getColumnCount(safeWidth, breakpoints);
@@ -236,16 +237,22 @@ export default function WaterfallGrid({
     onPositionerReady?.(positioner, columnCount);
   }, [positioner, columnCount, onPositionerReady]);
 
-  const measuredCount = positioner.size();
-  if (width > 0 && measuredCount < images.length) {
-    for (let i = measuredCount; i < images.length; i++) {
-      const img = images[i] as WImage | undefined;
-      if (img?.width && img.height && positioner.get(i) === undefined) {
-        const displayHeight = positioner.columnWidth * (img.height / img.width);
-        positioner.set(i, displayHeight);
+  useLayoutEffect(() => {
+    const measuredCount = positioner.size();
+    let changed = false;
+    if (width > 0 && measuredCount < images.length) {
+      for (let i = measuredCount; i < images.length; i++) {
+        const img = images[i] as WImage | undefined;
+        if (img?.width && img.height && positioner.get(i) === undefined) {
+          const displayHeight =
+            positioner.columnWidth * (img.height / img.width);
+          positioner.set(i, displayHeight);
+          changed = true;
+        }
       }
     }
-  }
+    if (changed) forceMeasurementRender((revision) => revision + 1);
+  }, [images, positioner, width]);
 
   const resizeObserver = useResizeObserver(positioner);
 

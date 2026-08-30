@@ -1,4 +1,4 @@
-import { useCoreRuntime, useSettingsStore } from "@mason-gallery/core";
+import { Toaster, useCoreRuntime, useSettingsStore } from "@mason-gallery/core";
 import type { SupportedLanguage } from "@mason-gallery/i18n";
 import { useEffect } from "react";
 import { WebGalleryPage } from "../features/gallery/WebGalleryPage";
@@ -24,6 +24,7 @@ export function EmbeddedWebApp({ locale }: { locale: SupportedLanguage }) {
       <div className="min-h-0 flex-1 overflow-hidden">
         <WebGalleryPage />
       </div>
+      <Toaster />
     </div>
   );
 }

@@ -1,14 +1,12 @@
 import { resolveSupportedLanguage } from "@mason-gallery/i18n";
 import { create } from "zustand";
 import { getPlatform } from "@/context/PlatformContext";
-import { normalizeCustomAccent } from "@/lib/theme";
 import {
   createDefaultSettings,
   settingsSchema,
 } from "@/persistence/settingsSchema";
 import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
 import type {
-  AccentPreset,
   CacheCleanupStrategy,
   CachePolicy,
   FolderThumbnailsMode,
@@ -16,8 +14,6 @@ import type {
   PasswordStorageMode,
   Settings,
   ThemePreference,
-  ThemePreset,
-  ThemeTokenOverrides,
 } from "@/types/platform";
 
 interface SettingsState extends Settings {
@@ -30,13 +26,6 @@ interface SettingsState extends Settings {
   setPageSize: (size: number) => void;
   setLanguage: (lang: Locale) => void;
   setTheme: (theme: ThemePreference) => void;
-  setThemePreset: (preset: ThemePreset) => void;
-  setAccentPreset: (preset: AccentPreset) => void;
-  setCustomAccent: (accent: string) => void;
-  setCustomTheme: (theme: {
-    light?: ThemeTokenOverrides;
-    dark?: ThemeTokenOverrides;
-  }) => void;
   setBreakpoints: (bp: ColumnBreakpoints) => void;
   setShowGridPosition: (show: boolean) => void;
   setOpenGallerySidebarByDefault: (open: boolean) => void;
@@ -78,10 +67,6 @@ function toPersistedSettings(state: SettingsState): Settings {
     pageSize: state.pageSize,
     language: state.language,
     theme: state.theme,
-    themePreset: state.themePreset,
-    accentPreset: state.accentPreset,
-    customAccent: state.customAccent,
-    customTheme: state.customTheme,
     breakpoints: state.breakpoints,
     showGridPosition: state.showGridPosition,
     openGallerySidebarByDefault: state.openGallerySidebarByDefault,
@@ -157,22 +142,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setTheme: (theme) => {
     set({ theme });
-    persist(get());
-  },
-  setThemePreset: (themePreset) => {
-    set({ themePreset });
-    persist(get());
-  },
-  setAccentPreset: (accentPreset) => {
-    set({ accentPreset });
-    persist(get());
-  },
-  setCustomAccent: (customAccent) => {
-    set({ customAccent: normalizeCustomAccent(customAccent) });
-    persist(get());
-  },
-  setCustomTheme: (customTheme) => {
-    set({ customTheme });
     persist(get());
   },
   setBreakpoints: (breakpoints) => {

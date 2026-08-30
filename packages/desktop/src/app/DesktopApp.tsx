@@ -1,4 +1,8 @@
-import { QuickGalleryPanel, useCoreRuntime } from "@mason-gallery/core";
+import {
+  QuickGalleryPanel,
+  Toaster,
+  useCoreRuntime,
+} from "@mason-gallery/core";
 import AboutPage from "@mason-gallery/core/pages/AboutPage";
 import CachePage from "@mason-gallery/core/pages/CachePage";
 import HomePage from "@mason-gallery/core/pages/HomePage";
@@ -40,6 +44,7 @@ export function DesktopApp({ titlebar, updateChecker }: DesktopAppProps) {
         </Switch>
       </main>
       <QuickGalleryPanel />
+      <Toaster />
       {updateChecker}
     </Router>
   );

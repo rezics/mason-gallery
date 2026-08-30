@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog } from "@/components/ui/dialog";
-import { Checkbox, Input } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/i18n";
 
 interface PasswordDialogProps {
@@ -69,8 +70,9 @@ export default function PasswordDialog({
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex items-center gap-2 text-sm">
         <Checkbox
+          aria-label={t("archive:rememberPassword")}
           checked={remember}
-          onChange={(event) => setRemember(event.currentTarget.checked)}
+          onCheckedChange={(checked) => setRemember(checked === true)}
         />
         {t("archive:rememberPassword")}
       </div>

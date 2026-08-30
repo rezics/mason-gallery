@@ -46,6 +46,87 @@ function parseThumbUri(
   return { source: m[1], entry: m[2], w: m[3] };
 }
 
+interface ScanCallbacks {
+  onBatch: (batch: ImageBatch) => void;
+  onComplete: () => void;
+  onCount?: (total: number) => void;
+  onInfoProgress?: (progress: ScanInfoProgress) => void;
+  onThumbProgress?: (progress: ScanThumbProgress) => void;
+}
+
+let scanQueue: Promise<void> = Promise.resolve();
+
+function withSerializedScan(task: () => Promise<void>): Promise<void> {
+  const result = scanQueue.then(task, task);
+  scanQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
+/**
+ * Tauri scan events are app-global, so overlapping listeners would consume
+ * each other's batches. Serialize both folder and archive scans and always
+ * release every listener, including command failures.
+ */
+async function runScanCommand(
+  command: "scan_directory" | "scan_archive",
+  params: ScanParams | ScanArchiveParams,
+  callbacks: ScanCallbacks,
+): Promise<void> {
+  await getServerPort();
+
+  return withSerializedScan(async () => {
+    const cleanups: Array<() => void> = [];
+    let resolveDone: (() => void) | undefined;
+    const done = new Promise<void>((resolve) => {
+      resolveDone = resolve;
+    });
+
+    try {
+      if (callbacks.onCount) {
+        cleanups.push(
+          await listen<{ total: number }>("images:count", (event) => {
+            callbacks.onCount?.(event.payload.total);
+          }),
+        );
+      }
+      if (callbacks.onInfoProgress) {
+        cleanups.push(
+          await listen<ScanInfoProgress>("images:info_progress", (event) => {
+            callbacks.onInfoProgress?.(event.payload);
+          }),
+        );
+      }
+      if (callbacks.onThumbProgress) {
+        cleanups.push(
+          await listen<ScanThumbProgress>("images:thumb_progress", (event) => {
+            callbacks.onThumbProgress?.(event.payload);
+          }),
+        );
+      }
+      cleanups.push(
+        await listen<ImageBatch>("images:batch", (event) => {
+          const batch = event.payload;
+          if (batch.images.length > 0) callbacks.onBatch(batch);
+          if (batch.done) {
+            try {
+              callbacks.onComplete();
+            } finally {
+              resolveDone?.();
+            }
+          }
+        }),
+      );
+
+      await Promise.all([invoke(command, { params }), done]);
+    } finally {
+      for (const cleanup of cleanups) cleanup();
+    }
+  });
+}
+
 export const tauriPlatformService: PlatformService = {
   capabilities: {
     canDeleteFiles: true,
@@ -65,49 +146,13 @@ export const tauriPlatformService: PlatformService = {
     onInfoProgress?: (progress: ScanInfoProgress) => void,
     onThumbProgress?: (progress: ScanThumbProgress) => void,
   ): Promise<void> {
-    await getServerPort();
-
-    let unlistenCount: (() => void) | undefined;
-    if (onCount) {
-      unlistenCount = await listen<{ total: number }>(
-        "images:count",
-        (event) => {
-          onCount(event.payload.total);
-          unlistenCount?.();
-        },
-      );
-    }
-
-    let unlistenInfo: (() => void) | undefined;
-    if (onInfoProgress) {
-      unlistenInfo = await listen<ScanInfoProgress>(
-        "images:info_progress",
-        (event) => onInfoProgress(event.payload),
-      );
-    }
-
-    let unlistenThumb: (() => void) | undefined;
-    if (onThumbProgress) {
-      unlistenThumb = await listen<ScanThumbProgress>(
-        "images:thumb_progress",
-        (event) => onThumbProgress(event.payload),
-      );
-    }
-
-    const unlisten = await listen<ImageBatch>("images:batch", (event) => {
-      const batch = event.payload;
-      if (batch.images.length > 0) {
-        onBatch(batch);
-      }
-      if (batch.done) {
-        onComplete();
-        unlisten();
-        unlistenInfo?.();
-        unlistenThumb?.();
-      }
+    await runScanCommand("scan_directory", params, {
+      onBatch,
+      onComplete,
+      onCount,
+      onInfoProgress,
+      onThumbProgress,
     });
-
-    await invoke("scan_directory", { params });
   },
 
   getImageUrl(source: string): string {
@@ -146,6 +191,7 @@ export const tauriPlatformService: PlatformService = {
 
   onDragDrop(callback: (paths: string[]) => void): () => void {
     let unlistenFn: (() => void) | null = null;
+    let disposed = false;
 
     getCurrentWebviewWindow()
       .onDragDropEvent((event) => {
@@ -157,10 +203,12 @@ export const tauriPlatformService: PlatformService = {
         }
       })
       .then((fn) => {
-        unlistenFn = fn;
+        if (disposed) fn();
+        else unlistenFn = fn;
       });
 
     return () => {
+      disposed = true;
       unlistenFn?.();
     };
   },
@@ -208,49 +256,13 @@ export const tauriPlatformService: PlatformService = {
     onInfoProgress?: (progress: ScanInfoProgress) => void,
     onThumbProgress?: (progress: ScanThumbProgress) => void,
   ): Promise<void> {
-    await getServerPort();
-
-    let unlistenCount: (() => void) | undefined;
-    if (onCount) {
-      unlistenCount = await listen<{ total: number }>(
-        "images:count",
-        (event) => {
-          onCount(event.payload.total);
-          unlistenCount?.();
-        },
-      );
-    }
-
-    let unlistenInfo: (() => void) | undefined;
-    if (onInfoProgress) {
-      unlistenInfo = await listen<ScanInfoProgress>(
-        "images:info_progress",
-        (event) => onInfoProgress(event.payload),
-      );
-    }
-
-    let unlistenThumb: (() => void) | undefined;
-    if (onThumbProgress) {
-      unlistenThumb = await listen<ScanThumbProgress>(
-        "images:thumb_progress",
-        (event) => onThumbProgress(event.payload),
-      );
-    }
-
-    const unlisten = await listen<ImageBatch>("images:batch", (event) => {
-      const batch = event.payload;
-      if (batch.images.length > 0) {
-        onBatch(batch);
-      }
-      if (batch.done) {
-        onComplete();
-        unlisten();
-        unlistenInfo?.();
-        unlistenThumb?.();
-      }
+    await runScanCommand("scan_archive", params, {
+      onBatch,
+      onComplete,
+      onCount,
+      onInfoProgress,
+      onThumbProgress,
     });
-
-    await invoke("scan_archive", { params });
   },
 
   async getArchiveInfo(path: string): Promise<ArchiveInfo> {
