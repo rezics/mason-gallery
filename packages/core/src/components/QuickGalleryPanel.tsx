@@ -1,7 +1,7 @@
 import { Columns3, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
@@ -53,7 +53,7 @@ export default function QuickGalleryPanel() {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-6 overflow-auto p-5">
+        <FieldGroup className="flex-1 overflow-auto p-5">
           <Field>
             <FieldLabel htmlFor="quick-sort-method">
               {t("settings:sortMethod")}
@@ -117,7 +117,7 @@ export default function QuickGalleryPanel() {
               }}
             />
           </Field>
-        </div>
+        </FieldGroup>
 
         <SheetFooter className="border-t p-5">
           <Button
