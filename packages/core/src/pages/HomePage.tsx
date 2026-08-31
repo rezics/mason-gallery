@@ -7,6 +7,7 @@ import ImageViewer from "@/components/ImageViewer";
 import MasterPasswordDialog from "@/components/MasterPasswordDialog";
 import MigrationConfirmDialog from "@/components/MigrationConfirmDialog";
 import PasswordDialog from "@/components/PasswordDialog";
+import SelectionActionBar from "@/components/SelectionActionBar";
 import SolidArchiveWarningDialog from "@/components/SolidArchiveWarningDialog";
 import { Progress } from "@/components/ui/progress";
 import WaterfallGrid from "@/components/WaterfallGrid";
@@ -18,7 +19,9 @@ import {
   startArchiveScan,
   startScan,
 } from "@/lib/scanActions";
+import { visibleSelectableIdentities } from "@/lib/selectionActions";
 import { useAppStore } from "@/stores/appStore";
+import { useSelectionStore } from "@/stores/selectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 
@@ -166,17 +169,40 @@ export default function HomePage() {
     setJumpValue("");
   }, [jumpValue, images.length, scrollToIndex]);
 
-  // Ctrl+G shortcut to open jump input
+  // Ctrl+G shortcut to open jump input; multi-select Escape / Ctrl+A.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "g" && images.length > 0 && showGridPosition) {
         e.preventDefault();
         setIsJumpInputOpen(true);
+        return;
+      }
+
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        Boolean(target?.isContentEditable);
+      if (typing || isJumpInputOpen) return;
+
+      const selection = useSelectionStore.getState();
+      if (e.key === "Escape" && selection.modeEnabled) {
+        e.preventDefault();
+        selection.setModeEnabled(false);
+        return;
+      }
+      if (
+        selection.modeEnabled &&
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "a"
+      ) {
+        e.preventDefault();
+        selection.selectMany(visibleSelectableIdentities(images));
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [images.length, showGridPosition]);
+  }, [images, images.length, isJumpInputOpen, showGridPosition]);
 
   const hasImages = allImages.length > 0;
   const showDropZone = !hasImages && !isScanning;
@@ -335,7 +361,7 @@ export default function HomePage() {
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-1 px-4 py-2">
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2">
             {isScanning ? (
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span>
@@ -409,6 +435,7 @@ export default function HomePage() {
                 {t("home:imageCount", { count: images.length })}
               </span>
             )}
+            <SelectionActionBar visibleCount={images.length} />
           </div>
           <div className="flex flex-1 overflow-hidden">
             <FolderSidebar />

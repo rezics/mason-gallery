@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getWebImageSource } from "../src/adapters/WebPlatformService";
+import { getWebImageSource, webPlatformService } from "../src/adapters/WebPlatformService";
 
 describe("web platform image sources", () => {
   test("keeps source ids stable for the same root and relative path", () => {
@@ -12,5 +12,13 @@ describe("web platform image sources", () => {
     expect(getWebImageSource(0, "photo.jpg")).not.toBe(
       getWebImageSource(1, "photo.jpg"),
     );
+  });
+});
+
+describe("web platform batch-move capability", () => {
+  test("does not expose multi-select persistence or file moves", () => {
+    expect(webPlatformService.capabilities.canBatchMoveFiles).toBe(false);
+    expect(webPlatformService.loadSelectionState).toBeUndefined();
+    expect(webPlatformService.moveFiles).toBeUndefined();
   });
 });

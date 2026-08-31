@@ -6,6 +6,22 @@ export interface Thumbnail {
   height: number;
 }
 
+/**
+ * Stable identity for a Desktop ordinary file that can enter persistent
+ * multi-select. Presence of this object is the only signal that an item is
+ * selectable — callers must not infer selectability from URI prefixes.
+ */
+export interface SelectableFileIdentity {
+  /** Normalized stable key of the gallery root. */
+  packageKey: string;
+  /** Normalized stable key of the current file location. */
+  entryKey: string;
+  /** Absolute path passed to native file commands. */
+  locator: string;
+  /** Path relative to the gallery root, for display and rescan matching. */
+  relativePath: string;
+}
+
 export interface WImage {
   source: string;
   relativePath: string;
@@ -18,6 +34,11 @@ export interface WImage {
   /** True when this entry is a locked archive placeholder. Grid renders a lock
    * tile instead of an image; click opens the password dialog. */
   locked?: boolean;
+  /**
+   * Set only for Desktop ordinary files. Web results, archive entries, and
+   * locked placeholders omit it.
+   */
+  selectableFile?: SelectableFileIdentity;
 }
 
 export interface ImageBatch {

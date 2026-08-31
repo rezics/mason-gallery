@@ -4,8 +4,10 @@ pub mod archive_scan;
 pub mod commands;
 pub mod database;
 mod drop;
+mod file_commands;
 mod library_commands;
 mod password;
+mod selection_commands;
 mod server;
 pub mod services;
 mod settings_commands;
@@ -95,6 +97,7 @@ pub fn run() {
             // folders aren't artificially gated below archive parallelism.
             let thumb_queue = ThumbnailQueue::new(archive_scan::default_worker_count());
             app.manage(thumb_queue.clone());
+            app.manage(file_commands::MoveCancelMap::default());
 
             let worker_handle = app.handle().clone();
             let worker_queue = thumb_queue.clone();
@@ -168,6 +171,17 @@ pub fn run() {
             library_commands::update_library_source,
             library_commands::remove_library_sources,
             library_commands::mark_library_sources_scanned,
+            selection_commands::load_selection_state,
+            selection_commands::save_selection_mode,
+            selection_commands::upsert_selection_entries,
+            selection_commands::remove_selection_entries,
+            selection_commands::clear_selection_package,
+            selection_commands::clear_all_selections,
+            selection_commands::replace_selection_entries,
+            selection_commands::commit_selection_mutation,
+            selection_commands::probe_selectable_files,
+            file_commands::move_files,
+            file_commands::cancel_move_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

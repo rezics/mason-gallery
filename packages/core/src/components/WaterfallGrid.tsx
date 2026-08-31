@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import {
   type RenderComponentProps,
   useMasonry,
@@ -6,15 +6,31 @@ import {
   useResizeObserver,
 } from "masonic";
 import type { RefCallback, RefObject } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { usePlatform } from "@/context/PlatformContext";
 import { useThumbnailRequest } from "@/hooks/useThumbnailRequest";
+import { useI18n } from "@/i18n";
 import { requestArchiveUnlock } from "@/lib/scanActions";
+import { selectableIdentitiesInRange } from "@/lib/selectionIdentity";
 import { useEntryThumbnails } from "@/lib/thumbnailCache";
+import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/appStore";
+import { useSelectionStore } from "@/stores/selectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ColumnBreakpoints, WImage } from "@/types";
+
+const GridSelectionContext = createContext<{
+  onActivate: (index: number, shiftKey: boolean) => void;
+} | null>(null);
 
 function archivePathFromSource(source: string): string | null {
   if (!source.startsWith("archive:///")) return null;
@@ -94,16 +110,26 @@ interface ImageCellData extends WImage {
 
 function ImageCell({
   data,
+  index,
   width: cellWidth,
 }: RenderComponentProps<ImageCellData>) {
+  const t = useI18n();
   const openViewer = useViewerStore((s) => s.openViewer);
   const platform = usePlatform();
   const folderThumbnails = useSettingsStore((s) => s.folderThumbnails);
+  const modeEnabled = useSelectionStore((s) => s.modeEnabled);
+  const selected = useSelectionStore((s) =>
+    data.selectableFile ? s.entries.has(data.selectableFile.entryKey) : false,
+  );
+  const selection = useContext(GridSelectionContext);
   const liveThumbnails = useEntryThumbnails(data);
   const entry =
     liveThumbnails === data.thumbnails
       ? data
       : { ...data, thumbnails: liveThumbnails };
+  const selectable = data.selectableFile != null;
+  const selectMode = modeEnabled && selectable;
+  const showSelected = selectable && selected;
 
   const hookEnabled =
     folderThumbnails === "lazy" &&
@@ -158,8 +184,27 @@ function ImageCell({
     <button
       ref={tileRef as RefCallback<HTMLButtonElement>}
       type="button"
-      className="block w-full cursor-pointer overflow-hidden rounded-md border-0 bg-muted p-0 transition-shadow hover:shadow-lg"
-      onClick={() => openViewer(data.globalIndex)}
+      className={cn(
+        "relative block w-full cursor-pointer overflow-hidden rounded-md bg-muted p-0 transition-shadow hover:shadow-lg",
+        showSelected
+          ? "ring-2 ring-brand ring-offset-1 ring-offset-background"
+          : "border-0",
+      )}
+      onClick={(event) => {
+        if (selectMode) {
+          selection?.onActivate(index, event.shiftKey);
+          return;
+        }
+        openViewer(data.globalIndex);
+      }}
+      aria-pressed={selectMode ? selected : undefined}
+      aria-label={
+        selectMode
+          ? selected
+            ? t("selection:selectedPressed")
+            : t("selection:notSelectedPressed")
+          : undefined
+      }
     >
       <img
         src={fallback || platform.getImageUrl(entry.source)}
@@ -177,6 +222,14 @@ function ImageCell({
               : undefined,
         }}
       />
+      {showSelected && (
+        <>
+          <span className="pointer-events-none absolute inset-0 bg-brand/20" />
+          <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground shadow">
+            <Check className="size-3.5" />
+          </span>
+        </>
+      )}
     </button>
   );
 }
@@ -199,6 +252,28 @@ export default function WaterfallGrid({
   const isRelayout = useViewerStore((s) => s.isRelayout);
   const breakpoints = useSettingsStore((s) => s.breakpoints);
   const selectedFolder = useAppStore((s) => s.selectedFolder);
+  const lastClickedIndexRef = useRef<number | null>(null);
+
+  const onActivate = useCallback(
+    (index: number, shiftKey: boolean) => {
+      const image = images[index];
+      if (!image?.selectableFile) return;
+      const { toggle, selectMany } = useSelectionStore.getState();
+      if (shiftKey && lastClickedIndexRef.current != null) {
+        selectMany(
+          selectableIdentitiesInRange(
+            images,
+            lastClickedIndexRef.current,
+            index,
+          ),
+        );
+      } else {
+        toggle(image.selectableFile);
+      }
+      lastClickedIndexRef.current = index;
+    },
+    [images],
+  );
 
   const { scrollTop, isScrolling } = useContainerScroll(scrollContainerRef);
   const { width, height } = useContainerSize(scrollContainerRef);
@@ -270,5 +345,9 @@ export default function WaterfallGrid({
 
   if (images.length === 0 || width === 0) return <div className="p-2" />;
 
-  return <div className="p-2">{grid}</div>;
+  return (
+    <GridSelectionContext.Provider value={{ onActivate }}>
+      <div className="p-2">{grid}</div>
+    </GridSelectionContext.Provider>
+  );
 }

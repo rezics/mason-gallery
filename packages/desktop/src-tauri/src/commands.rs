@@ -1,6 +1,6 @@
 use crate::archive::compute_entry_hash;
 use crate::archive_commands::{expand_archive_into_scan, ExpansionResult, ScanProgressTracker};
-use crate::database::Database;
+use crate::database::{normalize_library_path_key, Database};
 use crate::server::{ServerState, SharedPolicy};
 use crate::services::policy;
 use crate::services::source_service::SourceService;
@@ -26,6 +26,15 @@ pub struct WThumbnail {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SelectableFileIdentity {
+    pub package_key: String,
+    pub entry_key: String,
+    pub locator: String,
+    pub relative_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WImage {
     pub source: String,
     pub relative_path: String,
@@ -37,6 +46,8 @@ pub struct WImage {
     pub source_id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locked: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selectable_file: Option<SelectableFileIdentity>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,6 +279,12 @@ pub async fn scan_directory(app: AppHandle, params: ScanParams) -> Result<(), St
                 thumbnails: None,
                 source_id: folder_source_ids.get(&entry.root_path).copied(),
                 locked: None,
+                selectable_file: Some(SelectableFileIdentity {
+                    package_key: normalize_library_path_key(&entry.root_path),
+                    entry_key: normalize_library_path_key(&entry.path),
+                    locator: entry.path.clone(),
+                    relative_path: entry.relative_path.clone(),
+                }),
             });
             if pending.len() >= params.page_size {
                 total_emitted += pending.len();

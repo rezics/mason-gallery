@@ -6,6 +6,7 @@ import enCommon from "./locales/en/common.json";
 import enHome from "./locales/en/home.json";
 import enLibrary from "./locales/en/library.json";
 import enMenu from "./locales/en/menu.json";
+import enSelection from "./locales/en/selection.json";
 import enSettings from "./locales/en/settings.json";
 import enSidebar from "./locales/en/sidebar.json";
 import enUpdate from "./locales/en/update.json";
@@ -18,6 +19,7 @@ import jaCommon from "./locales/ja/common.json";
 import jaHome from "./locales/ja/home.json";
 import jaLibrary from "./locales/ja/library.json";
 import jaMenu from "./locales/ja/menu.json";
+import jaSelection from "./locales/ja/selection.json";
 import jaSettings from "./locales/ja/settings.json";
 import jaSidebar from "./locales/ja/sidebar.json";
 import jaUpdate from "./locales/ja/update.json";
@@ -30,6 +32,7 @@ import zhHansCommon from "./locales/zh-hans/common.json";
 import zhHansHome from "./locales/zh-hans/home.json";
 import zhHansLibrary from "./locales/zh-hans/library.json";
 import zhHansMenu from "./locales/zh-hans/menu.json";
+import zhHansSelection from "./locales/zh-hans/selection.json";
 import zhHansSettings from "./locales/zh-hans/settings.json";
 import zhHansSidebar from "./locales/zh-hans/sidebar.json";
 import zhHansUpdate from "./locales/zh-hans/update.json";
@@ -42,6 +45,7 @@ import zhHantCommon from "./locales/zh-hant/common.json";
 import zhHantHome from "./locales/zh-hant/home.json";
 import zhHantLibrary from "./locales/zh-hant/library.json";
 import zhHantMenu from "./locales/zh-hant/menu.json";
+import zhHantSelection from "./locales/zh-hant/selection.json";
 import zhHantSettings from "./locales/zh-hant/settings.json";
 import zhHantSidebar from "./locales/zh-hant/sidebar.json";
 import zhHantUpdate from "./locales/zh-hant/update.json";
@@ -60,6 +64,7 @@ export const namespaces = [
   "archive",
   "cache",
   "library",
+  "selection",
 ] as const;
 
 export const defaultNamespace = "common";
@@ -130,6 +135,7 @@ export const resources: Record<SupportedLanguage, TranslationResource> = {
     archive: enArchive,
     cache: enCache,
     library: enLibrary,
+    selection: enSelection,
   },
   "zh-hans": {
     common: zhHansCommon,
@@ -144,6 +150,7 @@ export const resources: Record<SupportedLanguage, TranslationResource> = {
     archive: zhHansArchive,
     cache: zhHansCache,
     library: zhHansLibrary,
+    selection: zhHansSelection,
   },
   "zh-hant": {
     common: zhHantCommon,
@@ -158,6 +165,7 @@ export const resources: Record<SupportedLanguage, TranslationResource> = {
     archive: zhHantArchive,
     cache: zhHantCache,
     library: zhHantLibrary,
+    selection: zhHantSelection,
   },
   ja: {
     common: jaCommon,
@@ -172,5 +180,6 @@ export const resources: Record<SupportedLanguage, TranslationResource> = {
     archive: jaArchive,
     cache: jaCache,
     library: jaLibrary,
+    selection: jaSelection,
   },
 };

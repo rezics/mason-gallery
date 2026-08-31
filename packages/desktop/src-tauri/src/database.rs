@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub const DURABLE_SCHEMA_VERSION: usize = 2;
+pub const DURABLE_SCHEMA_VERSION: usize = 3;
 pub const CACHE_SCHEMA_VERSION: usize = 1;
 
 const CACHE_SOURCE_COLUMNS: &str =
@@ -17,6 +17,7 @@ fn durable_migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(include_str!("migrations/durable/0001_initial.sql")),
         M::up(include_str!("migrations/durable/0002_library_sources.sql")),
+        M::up(include_str!("migrations/durable/0003_selection.sql")),
     ])
 }
 
@@ -408,6 +409,113 @@ impl Database {
                     params![image_count, path_key],
                 )?;
             }
+            tx.commit()
+        })
+    }
+
+    // ---- Persistent multi-select ----
+
+    pub fn load_selection_state(&self) -> Result<(bool, Vec<SelectionEntryRecord>), String> {
+        self.with_durable_conn(|conn| {
+            let mode_enabled: i64 = conn
+                .query_row(
+                    "SELECT mode_enabled FROM selection_preferences WHERE id = 1",
+                    [],
+                    |row| row.get(0),
+                )
+                .optional()?
+                .unwrap_or(0);
+            let mut stmt = conn.prepare(
+                "SELECT package_key, entry_key, locator, relative_path, selected_at, last_seen_at
+                 FROM selection_entries
+                 ORDER BY selected_at ASC, entry_key ASC",
+            )?;
+            let rows = stmt.query_map([], row_to_selection_entry)?;
+            let entries = rows.collect::<Result<Vec<_>, _>>()?;
+            Ok((mode_enabled != 0, entries))
+        })
+    }
+
+    pub fn save_selection_mode(&self, enabled: bool) -> Result<(), String> {
+        self.with_durable_conn(|conn| {
+            conn.execute(
+                "INSERT INTO selection_preferences (id, mode_enabled, updated_at)
+                 VALUES (1, ?1, CURRENT_TIMESTAMP)
+                 ON CONFLICT(id) DO UPDATE SET
+                    mode_enabled = excluded.mode_enabled,
+                    updated_at = CURRENT_TIMESTAMP",
+                params![if enabled { 1 } else { 0 }],
+            )?;
+            Ok(())
+        })
+    }
+
+    pub fn upsert_selection_entries(&self, entries: &[SelectionEntryRecord]) -> Result<(), String> {
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            upsert_selection_entries_in_tx(&tx, entries)?;
+            tx.commit()
+        })
+    }
+
+    pub fn remove_selection_entries(&self, keys: &[(String, String)]) -> Result<(), String> {
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            remove_selection_entries_in_tx(&tx, keys)?;
+            tx.commit()
+        })
+    }
+
+    pub fn clear_selection_package(&self, package_key: &str) -> Result<(), String> {
+        self.with_durable_conn(|conn| {
+            conn.execute(
+                "DELETE FROM selection_entries WHERE package_key = ?1",
+                params![package_key],
+            )?;
+            Ok(())
+        })
+    }
+
+    pub fn clear_all_selections(&self) -> Result<(), String> {
+        self.with_durable_conn(|conn| {
+            conn.execute("DELETE FROM selection_entries", [])?;
+            Ok(())
+        })
+    }
+
+    pub fn replace_selection_entries(
+        &self,
+        remove: &[(String, String)],
+        insert: &[SelectionEntryRecord],
+    ) -> Result<(), String> {
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            remove_selection_entries_in_tx(&tx, remove)?;
+            upsert_selection_entries_in_tx(&tx, insert)?;
+            tx.commit()
+        })
+    }
+
+    pub fn commit_selection_mutation(
+        &self,
+        mode_enabled: Option<bool>,
+        upsert: &[SelectionEntryRecord],
+        remove: &[(String, String)],
+    ) -> Result<(), String> {
+        self.with_durable_conn_mut(|conn| {
+            let tx = conn.transaction()?;
+            if let Some(enabled) = mode_enabled {
+                tx.execute(
+                    "INSERT INTO selection_preferences (id, mode_enabled, updated_at)
+                     VALUES (1, ?1, CURRENT_TIMESTAMP)
+                     ON CONFLICT(id) DO UPDATE SET
+                        mode_enabled = excluded.mode_enabled,
+                        updated_at = CURRENT_TIMESTAMP",
+                    params![if enabled { 1 } else { 0 }],
+                )?;
+            }
+            remove_selection_entries_in_tx(&tx, remove)?;
+            upsert_selection_entries_in_tx(&tx, upsert)?;
             tx.commit()
         })
     }
@@ -1101,6 +1209,58 @@ fn row_to_thumb(row: &rusqlite::Row<'_>) -> rusqlite::Result<ThumbnailRecord> {
     })
 }
 
+fn row_to_selection_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<SelectionEntryRecord> {
+    Ok(SelectionEntryRecord {
+        package_key: row.get(0)?,
+        entry_key: row.get(1)?,
+        locator: row.get(2)?,
+        relative_path: row.get(3)?,
+        selected_at: row.get(4)?,
+        last_seen_at: row.get(5)?,
+    })
+}
+
+fn upsert_selection_entries_in_tx(
+    tx: &rusqlite::Transaction<'_>,
+    entries: &[SelectionEntryRecord],
+) -> rusqlite::Result<()> {
+    for entry in entries {
+        tx.execute(
+            "INSERT INTO selection_entries (
+                package_key, entry_key, locator, relative_path, selected_at, last_seen_at
+             )
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(package_key, entry_key) DO UPDATE SET
+                locator = excluded.locator,
+                relative_path = excluded.relative_path,
+                selected_at = excluded.selected_at,
+                last_seen_at = excluded.last_seen_at",
+            params![
+                entry.package_key,
+                entry.entry_key,
+                entry.locator,
+                entry.relative_path,
+                entry.selected_at,
+                entry.last_seen_at,
+            ],
+        )?;
+    }
+    Ok(())
+}
+
+fn remove_selection_entries_in_tx(
+    tx: &rusqlite::Transaction<'_>,
+    keys: &[(String, String)],
+) -> rusqlite::Result<()> {
+    for (package_key, entry_key) in keys {
+        tx.execute(
+            "DELETE FROM selection_entries WHERE package_key = ?1 AND entry_key = ?2",
+            params![package_key, entry_key],
+        )?;
+    }
+    Ok(())
+}
+
 fn row_to_extracted(row: &rusqlite::Row<'_>) -> rusqlite::Result<ExtractedRecord> {
     Ok(ExtractedRecord {
         id: row.get(0)?,
@@ -1110,6 +1270,16 @@ fn row_to_extracted(row: &rusqlite::Row<'_>) -> rusqlite::Result<ExtractedRecord
         file_size: row.get(4)?,
         last_accessed: row.get(5)?,
     })
+}
+
+#[derive(Debug, Clone)]
+pub struct SelectionEntryRecord {
+    pub package_key: String,
+    pub entry_key: String,
+    pub locator: String,
+    pub relative_path: String,
+    pub selected_at: String,
+    pub last_seen_at: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -1412,5 +1582,69 @@ mod tests {
         let library = db.get_library_sources().unwrap();
         assert_eq!(library.len(), 1);
         assert_eq!(library[0].origin_path, new_path);
+    }
+
+    fn sample_selection(path: &str) -> SelectionEntryRecord {
+        SelectionEntryRecord {
+            package_key: normalize_library_path_key("D:/photos"),
+            entry_key: normalize_library_path_key(path),
+            locator: path.to_string(),
+            relative_path: "a.jpg".to_string(),
+            selected_at: "2026-08-31T10:00:00.000Z".to_string(),
+            last_seen_at: Some("2026-08-31T10:00:00.000Z".to_string()),
+        }
+    }
+
+    #[test]
+    fn selection_state_survives_reopen_and_cache_rebuild() {
+        let (db, root) = new_db();
+        db.save_selection_mode(true).unwrap();
+        db.upsert_selection_entries(&[sample_selection("D:/photos/a.jpg")])
+            .unwrap();
+        drop(db);
+
+        let cache_dir = root.path().join("cache");
+        Database::reset_cache_storage(&cache_dir, &cache_dir.join("cache.db")).unwrap();
+        let reopened = Database::new(&root.path().join("data"), &cache_dir).unwrap();
+        let (mode, entries) = reopened.load_selection_state().unwrap();
+        assert!(mode);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].locator, "D:/photos/a.jpg");
+    }
+
+    #[test]
+    fn selection_replace_is_transactional() {
+        let (db, _root) = new_db();
+        db.upsert_selection_entries(&[sample_selection("D:/photos/a.jpg")])
+            .unwrap();
+        let old_key = (
+            normalize_library_path_key("D:/photos"),
+            normalize_library_path_key("D:/photos/a.jpg"),
+        );
+        let moved = SelectionEntryRecord {
+            package_key: normalize_library_path_key("D:/sorted"),
+            entry_key: normalize_library_path_key("D:/sorted/a.jpg"),
+            locator: "D:/sorted/a.jpg".to_string(),
+            relative_path: "a.jpg".to_string(),
+            selected_at: "2026-08-31T10:00:00.000Z".to_string(),
+            last_seen_at: Some("2026-08-31T11:00:00.000Z".to_string()),
+        };
+        db.replace_selection_entries(&[old_key], &[moved]).unwrap();
+        let (_, entries) = db.load_selection_state().unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].locator, "D:/sorted/a.jpg");
+    }
+
+    #[test]
+    fn clearing_cache_does_not_drop_selection() {
+        let (db, root) = new_db();
+        db.upsert_selection_entries(&[sample_selection("D:/photos/a.jpg")])
+            .unwrap();
+        let cache_dir = root.path().join("cache");
+        drop(db);
+        Database::reset_cache_storage(&cache_dir, &cache_dir.join("cache.db")).unwrap();
+        let reopened = Database::new(&root.path().join("data"), &cache_dir).unwrap();
+        let (_, entries) = reopened.load_selection_state().unwrap();
+        assert_eq!(entries.len(), 1);
     }
 }

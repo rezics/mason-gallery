@@ -20,6 +20,7 @@ function createPlatform(settings: Settings) {
       canAutoUpdate: false,
       canDragDropFolders: false,
       canBrowseArchives: false,
+      canBatchMoveFiles: false,
     },
     loadSettings: async () => settings,
     saveSettings: async (document: Settings) => {

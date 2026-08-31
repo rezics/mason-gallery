@@ -4,7 +4,13 @@ import {
   type LibrarySource,
   type LibrarySourceInput,
   type LibrarySourcePatch,
+  type MoveFilesRequest,
+  type MoveItemResult,
+  type MoveProgress,
+  type PersistedSelectionEntry,
   type PlatformService,
+  type SelectableFileProbe,
+  type SelectionEntryKey,
   type Settings,
   type SourceOverride,
 } from "@mason-gallery/core";
@@ -134,6 +140,28 @@ function copyCache(): CacheStats[] {
   return cacheStats.map((source) => ({ ...source }));
 }
 
+let selectionMode = false;
+let selectionEntries: PersistedSelectionEntry[] = [];
+const previewOccupied = new Set<string>();
+
+function selectionKey(entry: { packageKey: string; entryKey: string }): string {
+  return `${entry.packageKey}\0${entry.entryKey}`;
+}
+
+function keepBothPath(destDir: string, fileName: string): string {
+  const slash = destDir.endsWith("/") || destDir.endsWith("\\") ? "" : "\\";
+  const base = `${destDir}${slash}${fileName}`;
+  if (!previewOccupied.has(base.toLowerCase())) return base;
+  const dot = fileName.lastIndexOf(".");
+  const stem = dot > 0 ? fileName.slice(0, dot) : fileName;
+  const ext = dot > 0 ? fileName.slice(dot) : "";
+  for (let n = 1; n < 10_000; n += 1) {
+    const candidate = `${destDir}${slash}${stem} (${n})${ext}`;
+    if (!previewOccupied.has(candidate.toLowerCase())) return candidate;
+  }
+  return `${destDir}${slash}${stem} (1)${ext}`;
+}
+
 export const previewPlatformService: PlatformService = {
   capabilities: {
     canDeleteFiles: true,
@@ -143,6 +171,7 @@ export const previewPlatformService: PlatformService = {
     canAutoUpdate: false,
     canDragDropFolders: true,
     canBrowseArchives: true,
+    canBatchMoveFiles: true,
   },
   async scanImages(_params, onBatch, onComplete, onCount) {
     onCount?.(0);
@@ -252,4 +281,127 @@ export const previewPlatformService: PlatformService = {
   },
   markLibrarySourcesScanned: async () => {},
   onThumbnailsReady: () => () => {},
+  loadSelectionState: async () => ({
+    modeEnabled: selectionMode,
+    entries: selectionEntries.map((entry) => ({ ...entry })),
+  }),
+  saveSelectionMode: async (enabled: boolean) => {
+    selectionMode = enabled;
+  },
+  upsertSelectionEntries: async (entries: PersistedSelectionEntry[]) => {
+    const next = new Map(
+      selectionEntries.map((entry) => [selectionKey(entry), entry]),
+    );
+    for (const entry of entries) next.set(selectionKey(entry), { ...entry });
+    selectionEntries = [...next.values()];
+  },
+  removeSelectionEntries: async (keys: SelectionEntryKey[]) => {
+    const remove = new Set(keys.map(selectionKey));
+    selectionEntries = selectionEntries.filter(
+      (entry) => !remove.has(selectionKey(entry)),
+    );
+  },
+  clearSelectionPackage: async (packageKey: string) => {
+    selectionEntries = selectionEntries.filter(
+      (entry) => entry.packageKey !== packageKey,
+    );
+  },
+  clearAllSelections: async () => {
+    selectionEntries = [];
+  },
+  replaceSelectionEntries: async (
+    remove: SelectionEntryKey[],
+    insert: PersistedSelectionEntry[],
+  ) => {
+    const drop = new Set(remove.map(selectionKey));
+    const next = new Map(
+      selectionEntries
+        .filter((entry) => !drop.has(selectionKey(entry)))
+        .map((entry) => [selectionKey(entry), entry]),
+    );
+    for (const entry of insert) next.set(selectionKey(entry), { ...entry });
+    selectionEntries = [...next.values()];
+  },
+  commitSelectionMutation: async (mutation: {
+    modeEnabled?: boolean;
+    upsert: PersistedSelectionEntry[];
+    remove: SelectionEntryKey[];
+  }) => {
+    if (mutation.modeEnabled !== undefined) {
+      selectionMode = mutation.modeEnabled;
+    }
+    await previewPlatformService.replaceSelectionEntries?.(
+      mutation.remove,
+      mutation.upsert,
+    );
+  },
+  probeSelectableFiles: async (
+    locators: string[],
+  ): Promise<SelectableFileProbe[]> =>
+    locators.map((locator) => ({ locator, available: true })),
+  pickMoveDestination: async () => "D:\\Pictures\\Sorted",
+  moveFiles: async (
+    request: MoveFilesRequest,
+    onProgress?: (progress: MoveProgress) => void,
+  ): Promise<MoveItemResult[]> => {
+    const results: MoveItemResult[] = [];
+    let succeeded = 0;
+    let skipped = 0;
+    const failed = 0;
+    for (const [index, item] of request.items.entries()) {
+      const fileName = item.sourcePath.split(/[\\/]/).pop() || item.sourcePath;
+      const sourceDir = item.sourcePath.slice(
+        0,
+        item.sourcePath.length - fileName.length,
+      );
+      const destNorm = request.destinationDirectory
+        .replace(/\\/g, "/")
+        .replace(/\/+$/, "");
+      const sourceNorm = sourceDir.replace(/\\/g, "/").replace(/\/+$/, "");
+      if (destNorm.toLowerCase() === sourceNorm.toLowerCase()) {
+        results.push({
+          status: "skipped",
+          entryKey: item.entryKey,
+          sourcePath: item.sourcePath,
+          reason: "same-location",
+        });
+        skipped += 1;
+      } else {
+        const originalDest = `${request.destinationDirectory}\\${fileName}`;
+        const destExists = previewOccupied.has(originalDest.toLowerCase());
+        if (destExists && request.conflictPolicy === "skip") {
+          results.push({
+            status: "skipped",
+            entryKey: item.entryKey,
+            sourcePath: item.sourcePath,
+            reason: "conflict",
+          });
+          skipped += 1;
+        } else {
+          const destinationPath = keepBothPath(
+            request.destinationDirectory,
+            fileName,
+          );
+          previewOccupied.add(destinationPath.toLowerCase());
+          results.push({
+            status: "moved",
+            entryKey: item.entryKey,
+            sourcePath: item.sourcePath,
+            destinationPath,
+          });
+          succeeded += 1;
+        }
+      }
+      onProgress?.({
+        operationId: request.operationId,
+        completed: index + 1,
+        total: request.items.length,
+        succeeded,
+        skipped,
+        failed,
+      });
+    }
+    return results;
+  },
+  cancelMoveFiles: async () => {},
 };

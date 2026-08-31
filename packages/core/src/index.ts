@@ -5,6 +5,8 @@ export { default as DropZone } from "./components/DropZone";
 export { default as ImageViewer } from "./components/ImageViewer";
 export { default as MenuBar } from "./components/MenuBar";
 export { default as QuickGalleryPanel } from "./components/QuickGalleryPanel";
+export { default as SelectionActionBar } from "./components/SelectionActionBar";
+export { default as SelectionPanel } from "./components/SelectionPanel";
 export * from "./components/settings";
 export * from "./components/ui/alert-dialog";
 export * from "./components/ui/badge";
@@ -58,7 +60,38 @@ export {
   startArchiveScan,
   startScan,
 } from "./lib/scanActions";
+export {
+  applySuccessfulMoveToSelection,
+  coordinateGridAfterMove,
+  currentPackageKeys,
+  knownPackageRoots,
+  visibleSelectableIdentities,
+} from "./lib/selectionActions";
+export {
+  assertBatchMovePlatformContract,
+  SELECTION_PLATFORM_METHODS,
+  selectionMethodsPresent,
+  shouldShowMultiselectEntry,
+  shouldShowSelectionChrome,
+} from "./lib/selectionContract";
+export {
+  identityAfterMove,
+  isSelectableImage,
+  normalizePathKey,
+  selectableIdentitiesInRange,
+} from "./lib/selectionIdentity";
 export { useCoreRuntime } from "./lib/useCoreRuntime";
+export {
+  EMPTY_SELECTION_STATE,
+  MOVE_ITEM_STATUS_NAMES,
+  moveItemResultSchema,
+  parseMoveItemResults,
+  parseSelectableFileProbes,
+  parseSelectionState,
+  persistedSelectionStateSchema,
+  SELECTION_ENTRY_FIELD_NAMES,
+  selectableFileIdentitySchema,
+} from "./persistence/selectionSchema";
 export type { SettingsEnvelope } from "./persistence/settingsSchema";
 export {
   createDefaultSettings,
@@ -72,6 +105,11 @@ export {
 } from "./persistence/settingsSchema";
 export { useDropStore } from "./stores/dropStore";
 export { useLibraryStore } from "./stores/libraryStore";
+export {
+  flushSelectionPersist,
+  resetSelectionStore,
+  useSelectionStore,
+} from "./stores/selectionStore";
 export { useSettingsStore } from "./stores/settingsStore";
 export {
   resetUpdateStore,
@@ -84,6 +122,7 @@ export type {
   ImageBatch,
   Locale,
   ScanParams,
+  SelectableFileIdentity,
   SortMethod,
   Thumbnail,
   WImage,
@@ -112,13 +151,21 @@ export type {
   LibrarySourceKind,
   LibrarySourcePatch,
   MigrationCandidate,
+  MoveConflictPolicy,
+  MoveFilesRequest,
+  MoveItemResult,
+  MoveProgress,
   PasswordStorageMode,
+  PersistedSelectionEntry,
+  PersistedSelectionState,
   PlatformCapabilities,
   PlatformService,
   ScanArchiveParams,
   ScanInfoProgress,
   ScanParams as PlatformScanParams,
   ScanThumbProgress,
+  SelectableFileProbe,
+  SelectionEntryKey,
   Settings,
   SourceOverride,
   ThemePreference,

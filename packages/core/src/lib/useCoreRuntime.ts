@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
+import { toast } from "@/components/ui/toast";
 import { usePlatform } from "@/context/PlatformContext";
-import { setI18nLanguage } from "@/i18n";
+import { i18n, setI18nLanguage } from "@/i18n";
 import { applyThemeMode, resolveThemeMode } from "@/lib/theme";
+import { useSelectionStore } from "@/stores/selectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 
@@ -23,12 +25,25 @@ export function useCoreRuntime({
   const cacheCleanupStrategy = useSettingsStore((s) => s.cacheCleanupStrategy);
   const hydrate = useSettingsStore((s) => s.hydrate);
   const hydrated = useSettingsStore((s) => s._hydrated);
+  const hydrateSelection = useSelectionStore((s) => s.hydrate);
+  const persistError = useSelectionStore((s) => s.persistError);
   const platform = usePlatform();
   const startupCleanupStartedRef = useRef(false);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (platform.capabilities.canBatchMoveFiles) {
+      void hydrateSelection();
+    }
+  }, [hydrateSelection, platform.capabilities.canBatchMoveFiles]);
+
+  useEffect(() => {
+    if (!persistError) return;
+    toast.add({ title: i18n.t("selection:persistFailed"), type: "error" });
+  }, [persistError]);
 
   useEffect(() => {
     setI18nLanguage(language);

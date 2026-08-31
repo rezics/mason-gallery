@@ -21,6 +21,7 @@ function createPlatform(canAutoUpdate: boolean) {
       canAutoUpdate,
       canDragDropFolders: false,
       canBrowseArchives: false,
+      canBatchMoveFiles: false,
     },
     saveSettings: async (document: Settings) => {
       savedSettings.push(document);

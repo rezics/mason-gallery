@@ -1,4 +1,10 @@
-import type { ColumnBreakpoints, Locale, SortMethod, Thumbnail } from "./index";
+import type {
+  ColumnBreakpoints,
+  Locale,
+  SelectableFileIdentity,
+  SortMethod,
+  Thumbnail,
+} from "./index";
 
 export type { Thumbnail };
 
@@ -177,6 +183,9 @@ export interface ImageBatch {
     width: number | null;
     height: number | null;
     thumbnails?: Thumbnail[];
+    sourceId?: number;
+    locked?: boolean;
+    selectableFile?: SelectableFileIdentity;
   }>;
   done: boolean;
 }
@@ -210,6 +219,83 @@ export interface PlatformCapabilities {
   canAutoUpdate: boolean;
   canDragDropFolders: boolean;
   canBrowseArchives: boolean;
+  canBatchMoveFiles: boolean;
+}
+
+export interface PersistedSelectionEntry extends SelectableFileIdentity {
+  selectedAt: string;
+  lastSeenAt: string | null;
+}
+
+export interface PersistedSelectionState {
+  modeEnabled: boolean;
+  entries: PersistedSelectionEntry[];
+}
+
+export interface SelectionEntryKey {
+  packageKey: string;
+  entryKey: string;
+}
+
+export type MoveConflictPolicy = "keep-both" | "skip";
+
+export interface MoveFilesRequestItem {
+  entryKey: string;
+  sourcePath: string;
+}
+
+export interface MoveFilesRequest {
+  operationId: string;
+  destinationDirectory: string;
+  conflictPolicy: MoveConflictPolicy;
+  items: MoveFilesRequestItem[];
+}
+
+export interface MoveProgress {
+  operationId: string;
+  completed: number;
+  total: number;
+  succeeded: number;
+  skipped: number;
+  failed: number;
+}
+
+export type MoveItemResult =
+  | {
+      status: "moved";
+      entryKey: string;
+      sourcePath: string;
+      destinationPath: string;
+    }
+  | {
+      status: "skipped";
+      entryKey: string;
+      sourcePath: string;
+      reason: "conflict" | "same-location" | "cancelled";
+    }
+  | {
+      status: "copied-not-removed";
+      entryKey: string;
+      sourcePath: string;
+      destinationPath: string;
+      message: string;
+    }
+  | {
+      status: "failed";
+      entryKey: string;
+      sourcePath: string;
+      code:
+        | "missing"
+        | "permission-denied"
+        | "invalid-source"
+        | "invalid-destination"
+        | "io";
+      message: string;
+    };
+
+export interface SelectableFileProbe {
+  locator: string;
+  available: boolean;
 }
 
 export type PasswordStorageMode = "none" | "master";
@@ -374,4 +460,28 @@ export interface PlatformService {
       thumbnails: Thumbnail[];
     }) => void,
   ): () => void;
+
+  // Persistent multi-select + batch move (desktop-only).
+  loadSelectionState?(): Promise<PersistedSelectionState>;
+  saveSelectionMode?(enabled: boolean): Promise<void>;
+  upsertSelectionEntries?(entries: PersistedSelectionEntry[]): Promise<void>;
+  removeSelectionEntries?(keys: SelectionEntryKey[]): Promise<void>;
+  clearSelectionPackage?(packageKey: string): Promise<void>;
+  clearAllSelections?(): Promise<void>;
+  replaceSelectionEntries?(
+    remove: SelectionEntryKey[],
+    insert: PersistedSelectionEntry[],
+  ): Promise<void>;
+  commitSelectionMutation?(mutation: {
+    modeEnabled?: boolean;
+    upsert: PersistedSelectionEntry[];
+    remove: SelectionEntryKey[];
+  }): Promise<void>;
+  probeSelectableFiles?(locators: string[]): Promise<SelectableFileProbe[]>;
+  pickMoveDestination?(): Promise<string | null>;
+  moveFiles?(
+    request: MoveFilesRequest,
+    onProgress?: (progress: MoveProgress) => void,
+  ): Promise<MoveItemResult[]>;
+  cancelMoveFiles?(operationId: string): Promise<void>;
 }

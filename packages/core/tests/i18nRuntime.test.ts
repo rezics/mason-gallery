@@ -7,7 +7,7 @@ import {
 import { i18n } from "../src/i18n/index";
 import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from "../src/lib/projectLinks";
 
-const requiredNamespaces = ["settings", "menu", "update"] as const satisfies Namespace[];
+const requiredNamespaces = ["settings", "menu", "update", "selection"] as const satisfies Namespace[];
 
 describe("i18n runtime", () => {
   test("resolves Chinese locale resource keys instead of falling back to English", async () => {

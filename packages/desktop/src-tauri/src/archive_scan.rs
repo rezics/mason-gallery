@@ -133,6 +133,7 @@ pub fn process_entry(
         thumbnails: Some(all_thumbs),
         source_id: Some(source_id),
         locked: None,
+        selectable_file: None,
     };
 
     Ok(EntryOutcome { image, timings })
@@ -140,6 +141,7 @@ pub fn process_entry(
 
 /// Slot in the reassembly buffer. `Errored` is a tombstone that advances the
 /// cursor without emitting anything.
+#[allow(clippy::large_enum_variant)]
 enum Slot {
     Present(WImage),
     Errored,
@@ -423,6 +425,7 @@ mod tests {
             thumbnails: None,
             source_id: None,
             locked: None,
+            selectable_file: None,
         }
     }
 

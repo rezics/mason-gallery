@@ -203,6 +203,7 @@ where
                 thumbnails: None,
                 source_id: None,
                 locked: Some(true),
+                selectable_file: None,
             });
         }
         Err(e) => return ExpansionResult::Skipped(format!("{}", e)),

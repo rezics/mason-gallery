@@ -1,8 +1,10 @@
 import { getPlatform } from "@/context/PlatformContext";
 import { dedupeDroppedSources, droppedSourceKey } from "@/lib/dropPolicy";
+import { isSelectableImage } from "@/lib/selectionIdentity";
 import { sourceLabelFromLocator } from "@/lib/sourceLabel";
 import { useAppStore } from "@/stores/appStore";
 import { useLibraryStore } from "@/stores/libraryStore";
+import { useSelectionStore } from "@/stores/selectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ScanParams, WImage } from "@/types";
@@ -129,7 +131,7 @@ export async function requestArchiveUnlock(archivePath: string): Promise<void> {
   });
 }
 
-function computeBatchFolderCounts(
+export function computeBatchFolderCounts(
   images: { relativePath: string }[],
 ): Record<string, number> {
   const counts: Record<string, number> = {};
@@ -144,6 +146,18 @@ function computeBatchFolderCounts(
     }
   }
   return counts;
+}
+
+export function noteSeenSelectableFiles(images: WImage[]): void {
+  const selection = useSelectionStore.getState();
+  if (selection.status !== "ready" || selection.entries.size === 0) return;
+  const seen = images
+    .filter(isSelectableImage)
+    .map((image) => image.selectableFile)
+    .filter((identity) => selection.entries.has(identity.entryKey));
+  if (seen.length > 0) {
+    selection.markSeen(seen);
+  }
 }
 
 export async function startScan(
@@ -220,6 +234,7 @@ export async function startScan(
         if (!isActiveScan(operation)) return;
         if (batch.images.length > 0) {
           appendImages(batch.images);
+          noteSeenSelectableFiles(batch.images);
           const counts = computeBatchFolderCounts(batch.images);
           if (Object.keys(counts).length > 0) {
             updateFolderCounts(counts);
@@ -371,6 +386,8 @@ export async function incrementalRefresh() {
           mergeImages(added, removedPaths);
           relayout();
         }
+
+        noteSeenSelectableFiles(useViewerStore.getState().images);
 
         // Recalculate folder counts from the final image set
         const finalImages = useViewerStore.getState().images;

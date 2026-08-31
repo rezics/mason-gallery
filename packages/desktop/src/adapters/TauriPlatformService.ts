@@ -11,12 +11,19 @@ import type {
   LibrarySourceInput,
   LibrarySourcePatch,
   MigrationCandidate,
+  MoveFilesRequest,
+  MoveItemResult,
+  MoveProgress,
   PasswordStorageMode,
+  PersistedSelectionEntry,
+  PersistedSelectionState,
   PlatformService,
   ScanArchiveParams,
   ScanInfoProgress,
   ScanParams,
   ScanThumbProgress,
+  SelectableFileProbe,
+  SelectionEntryKey,
   SourceOverride,
   Thumbnail,
 } from "@mason-gallery/core";
@@ -25,6 +32,9 @@ import {
   createDefaultSettings,
   createSettingsEnvelope,
   migrateSettingsEnvelope,
+  parseMoveItemResults,
+  parseSelectableFileProbes,
+  parseSelectionState,
 } from "@mason-gallery/core";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -157,6 +167,7 @@ export const tauriPlatformService: PlatformService = {
     canAutoUpdate: true,
     canDragDropFolders: true,
     canBrowseArchives: true,
+    canBatchMoveFiles: true,
   },
 
   async scanImages(
@@ -496,5 +507,85 @@ export const tauriPlatformService: PlatformService = {
       unsubscribed = true;
       unlistenFn?.();
     };
+  },
+
+  async loadSelectionState(): Promise<PersistedSelectionState> {
+    return parseSelectionState(await invoke("load_selection_state"));
+  },
+
+  async saveSelectionMode(enabled: boolean): Promise<void> {
+    await invoke("save_selection_mode", { enabled });
+  },
+
+  async upsertSelectionEntries(
+    entries: PersistedSelectionEntry[],
+  ): Promise<void> {
+    await invoke("upsert_selection_entries", { entries });
+  },
+
+  async removeSelectionEntries(keys: SelectionEntryKey[]): Promise<void> {
+    await invoke("remove_selection_entries", { keys });
+  },
+
+  async clearSelectionPackage(packageKey: string): Promise<void> {
+    await invoke("clear_selection_package", { packageKey });
+  },
+
+  async clearAllSelections(): Promise<void> {
+    await invoke("clear_all_selections");
+  },
+
+  async replaceSelectionEntries(
+    remove: SelectionEntryKey[],
+    insert: PersistedSelectionEntry[],
+  ): Promise<void> {
+    await invoke("replace_selection_entries", { remove, insert });
+  },
+
+  async commitSelectionMutation(mutation: {
+    modeEnabled?: boolean;
+    upsert: PersistedSelectionEntry[];
+    remove: SelectionEntryKey[];
+  }): Promise<void> {
+    await invoke("commit_selection_mutation", { mutation });
+  },
+
+  async probeSelectableFiles(
+    locators: string[],
+  ): Promise<SelectableFileProbe[]> {
+    return parseSelectableFileProbes(
+      await invoke("probe_selectable_files", { locators }),
+    );
+  },
+
+  async pickMoveDestination(): Promise<string | null> {
+    const selected = await open({ directory: true, multiple: false });
+    if (!selected) return null;
+    return Array.isArray(selected) ? (selected[0] ?? null) : selected;
+  },
+
+  async moveFiles(
+    request: MoveFilesRequest,
+    onProgress?: (progress: MoveProgress) => void,
+  ): Promise<MoveItemResult[]> {
+    const cleanups: Array<() => void> = [];
+    try {
+      if (onProgress) {
+        cleanups.push(
+          await listen<MoveProgress>("files:move-progress", (event) => {
+            if (event.payload.operationId === request.operationId) {
+              onProgress(event.payload);
+            }
+          }),
+        );
+      }
+      return parseMoveItemResults(await invoke("move_files", { request }));
+    } finally {
+      for (const cleanup of cleanups) cleanup();
+    }
+  },
+
+  async cancelMoveFiles(operationId: string): Promise<void> {
+    await invoke("cancel_move_files", { operationId });
   },
 };

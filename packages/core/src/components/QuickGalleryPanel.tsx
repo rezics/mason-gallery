@@ -1,7 +1,12 @@
 import { Columns3, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
@@ -13,9 +18,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import { shouldShowMultiselectEntry } from "@/lib/selectionContract";
 import { useAppStore } from "@/stores/appStore";
+import { useSelectionStore } from "@/stores/selectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useViewerStore } from "@/stores/viewerStore";
 import type { SortMethod } from "@/types";
 
 export default function QuickGalleryPanel() {
@@ -34,6 +43,11 @@ export default function QuickGalleryPanel() {
   const breakpoints = useSettingsStore((state) => state.breakpoints);
   const setBreakpoints = useSettingsStore((state) => state.setBreakpoints);
   const columnsAtDesktop = breakpoints[1200] ?? 4;
+  const platform = usePlatform();
+  const images = useViewerStore((state) => state.images);
+  const modeEnabled = useSelectionStore((state) => state.modeEnabled);
+  const setModeEnabled = useSelectionStore((state) => state.setModeEnabled);
+  const showMultiselect = shouldShowMultiselectEntry(platform, images);
 
   const openSettingsRoute = (route: string) => {
     setOpen(false);
@@ -98,6 +112,24 @@ export default function QuickGalleryPanel() {
               onCheckedChange={setShowGridPosition}
             />
           </Field>
+
+          {showMultiselect && (
+            <Field>
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor="quick-multiselect">
+                  {t("selection:multiselectMode")}
+                </FieldLabel>
+                <Switch
+                  id="quick-multiselect"
+                  checked={modeEnabled}
+                  onCheckedChange={setModeEnabled}
+                />
+              </div>
+              <FieldDescription>
+                {t("selection:multiselectModeHint")}
+              </FieldDescription>
+            </Field>
+          )}
 
           <Field>
             <FieldLabel htmlFor="quick-columns">
