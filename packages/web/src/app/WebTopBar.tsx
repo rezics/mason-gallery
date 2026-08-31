@@ -26,7 +26,7 @@ export function WebTopBar({ embedded = false }: { embedded?: boolean }) {
   const hasGallery = useViewerStore((state) => state.images.length > 0);
   const isScanning = useViewerStore((state) => state.isScanning);
   const rootPath = getLocalizedWebPath("/", language);
-  const preferencesHref = `/app/settings/gallery/${
+  const preferencesHref = `/app/settings/general/${
     language === "en" ? "" : `?lang=${language}`
   }`;
 
@@ -50,7 +50,7 @@ export function WebTopBar({ embedded = false }: { embedded?: boolean }) {
     ? undefined
     : (event) => {
         event.preventDefault();
-        navigate("/settings/gallery");
+        navigate("/settings/general");
       };
 
   const handleLanguageSelect = (

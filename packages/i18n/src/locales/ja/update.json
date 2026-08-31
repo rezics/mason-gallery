@@ -1,7 +1,11 @@
 {
-  "available": "新しいバージョンがあります！",
+  "available": "バージョン {version} が利用できます",
   "installing": "更新をインストール中...",
   "install": "インストールして再起動",
   "dismiss": "あとで",
-  "error": "更新に失敗しました"
+  "error": "更新に失敗しました",
+  "upToDate": "最新バージョンです",
+  "checking": "更新を確認しています...",
+  "checkFailed": "更新の確認に失敗しました",
+  "installFailed": "更新のインストールに失敗しました"
 }

@@ -1,6 +1,7 @@
 {
   "title": "設定",
   "preferences": "偏好設定",
+  "general": "一般",
   "appearance": "外觀",
   "gallery": "圖庫",
   "files": "檔案",
@@ -23,5 +24,8 @@
   "showGridPosition": "顯示格線位置",
   "openGallerySidebarByDefault": "開啟圖庫時自動顯示資料夾欄",
   "confirmDelete": "刪除前確認",
-  "showDeleteToast": "刪除後顯示通知"
+  "showDeleteToast": "刪除後顯示通知",
+  "updates": "更新",
+  "checkForUpdates": "檢查更新",
+  "autoCheckUpdates": "自動檢查更新"
 }

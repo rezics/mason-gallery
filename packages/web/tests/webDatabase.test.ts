@@ -90,6 +90,34 @@ describe("disposable browser persistence", () => {
     expect(await loadStoredLibrarySources()).toEqual([]);
   });
 
+  test("migrates a stored v1 settings document to v2", async () => {
+    await resetWebPersistence();
+    const { autoCheckUpdates: _autoCheckUpdates, ...v1Settings } = {
+      ...createDefaultSettings(),
+      language: "ja" as const,
+      theme: "light" as const,
+    };
+    const raw = new Dexie("mason-gallery-web");
+    raw.version(1).stores({
+      settings: "id",
+      directoryHandles: "position",
+    });
+    await raw.table("settings").put({
+      id: "current",
+      envelope: { version: 1, settings: v1Settings },
+    });
+    raw.close();
+
+    const loaded = await loadWebSettings();
+    expect(loaded.autoCheckUpdates).toBe(true);
+    expect(loaded.language).toBe("ja");
+    expect(loaded.theme).toBe("light");
+
+    const roundTrip = await loadWebSettings();
+    expect(roundTrip.autoCheckUpdates).toBe(true);
+    expect(roundTrip.language).toBe("ja");
+  });
+
   test("rebuilds the whole database for an incompatible settings schema", async () => {
     await resetWebPersistence();
     const raw = new Dexie("mason-gallery-web");

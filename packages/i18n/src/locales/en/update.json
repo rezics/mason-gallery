@@ -1,7 +1,11 @@
 {
-  "available": "A new version is available!",
+  "available": "Version {version} is available",
   "installing": "Installing update...",
   "install": "Install & Restart",
   "dismiss": "Later",
-  "error": "Update failed"
+  "error": "Update failed",
+  "upToDate": "You're on the latest version",
+  "checking": "Checking for updates...",
+  "checkFailed": "Couldn't check for updates",
+  "installFailed": "Couldn't install the update"
 }

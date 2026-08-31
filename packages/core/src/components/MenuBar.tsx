@@ -5,6 +5,7 @@ import {
   FolderOpen,
   Home,
   Info,
+  MessageSquare,
   MonitorCog,
   RefreshCw,
   RotateCcw,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import { GITHUB_ISSUES_URL } from "@/lib/projectLinks";
 import {
   incrementalRefresh,
   openFolderAndScan,
@@ -33,7 +35,9 @@ import {
 } from "@/lib/scanActions";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/appStore";
+import { useUpdateStore } from "@/stores/updateStore";
 import { useViewerStore } from "@/stores/viewerStore";
+import { isUpdateBusy } from "@/updates/updateController";
 
 interface MenuBarProps {
   onQuit?: () => void;
@@ -64,6 +68,18 @@ export default function MenuBar({
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const hasGallery = useViewerStore((state) => state.images.length > 0);
   const [, navigate] = useLocation();
+  const canAutoUpdate = platform.capabilities.canAutoUpdate;
+  const updateStatus = useUpdateStore((state) => state.status);
+  const checkForUpdates = useUpdateStore((state) => state.check);
+  const updateBusy = isUpdateBusy(updateStatus);
+
+  const openFeedback = () => {
+    if (platform.openExternalUrl) {
+      void platform.openExternalUrl(GITHUB_ISSUES_URL);
+      return;
+    }
+    window.open(GITHUB_ISSUES_URL, "_blank", "noopener,noreferrer");
+  };
 
   const openArchive = async () => {
     const path = await platform.pickArchive?.();
@@ -151,7 +167,7 @@ export default function MenuBar({
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate("/settings/gallery")}>
+          <DropdownMenuItem onClick={() => navigate("/settings/general")}>
             <SlidersHorizontal data-icon="inline-start" />
             {t("actions:preferences")}
           </DropdownMenuItem>
@@ -170,6 +186,22 @@ export default function MenuBar({
       <DropdownMenu>
         <MenuButton>{t("menu:help")}</MenuButton>
         <DropdownMenuContent className="min-w-40">
+          {canAutoUpdate && (
+            <DropdownMenuItem
+              disabled={updateBusy}
+              onClick={() => {
+                void checkForUpdates("manual");
+              }}
+            >
+              <RefreshCw data-icon="inline-start" />
+              {t("menu:checkForUpdates")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={openFeedback}>
+            <MessageSquare data-icon="inline-start" />
+            {t("menu:feedback")}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => navigate("/about")}>
             <Info data-icon="inline-start" />
             {t("menu:about")}

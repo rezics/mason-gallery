@@ -38,6 +38,7 @@ interface SettingsState extends Settings {
   setFolderThumbnails: (mode: FolderThumbnailsMode) => void;
   addRecentSource: (source: GallerySourceShortcut) => void;
   toggleFavoriteSource: (source: GallerySourceShortcut) => void;
+  setAutoCheckUpdates: (value: boolean) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -78,6 +79,7 @@ function toPersistedSettings(state: SettingsState): Settings {
     folderThumbnails: state.folderThumbnails,
     recentSources: state.recentSources,
     favoriteSources: state.favoriteSources,
+    autoCheckUpdates: state.autoCheckUpdates,
   });
 }
 
@@ -211,6 +213,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ...get().recentSources.filter((item) => !sameGallerySource(item, source)),
     ].slice(0, MAX_RECENT_SOURCES);
     set({ recentSources });
+    persist(get());
+  },
+  setAutoCheckUpdates: (autoCheckUpdates) => {
+    set({ autoCheckUpdates });
     persist(get());
   },
   toggleFavoriteSource: (source) => {

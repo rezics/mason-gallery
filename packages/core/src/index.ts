@@ -32,6 +32,7 @@ export {
 export * from "./features/gallery";
 export type { Namespace, SupportedLanguage } from "./i18n/index";
 export { i18n, setI18nLanguage, useI18n } from "./i18n/index";
+export { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from "./lib/projectLinks";
 export {
   executeArchiveScan,
   expandLockedArchive,
@@ -48,12 +49,19 @@ export {
   createDefaultSettings,
   createSettingsEnvelope,
   migrateSettingsEnvelope,
+  SETTINGS_SCHEMA_V1_VERSION,
   SETTINGS_SCHEMA_VERSION,
   settingsEnvelopeSchema,
   settingsSchema,
 } from "./persistence/settingsSchema";
 export { useLibraryStore } from "./stores/libraryStore";
 export { useSettingsStore } from "./stores/settingsStore";
+export {
+  resetUpdateStore,
+  setUpdateBackend,
+  setUpdateProductionBuild,
+  useUpdateStore,
+} from "./stores/updateStore";
 export type {
   ColumnBreakpoints,
   ImageBatch,
@@ -109,3 +117,16 @@ export type {
   ThemeSettings,
   ThumbnailService,
 } from "./types/services";
+export type {
+  UpdateBackend,
+  UpdateCheckReason,
+  UpdateErrorPhase,
+  UpdateSnapshot,
+  UpdateStatus,
+} from "./updates/updateController";
+export {
+  createUpdateController,
+  IDLE_UPDATE_SNAPSHOT,
+  isUpdateBusy,
+  shouldStartUpdateCheck,
+} from "./updates/updateController";

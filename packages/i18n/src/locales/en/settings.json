@@ -1,6 +1,7 @@
 {
   "title": "Settings",
   "preferences": "Preferences",
+  "general": "General",
   "appearance": "Appearance",
   "gallery": "Gallery",
   "files": "Files",
@@ -23,5 +24,8 @@
   "showGridPosition": "Show Grid Position",
   "openGallerySidebarByDefault": "Open folder sidebar when gallery opens",
   "confirmDelete": "Confirm before delete",
-  "showDeleteToast": "Show notification after delete"
+  "showDeleteToast": "Show notification after delete",
+  "updates": "Updates",
+  "checkForUpdates": "Check for updates",
+  "autoCheckUpdates": "Check for updates automatically"
 }

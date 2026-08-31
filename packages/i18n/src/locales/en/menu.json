@@ -8,5 +8,7 @@
   "window": "Window",
   "devTools": "Dev Tools",
   "help": "Help",
+  "checkForUpdates": "Check for Updates",
+  "feedback": "Feedback",
   "about": "About"
 }

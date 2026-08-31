@@ -9,6 +9,7 @@ import { ArchiveSettingsSection } from "./settings/ArchiveSettingsSection";
 import { CacheSettingsSection } from "./settings/CacheSettingsSection";
 import { FilesSettingsSection } from "./settings/FilesSettingsSection";
 import { GallerySettingsSection } from "./settings/GallerySettingsSection";
+import { GeneralSettingsSection } from "./settings/GeneralSettingsSection";
 import {
   getSupportedSettingsCategories,
   getVisibleSettingsCategory,
@@ -28,8 +29,9 @@ export default function SettingsPage() {
   >(null);
 
   const categoryLabels: Record<SettingsCategory, string> = {
-    appearance: t("settings:appearance"),
+    general: t("settings:general"),
     gallery: t("settings:gallery"),
+    appearance: t("settings:appearance"),
     files: t("settings:files"),
     archive: t("archive:settingsSection"),
     cache: t("cache:section"),
@@ -69,8 +71,9 @@ export default function SettingsPage() {
             </h2>
           </header>
 
-          {visibleCategory === "appearance" && <AppearanceSettingsSection />}
+          {visibleCategory === "general" && <GeneralSettingsSection />}
           {visibleCategory === "gallery" && <GallerySettingsSection />}
+          {visibleCategory === "appearance" && <AppearanceSettingsSection />}
           {visibleCategory === "files" && <FilesSettingsSection />}
           {visibleCategory === "archive" && (
             <ArchiveSettingsSection

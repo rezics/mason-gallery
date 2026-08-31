@@ -107,7 +107,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
             />
           )}
           <SidebarLink
-            href="/settings/gallery"
+            href="/settings/general"
             label={t("settings:preferences")}
             icon={<Settings />}
             active={location.startsWith("/settings")}

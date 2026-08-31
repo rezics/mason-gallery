@@ -1,6 +1,7 @@
 import type { PlatformCapabilities } from "@/types/platform";
 
 export const SETTINGS_CATEGORIES = [
+  "general",
   "gallery",
   "appearance",
   "files",
@@ -10,7 +11,7 @@ export const SETTINGS_CATEGORIES = [
 
 export type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number];
 
-const DEFAULT_SETTINGS_CATEGORY: SettingsCategory = "gallery";
+export const DEFAULT_SETTINGS_CATEGORY: SettingsCategory = "general";
 
 export function getSettingsCategory(path: string): SettingsCategory {
   const segment = path.split("/")[2] as SettingsCategory | undefined;

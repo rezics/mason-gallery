@@ -84,4 +84,18 @@ describe("settings persistence", () => {
       undefined,
     );
   });
+
+  test("persists autoCheckUpdates without changing other fields", async () => {
+    const { savedSettings } = createPlatform(createDefaultSettings());
+
+    expect(useSettingsStore.getState().autoCheckUpdates).toBe(true);
+    useSettingsStore.getState().setAutoCheckUpdates(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const saved = savedSettings.at(-1);
+    expect(saved?.autoCheckUpdates).toBe(false);
+    expect(saved?.language).toBe("en");
+    expect(saved?.theme).toBe("system");
+  });
 });
+

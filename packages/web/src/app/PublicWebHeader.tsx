@@ -25,7 +25,7 @@ function PublicWebHeaderContent({ locale, page }: PublicWebHeaderProps) {
   const content = siteContent[locale];
   const homePath = getLocalizedPath(locale, "home");
   const aboutPath = getLocalizedPath(locale, "about");
-  const preferencesPath = `/app/settings/gallery/${
+  const preferencesPath = `/app/settings/general/${
     locale === "en" ? "" : `?lang=${locale}`
   }`;
 

@@ -1,4 +1,11 @@
-import { Database, HelpCircle, Images, Palette, Settings } from "lucide-react";
+import {
+  Database,
+  HelpCircle,
+  Images,
+  Palette,
+  Settings,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { usePlatform } from "@/context/PlatformContext";
@@ -57,6 +64,12 @@ export default function SidebarHome() {
           <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             {t("settings:preferences")}
           </h2>
+          <HomeNavLink
+            href="/settings/general"
+            icon={<SlidersHorizontal />}
+            label={t("settings:general")}
+            active={location.startsWith("/settings/general")}
+          />
           <HomeNavLink
             href="/settings/gallery"
             icon={<Settings />}

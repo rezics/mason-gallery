@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { ColumnBreakpoints } from "@/types";
 import type { Settings } from "@/types/platform";
 
-export const SETTINGS_SCHEMA_VERSION = 1 as const;
+export const SETTINGS_SCHEMA_VERSION = 2 as const;
+export const SETTINGS_SCHEMA_V1_VERSION = 1 as const;
 
 const thumbnailSizesSchema = z
   .array(z.number().int().positive().max(4096))
@@ -55,30 +56,42 @@ const thumbnailPolicySchema = z
   })
   .strict();
 
+const settingsFields = {
+  formats: z.array(z.string().regex(/^\.[a-z0-9]+$/i)).min(1),
+  sortMethod: z.enum(["name-asc", "name-desc", "time-asc", "time-desc"]),
+  pageSize: z.number().int().positive().max(1000),
+  language: z.enum(["en", "zh-hans", "zh-hant", "ja"]),
+  theme: z.enum(["system", "light", "dark"]),
+  breakpoints: columnBreakpointsSchema,
+  showGridPosition: z.boolean(),
+  openGallerySidebarByDefault: z.boolean(),
+  confirmDelete: z.boolean(),
+  showDeleteToast: z.boolean(),
+  cacheCleanupStrategy: z.enum(["auto-clean", "keep-all"]),
+  passwordStorageMode: z.enum(["none", "master"]),
+  cachePolicy: z
+    .object({
+      extracted: extractedPolicySchema,
+      thumbnails: thumbnailPolicySchema,
+      thumbnailSizes: thumbnailSizesSchema,
+    })
+    .strict(),
+  folderThumbnails: z.enum(["off", "lazy"]),
+  recentSources: z.array(gallerySourceShortcutSchema).max(8),
+  favoriteSources: z.array(gallerySourceShortcutSchema).max(24),
+};
+
+/**
+ * Version 1 documents omit `autoCheckUpdates`. Unknown keys are stripped so
+ * unpublished preview fields (theme presets) are dropped instead of
+ * discarding the rest of a valid v1 document.
+ */
+const settingsV1Schema = z.object(settingsFields);
+
 export const settingsSchema: z.ZodType<Settings> = z
   .object({
-    formats: z.array(z.string().regex(/^\.[a-z0-9]+$/i)).min(1),
-    sortMethod: z.enum(["name-asc", "name-desc", "time-asc", "time-desc"]),
-    pageSize: z.number().int().positive().max(1000),
-    language: z.enum(["en", "zh-hans", "zh-hant", "ja"]),
-    theme: z.enum(["system", "light", "dark"]),
-    breakpoints: columnBreakpointsSchema,
-    showGridPosition: z.boolean(),
-    openGallerySidebarByDefault: z.boolean(),
-    confirmDelete: z.boolean(),
-    showDeleteToast: z.boolean(),
-    cacheCleanupStrategy: z.enum(["auto-clean", "keep-all"]),
-    passwordStorageMode: z.enum(["none", "master"]),
-    cachePolicy: z
-      .object({
-        extracted: extractedPolicySchema,
-        thumbnails: thumbnailPolicySchema,
-        thumbnailSizes: thumbnailSizesSchema,
-      })
-      .strict(),
-    folderThumbnails: z.enum(["off", "lazy"]),
-    recentSources: z.array(gallerySourceShortcutSchema).max(8),
-    favoriteSources: z.array(gallerySourceShortcutSchema).max(24),
+    ...settingsFields,
+    autoCheckUpdates: z.boolean(),
   })
   .strict();
 
@@ -120,6 +133,7 @@ const DEFAULT_SETTINGS: Settings = settingsSchema.parse({
   folderThumbnails: "off",
   recentSources: [],
   favoriteSources: [],
+  autoCheckUpdates: true,
 });
 
 export function createDefaultSettings(): Settings {
@@ -133,20 +147,37 @@ export function createSettingsEnvelope(settings: Settings): SettingsEnvelope {
   });
 }
 
+function migrateV1Settings(settings: unknown): Settings {
+  const parsed = settingsV1Schema.parse(settings);
+  return settingsSchema.parse({
+    ...parsed,
+    autoCheckUpdates: true,
+  });
+}
+
 /**
  * The single migration boundary for persisted settings documents.
  *
- * Version 1 intentionally has no legacy branch: the pre-release key/value
- * formats were incorrect and are discarded by each platform adapter.
+ * Version 1 has no pre-release legacy branch: those key/value formats were
+ * discarded by each platform adapter. Version 2 adds `autoCheckUpdates`,
+ * defaulting it on so existing desktop installs keep auto-checking.
  */
 export function migrateSettingsEnvelope(value: unknown): SettingsEnvelope {
   const header = z
-    .looseObject({ version: z.number().int().nonnegative() })
+    .looseObject({
+      version: z.number().int().nonnegative(),
+      settings: z.unknown(),
+    })
     .safeParse(value);
 
   if (!header.success) {
     throw new Error("Persisted settings are missing a schema version");
   }
+
+  if (header.data.version === SETTINGS_SCHEMA_V1_VERSION) {
+    return createSettingsEnvelope(migrateV1Settings(header.data.settings));
+  }
+
   if (header.data.version !== SETTINGS_SCHEMA_VERSION) {
     throw new Error(
       `Unsupported settings schema version: ${header.data.version}`,

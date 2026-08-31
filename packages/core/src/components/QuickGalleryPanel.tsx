@@ -124,7 +124,7 @@ export default function QuickGalleryPanel() {
             type="button"
             variant="outline"
             className="w-full"
-            onClick={() => openSettingsRoute("/settings/gallery")}
+            onClick={() => openSettingsRoute("/settings/general")}
           >
             <Settings data-icon="inline-start" />
             {t("settings:preferences")}
@@ -133,7 +133,7 @@ export default function QuickGalleryPanel() {
             type="button"
             variant="ghost"
             className="w-full"
-            onClick={() => openSettingsRoute("/settings/appearance")}
+            onClick={() => openSettingsRoute("/settings/general")}
           >
             {t("settings:language")}
           </Button>

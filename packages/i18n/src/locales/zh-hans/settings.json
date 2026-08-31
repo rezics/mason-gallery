@@ -1,6 +1,7 @@
 {
   "title": "设置",
   "preferences": "偏好设置",
+  "general": "通用",
   "appearance": "外观",
   "gallery": "图库",
   "files": "文件",
@@ -23,5 +24,8 @@
   "showGridPosition": "显示网格位置",
   "openGallerySidebarByDefault": "打开图库时自动显示文件夹栏",
   "confirmDelete": "删除前确认",
-  "showDeleteToast": "删除后显示通知"
+  "showDeleteToast": "删除后显示通知",
+  "updates": "更新",
+  "checkForUpdates": "检查更新",
+  "autoCheckUpdates": "自动检查更新"
 }

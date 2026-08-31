@@ -123,7 +123,11 @@ export async function loadWebSettings(): Promise<Settings> {
   if (!row) return createDefaultSettings();
 
   try {
-    return migrateSettingsEnvelope(row.envelope).settings;
+    const migrated = migrateSettingsEnvelope(row.envelope);
+    if (migrated.version !== row.envelope.version) {
+      await saveWebSettings(migrated.settings);
+    }
+    return migrated.settings;
   } catch {
     await resetWebPersistence();
     return createDefaultSettings();

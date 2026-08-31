@@ -1,7 +1,8 @@
+import { GITHUB_REPO_URL } from "@mason-gallery/core";
 import type { SupportedLanguage } from "@mason-gallery/i18n";
 
 export const SITE_ORIGIN = "https://mason-gallery.rezics.com";
-export const GITHUB_URL = "https://github.com/Edge-coordinates/mason-gallery";
+export const GITHUB_URL = GITHUB_REPO_URL;
 
 export const publicLocales = ["en", "zh-hans", "zh-hant", "ja"] as const;
 

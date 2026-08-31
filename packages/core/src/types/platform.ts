@@ -107,6 +107,7 @@ export interface Settings {
   folderThumbnails: FolderThumbnailsMode;
   recentSources: GallerySourceShortcut[];
   favoriteSources: GallerySourceShortcut[];
+  autoCheckUpdates: boolean;
 }
 
 export interface ScanParams {
@@ -235,6 +236,12 @@ export interface PlatformService {
   loadSettings(): Promise<Settings>;
 
   saveSettings(settings: Settings): Promise<void>;
+
+  /**
+   * Open a URL in the system browser. Desktop uses Tauri Opener;
+   * other targets fall back to `window.open`.
+   */
+  openExternalUrl?(url: string): Promise<void>;
 
   listDirectoryTree(paths: string[]): Promise<string[]>;
 

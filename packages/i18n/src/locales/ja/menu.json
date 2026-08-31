@@ -8,5 +8,7 @@
   "window": "ウィンドウ",
   "devTools": "開発者ツール",
   "help": "ヘルプ",
+  "checkForUpdates": "更新を確認",
+  "feedback": "フィードバック",
   "about": "このアプリについて"
 }

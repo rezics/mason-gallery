@@ -150,7 +150,7 @@ export const tauriPlatformService: PlatformService = {
     canRevealFile: true,
     canSelectFolder: true,
     hasCustomTitlebar: true,
-    canAutoUpdate: import.meta.env.PROD,
+    canAutoUpdate: true,
     canDragDropFolders: true,
     canBrowseArchives: true,
   },
@@ -241,6 +241,11 @@ export const tauriPlatformService: PlatformService = {
     await invoke("save_settings", {
       envelope: createSettingsEnvelope(settings),
     });
+  },
+
+  async openExternalUrl(url: string): Promise<void> {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(url);
   },
 
   async listDirectoryTree(paths: string[]): Promise<string[]> {

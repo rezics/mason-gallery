@@ -426,6 +426,10 @@ export const webPlatformService: PlatformService = {
     await saveWebSettings(settings);
   },
 
+  async openExternalUrl(url: string): Promise<void> {
+    window.open(url, "_blank", "noopener,noreferrer");
+  },
+
   async listDirectoryTree(paths: string[]): Promise<string[]> {
     await ensureDirectoryHandlesLoaded();
     const directories: string[] = [];

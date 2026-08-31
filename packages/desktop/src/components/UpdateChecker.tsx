@@ -1,85 +1,78 @@
-import { Button, useI18n } from "@mason-gallery/core";
-import { relaunch } from "@tauri-apps/plugin-process";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import { Button, toast, useI18n, useUpdateStore } from "@mason-gallery/core";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export default function UpdateChecker() {
   const t = useI18n();
-  const [update, setUpdate] = useState<Update | null>(null);
-  const [open, setOpen] = useState(false);
-  const [installing, setInstalling] = useState(false);
-  const [error, setError] = useState(false);
+  const status = useUpdateStore((state) => state.status);
+  const version = useUpdateStore((state) => state.version);
+  const errorPhase = useUpdateStore((state) => state.errorPhase);
+  const lastCheckReason = useUpdateStore((state) => state.lastCheckReason);
+  const bannerVisible = useUpdateStore((state) => state.bannerVisible);
+  const check = useUpdateStore((state) => state.check);
+  const install = useUpdateStore((state) => state.install);
+  const dismiss = useUpdateStore((state) => state.dismiss);
+  const notifiedKeyRef = useRef("");
 
   useEffect(() => {
-    check()
-      .then((u) => {
-        if (u) {
-          setUpdate(u);
-          setOpen(true);
-        }
-      })
-      .catch((e) => {
-        console.error("Update check failed:", e);
-      });
-  }, []);
+    void check("auto");
+  }, [check]);
 
-  const handleInstall = useCallback(async () => {
-    if (!update) return;
-    setInstalling(true);
-    try {
-      await update.downloadAndInstall();
-      await relaunch();
-    } catch (e) {
-      console.error("Update install failed:", e);
-      setInstalling(false);
-      setError(true);
+  useEffect(() => {
+    const key = `${status}:${lastCheckReason}:${errorPhase ?? ""}`;
+    if (key === notifiedKeyRef.current) return;
+    if (status === "idle" || status === "checking" || status === "installing") {
+      return;
     }
-  }, [update]);
+    notifiedKeyRef.current = key;
 
-  if (error) {
+    if (status === "up-to-date" && lastCheckReason === "manual") {
+      toast.add({ title: t("update:upToDate"), type: "success" });
+    }
+
+    if (
+      status === "error" &&
+      (lastCheckReason === "manual" || errorPhase === "install")
+    ) {
+      toast.add({
+        title:
+          errorPhase === "install"
+            ? t("update:installFailed")
+            : t("update:checkFailed"),
+        type: "error",
+      });
+    }
+  }, [errorPhase, lastCheckReason, status, t]);
+
+  if (status === "installing") {
     return (
-      <div className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-md border border-destructive bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
+      <div className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-md border border-border bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
         <div className="flex items-center gap-3">
-          <span>{t("update:error")}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setError(false)}
-          >
-            {t("actions:close")}
-          </Button>
+          <span>{t("update:installing")}</span>
+          <Loader2 className="size-4 animate-spin" />
         </div>
       </div>
     );
   }
 
-  if (!open) return null;
+  if (status !== "available" || !bannerVisible) return null;
 
   return (
     <div className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-md border border-border bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
       <div className="flex items-center gap-3">
-        <span>
-          {installing ? t("update:installing") : t("update:available")}
-        </span>
-        {installing ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setOpen(false)}
-            >
-              {t("update:dismiss")}
-            </Button>
-            <Button type="button" size="sm" onClick={handleInstall}>
-              {t("update:install")}
-            </Button>
-          </>
-        )}
+        <span>{t("update:available", { version: version ?? "" })}</span>
+        <Button type="button" variant="ghost" size="sm" onClick={dismiss}>
+          {t("update:dismiss")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => {
+            void install();
+          }}
+        >
+          {t("update:install")}
+        </Button>
       </div>
     </div>
   );

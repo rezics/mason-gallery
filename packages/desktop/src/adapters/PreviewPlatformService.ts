@@ -165,6 +165,9 @@ export const previewPlatformService: PlatformService = {
   saveSettings: async (next: Settings) => {
     settings = next;
   },
+  openExternalUrl: async (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  },
   listDirectoryTree: async () => [],
   scanArchive: async (_params, onBatch, onComplete, onCount) => {
     onCount?.(0);

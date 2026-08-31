@@ -50,7 +50,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwRjQxMDUxMjc5RDhEREYKUldUZmpaMG5VUkQwVU1jT2NveC84U2VpbmJ2TzdiaEQ4clNudkxaUjVCa0QzWk5SREZYcVYwQ1QK",
       "endpoints": [
-        "https://github.com/Edge-coordinates/mason-gallery/releases/latest/download/latest.json"
+        "https://github.com/rezics/mason-gallery/releases/latest/download/latest.json"
       ]
     }
   }

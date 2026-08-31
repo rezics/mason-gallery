@@ -1,10 +1,13 @@
 import { ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import { GITHUB_REPO_URL } from "@/lib/projectLinks";
 
 export default function AboutPage() {
   const t = useI18n();
+  const platform = usePlatform();
 
   return (
     <div className="flex h-full flex-col overflow-auto bg-background">
@@ -35,12 +38,13 @@ export default function AboutPage() {
             type="button"
             variant="outline"
             className="mt-6"
-            onClick={() =>
-              window.open(
-                "https://github.com/Edge-coordinates/mason-gallery",
-                "_blank",
-              )
-            }
+            onClick={() => {
+              if (platform.openExternalUrl) {
+                void platform.openExternalUrl(GITHUB_REPO_URL);
+                return;
+              }
+              window.open(GITHUB_REPO_URL, "_blank", "noopener,noreferrer");
+            }}
           >
             <ExternalLink />
             {t("about:github")}

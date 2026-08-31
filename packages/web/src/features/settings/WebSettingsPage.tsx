@@ -2,6 +2,7 @@ import { BackButton, useI18n } from "@mason-gallery/core";
 import { cn } from "@mason-gallery/core/lib/utils";
 import { AppearanceSettingsSection } from "@mason-gallery/core/pages/settings/AppearanceSettingsSection";
 import { GallerySettingsSection } from "@mason-gallery/core/pages/settings/GallerySettingsSection";
+import { GeneralSettingsSection } from "@mason-gallery/core/pages/settings/GeneralSettingsSection";
 import { Link, useLocation } from "wouter";
 import {
   getWebSettingsCategory,
@@ -15,8 +16,9 @@ export function WebSettingsPage() {
   const visibleCategory = getWebSettingsCategory(location);
 
   const categoryLabels: Record<WebSettingsCategory, string> = {
-    appearance: t("settings:appearance"),
+    general: t("settings:general"),
     gallery: t("settings:gallery"),
+    appearance: t("settings:appearance"),
   };
 
   return (
@@ -56,8 +58,9 @@ export function WebSettingsPage() {
             </h2>
           </header>
 
-          {visibleCategory === "appearance" && <AppearanceSettingsSection />}
+          {visibleCategory === "general" && <GeneralSettingsSection />}
           {visibleCategory === "gallery" && <GallerySettingsSection />}
+          {visibleCategory === "appearance" && <AppearanceSettingsSection />}
         </div>
       </div>
     </div>

@@ -1,7 +1,11 @@
 {
-  "available": "發現新版本！",
+  "available": "發現新版本 {version}",
   "installing": "正在安裝更新...",
   "install": "安裝並重新啟動",
   "dismiss": "稍後",
-  "error": "更新失敗"
+  "error": "更新失敗",
+  "upToDate": "目前已是最新版本",
+  "checking": "正在檢查更新...",
+  "checkFailed": "檢查更新失敗",
+  "installFailed": "安裝更新失敗"
 }
