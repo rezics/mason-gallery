@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeSafe"
+  short_description: "Keep typed guarantees honest end to end"
+  default_prompt: "Use $typesafe to keep each typed guarantee aligned with its proof from source to final use."
