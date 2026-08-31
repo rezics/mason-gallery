@@ -4,7 +4,6 @@ import {
   openFolderAndScan,
   Progress,
   resetToDropZone,
-  startScan,
   useAppStore,
   useI18n,
   usePlatform,
@@ -254,13 +253,7 @@ function WebEmptyGallery() {
   const t = useI18n();
   const platform = usePlatform();
   const showPreview = useLargePreview();
-
-  useEffect(() => {
-    const cleanup = platform.onDragDrop((paths) => {
-      if (paths.length > 0) startScan(paths);
-    });
-    return cleanup;
-  }, [platform]);
+  const canDragDrop = platform.capabilities.canDragDropFolders;
 
   return (
     <div className="relative h-full overflow-hidden bg-background text-foreground">
@@ -292,21 +285,28 @@ function WebEmptyGallery() {
               {t("home:webOpenFolder")}
             </Button>
 
-            <div className="my-9 flex items-center gap-7 text-base font-medium text-muted-foreground">
-              <span className="h-px flex-1 bg-border" />
-              {t("home:webDropDivider")}
-              <span className="h-px flex-1 bg-border" />
-            </div>
+            {canDragDrop && (
+              <>
+                <div className="my-9 flex items-center gap-7 text-base font-medium text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  {t("home:webDropDivider")}
+                  <span className="h-px flex-1 bg-border" />
+                </div>
 
-            <div className="flex min-h-[176px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand/40 bg-card/70 px-8 text-center shadow-lg shadow-brand/10 backdrop-blur">
-              <UploadCloud className="size-11 text-brand" strokeWidth={1.8} />
-              <p className="mt-5 text-xl font-semibold text-foreground">
-                {t("home:webDropTitle")}
-              </p>
-              <p className="mt-2 text-base leading-6 text-muted-foreground">
-                {t("home:webDropHint")}
-              </p>
-            </div>
+                <div className="flex min-h-[176px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand/40 bg-card/70 px-8 text-center shadow-lg shadow-brand/10 backdrop-blur">
+                  <UploadCloud
+                    className="size-11 text-brand"
+                    strokeWidth={1.8}
+                  />
+                  <p className="mt-5 text-xl font-semibold text-foreground">
+                    {t("home:webDropTitle")}
+                  </p>
+                  <p className="mt-2 text-base leading-6 text-muted-foreground">
+                    {t("home:webDropHint")}
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="mt-7 flex items-center justify-center gap-3 text-base text-muted-foreground">
               <LockKeyhole className="size-5 text-muted-foreground" />

@@ -27,5 +27,8 @@
   "showDeleteToast": "删除后显示通知",
   "updates": "更新",
   "checkForUpdates": "检查更新",
-  "autoCheckUpdates": "自动检查更新"
+  "autoCheckUpdates": "自动检查更新",
+  "externalDropBehavior": "拖入文件夹或压缩包时",
+  "externalDropAddAndOpen": "添加到图库并打开（推荐）",
+  "externalDropOpenOnly": "仅打开，不添加到图库"
 }

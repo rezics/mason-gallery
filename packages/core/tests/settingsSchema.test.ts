@@ -4,11 +4,21 @@ import {
   createSettingsEnvelope,
   migrateSettingsEnvelope,
   SETTINGS_SCHEMA_VERSION,
+  SETTINGS_SCHEMA_V2_VERSION,
   settingsSchema,
 } from "../src/persistence/settingsSchema";
 
 function createV1Settings() {
-  const { autoCheckUpdates: _autoCheckUpdates, ...settings } =
+  const {
+    autoCheckUpdates: _autoCheckUpdates,
+    externalDropBehavior: _externalDropBehavior,
+    ...settings
+  } = createDefaultSettings();
+  return settings;
+}
+
+function createV2Settings() {
+  const { externalDropBehavior: _externalDropBehavior, ...settings } =
     createDefaultSettings();
   return settings;
 }
@@ -18,17 +28,18 @@ describe("settings schema", () => {
     const settings = createDefaultSettings();
     const envelope = createSettingsEnvelope(settings);
 
-    expect(envelope.version).toBe(2);
-    expect(SETTINGS_SCHEMA_VERSION).toBe(2);
+    expect(envelope.version).toBe(3);
+    expect(SETTINGS_SCHEMA_VERSION).toBe(3);
     expect(settings.autoCheckUpdates).toBe(true);
+    expect(settings.externalDropBehavior).toBe("add-and-open");
     expect(migrateSettingsEnvelope(envelope)).toEqual(envelope);
   });
 
   test("rejects unsupported and unversioned persisted documents", () => {
     expect(() => migrateSettingsEnvelope({ settings: {} })).toThrow();
     expect(() =>
-      migrateSettingsEnvelope({ version: 3, settings: {} }),
-    ).toThrow("Unsupported settings schema version: 3");
+      migrateSettingsEnvelope({ version: 4, settings: {} }),
+    ).toThrow("Unsupported settings schema version: 4");
   });
 
   test("rejects the removed duplicate thumbnailSizes field", () => {
@@ -58,12 +69,32 @@ describe("settings schema", () => {
       settings: v1Settings,
     });
 
-    expect(migrated.version).toBe(2);
+    expect(migrated.version).toBe(3);
     expect(migrated.settings.autoCheckUpdates).toBe(true);
+    expect(migrated.settings.externalDropBehavior).toBe("add-and-open");
     expect(migrated.settings.language).toBe("zh-hant");
     expect(migrated.settings.theme).toBe("dark");
     expect(migrated.settings.sortMethod).toBe("time-desc");
     expect(migrated.settings.cachePolicy).toEqual(v1Settings.cachePolicy);
+  });
+
+  test("migrates v2 settings to v3 with add-and-open as the drop default", () => {
+    const v2Settings = {
+      ...createV2Settings(),
+      language: "ja" as const,
+      autoCheckUpdates: false,
+    };
+
+    const migrated = migrateSettingsEnvelope({
+      version: 2,
+      settings: v2Settings,
+    });
+
+    expect(migrated.version).toBe(3);
+    expect(SETTINGS_SCHEMA_V2_VERSION).toBe(2);
+    expect(migrated.settings.autoCheckUpdates).toBe(false);
+    expect(migrated.settings.externalDropBehavior).toBe("add-and-open");
+    expect(migrated.settings.language).toBe("ja");
   });
 
   test("drops unpublished v1 theme presets instead of discarding the document", () => {
@@ -79,7 +110,7 @@ describe("settings schema", () => {
       },
     });
 
-    expect(migrated.version).toBe(2);
+    expect(migrated.version).toBe(3);
     expect(migrated.settings.language).toBe(v1Settings.language);
     expect(migrated.settings.theme).toBe(v1Settings.theme);
     expect(

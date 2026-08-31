@@ -27,5 +27,8 @@
   "showDeleteToast": "Show notification after delete",
   "updates": "Updates",
   "checkForUpdates": "Check for updates",
-  "autoCheckUpdates": "Check for updates automatically"
+  "autoCheckUpdates": "Check for updates automatically",
+  "externalDropBehavior": "When dropping folders or archives",
+  "externalDropAddAndOpen": "Add to library and open (recommended)",
+  "externalDropOpenOnly": "Open only, don't add to library"
 }

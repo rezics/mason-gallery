@@ -27,5 +27,8 @@
   "showDeleteToast": "削除後に通知を表示",
   "updates": "更新",
   "checkForUpdates": "更新を確認",
-  "autoCheckUpdates": "更新を自動的に確認する"
+  "autoCheckUpdates": "更新を自動的に確認する",
+  "externalDropBehavior": "フォルダーまたはアーカイブをドロップしたとき",
+  "externalDropAddAndOpen": "ライブラリに追加して開く（推奨）",
+  "externalDropOpenOnly": "開くだけ（ライブラリには追加しない）"
 }

@@ -1,5 +1,6 @@
 export { AppShell } from "./components/AppShell";
 export { BackButton } from "./components/BackButton";
+export { DropCoordinator } from "./components/DropCoordinator";
 export { default as DropZone } from "./components/DropZone";
 export { default as ImageViewer } from "./components/ImageViewer";
 export { default as MenuBar } from "./components/MenuBar";
@@ -32,12 +33,26 @@ export {
 export * from "./features/gallery";
 export type { Namespace, SupportedLanguage } from "./i18n/index";
 export { i18n, setI18nLanguage, useI18n } from "./i18n/index";
+export {
+  ARCHIVE_EXTENSION_NAMES,
+  ARCHIVE_EXTENSIONS,
+  isArchiveFileName,
+} from "./lib/archiveFormats";
+export {
+  dedupeDroppedSources,
+  libraryEffectForDropBehavior,
+  planDroppedOpen,
+  resolveDropDisposition,
+  routeAcceptsExternalDrop,
+} from "./lib/dropPolicy";
 export { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from "./lib/projectLinks";
 export {
+  applyLibraryEffect,
   executeArchiveScan,
   expandLockedArchive,
   incrementalRefresh,
   openFolderAndScan,
+  openSources,
   refresh,
   resetToDropZone,
   startArchiveScan,
@@ -50,10 +65,12 @@ export {
   createSettingsEnvelope,
   migrateSettingsEnvelope,
   SETTINGS_SCHEMA_V1_VERSION,
+  SETTINGS_SCHEMA_V2_VERSION,
   SETTINGS_SCHEMA_VERSION,
   settingsEnvelopeSchema,
   settingsSchema,
 } from "./persistence/settingsSchema";
+export { useDropStore } from "./stores/dropStore";
 export { useLibraryStore } from "./stores/libraryStore";
 export { useSettingsStore } from "./stores/settingsStore";
 export {
@@ -76,11 +93,20 @@ export type {
   CacheCleanupStrategy,
   CachePolicy,
   CacheStats,
+  DragDropSubscriptionOptions,
+  DropBatch,
+  DropListener,
+  DropPersistence,
+  DroppedSource,
+  DropRejection,
+  DropRejectionReason,
+  ExternalDropBehavior,
   ExtractedMode,
   ExtractedPolicy,
   FolderThumbnailsMode,
   ImageBatch as PlatformImageBatch,
   LibraryAccessStatus,
+  LibraryEffect,
   LibrarySource,
   LibrarySourceInput,
   LibrarySourceKind,

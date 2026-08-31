@@ -1,4 +1,6 @@
 import type {
+  DragDropSubscriptionOptions,
+  DropListener,
   ImageBatch,
   LibraryAccessStatus,
   LibrarySource,
@@ -22,6 +24,13 @@ import {
   saveWebSettings,
   updateStoredLibrarySource,
 } from "../persistence/webDatabase";
+import {
+  canUseFileSystemDrop,
+  classifyWebDropItems,
+  getSessionDirectoryHandles,
+  registerSessionDirectoryHandles,
+  shouldAcceptWebDrag,
+} from "./webDrop";
 
 interface FileEntry {
   handle: FileSystemFileHandle;
@@ -250,6 +259,14 @@ async function getAccessStatus(
   }
 }
 
+function allDirectoryHandleRows(): Array<{
+  sourcePath: string;
+  name: string;
+  handle: FileSystemDirectoryHandle;
+}> {
+  return [...storedDirHandles, ...getSessionDirectoryHandles()];
+}
+
 async function listLibrarySourcesWithAccess(): Promise<LibrarySource[]> {
   const sources = await loadStoredLibrarySources();
   return Promise.all(
@@ -267,14 +284,16 @@ async function listLibrarySourcesWithAccess(): Promise<LibrarySource[]> {
 }
 
 export const webPlatformService: PlatformService = {
-  capabilities: {
-    canDeleteFiles: false,
-    canRevealFile: false,
-    canSelectFolder: true,
-    hasCustomTitlebar: false,
-    canAutoUpdate: false,
-    canDragDropFolders: true,
-    canBrowseArchives: false,
+  get capabilities() {
+    return {
+      canDeleteFiles: false,
+      canRevealFile: false,
+      canSelectFolder: true,
+      hasCustomTitlebar: false,
+      canAutoUpdate: false,
+      canDragDropFolders: canUseFileSystemDrop(),
+      canBrowseArchives: false,
+    };
   },
 
   async scanImages(
@@ -298,7 +317,7 @@ export const webPlatformService: PlatformService = {
       }[] = [];
 
       const requestedPaths = new Set(params.paths);
-      const selectedHandles = storedDirHandles.filter(
+      const selectedHandles = allDirectoryHandleRows().filter(
         (row) =>
           requestedPaths.size === 0 ||
           requestedPaths.has(row.sourcePath) ||
@@ -374,39 +393,66 @@ export const webPlatformService: PlatformService = {
     }
   },
 
-  onDragDrop(callback: (paths: string[]) => void): () => void {
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+  onDragDrop(
+    listener: DropListener,
+    options?: DragDropSubscriptionOptions,
+  ): () => void {
+    const target = options?.target ?? document;
+
+    const handleDragOver = (event: Event) => {
+      const dragEvent = event as DragEvent;
+      if (!listener.accepts() || !shouldAcceptWebDrag(dragEvent.dataTransfer)) {
+        return;
+      }
+      dragEvent.preventDefault();
+      listener.onOver?.({ x: dragEvent.clientX, y: dragEvent.clientY });
     };
 
-    const handleDrop = async (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const items = e.dataTransfer?.items;
-      if (!items) return;
-
-      const handles: FileSystemDirectoryHandle[] = [];
-      for (const item of items) {
-        const handle = await item.getAsFileSystemHandle();
-        if (handle?.kind === "directory") {
-          handles.push(handle as FileSystemDirectoryHandle);
-        }
+    const handleDragLeave = (event: Event) => {
+      const dragEvent = event as DragEvent;
+      const related = dragEvent.relatedTarget;
+      if (
+        target instanceof Node &&
+        related instanceof Node &&
+        target.contains(related)
+      ) {
+        return;
       }
-
-      if (handles.length > 0) {
-        const registered = await registerStoredDirectoryHandles(handles);
-        callback(registered.map((row) => row.sourcePath));
-      }
+      listener.onCancel?.();
     };
 
-    document.addEventListener("dragover", handleDragOver);
-    document.addEventListener("drop", handleDrop);
+    const handleDrop = (event: Event) => {
+      const dragEvent = event as DragEvent;
+      if (!listener.accepts() || !shouldAcceptWebDrag(dragEvent.dataTransfer)) {
+        return;
+      }
+      dragEvent.preventDefault();
+      listener.onCancel?.();
+
+      const items = dragEvent.dataTransfer?.items;
+      if (!items) {
+        listener.onDrop({ accepted: [], rejected: [] });
+        return;
+      }
+
+      const persist =
+        listener.persistence() === "durable"
+          ? registerStoredDirectoryHandles
+          : registerSessionDirectoryHandles;
+
+      void classifyWebDropItems(items, persist).then((batch) => {
+        listener.onDrop(batch);
+      });
+    };
+
+    target.addEventListener("dragover", handleDragOver);
+    target.addEventListener("dragleave", handleDragLeave);
+    target.addEventListener("drop", handleDrop);
 
     return () => {
-      document.removeEventListener("dragover", handleDragOver);
-      document.removeEventListener("drop", handleDrop);
+      target.removeEventListener("dragover", handleDragOver);
+      target.removeEventListener("dragleave", handleDragLeave);
+      target.removeEventListener("drop", handleDrop);
     };
   },
 
@@ -448,7 +494,7 @@ export const webPlatformService: PlatformService = {
     }
 
     const requestedPaths = new Set(paths);
-    for (const row of storedDirHandles) {
+    for (const row of allDirectoryHandleRows()) {
       if (
         requestedPaths.size > 0 &&
         !requestedPaths.has(row.sourcePath) &&
@@ -474,7 +520,7 @@ export const webPlatformService: PlatformService = {
     await ensureDirectoryHandlesLoaded();
     await addStoredLibrarySources(
       sources.map((source) => {
-        const directory = storedDirHandles.find(
+        const directory = allDirectoryHandleRows().find(
           (row) => row.sourcePath === source.path || row.name === source.path,
         );
         return {

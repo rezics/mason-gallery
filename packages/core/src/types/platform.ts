@@ -61,6 +61,52 @@ export interface GallerySourceShortcut {
   lastOpenedAt: string;
 }
 
+export type ExternalDropBehavior = "add-and-open" | "open-only";
+export type LibraryEffect = "ensure" | "touch" | "none";
+export type DropPersistence = "durable" | "session";
+export type DropRejectionReason =
+  | "unsupported-type"
+  | "unsupported-platform"
+  | "missing"
+  | "permission-denied";
+
+export type DroppedSource =
+  | { kind: "folder"; locator: string; label: string }
+  | { kind: "archive"; locator: string; label: string };
+
+export interface DropRejection {
+  label: string;
+  reason: DropRejectionReason;
+}
+
+export interface DropBatch {
+  accepted: DroppedSource[];
+  rejected: DropRejection[];
+}
+
+export interface DropHoverPosition {
+  x: number;
+  y: number;
+}
+
+export interface DropListener {
+  /**
+   * Called synchronously on dragover / hover. Web only calls
+   * `preventDefault()` when this returns true.
+   */
+  accepts(): boolean;
+  /** Web uses this to choose IndexedDB vs in-memory session handles. */
+  persistence(): DropPersistence;
+  onOver?(position?: DropHoverPosition): void;
+  onDrop(batch: DropBatch): void;
+  onCancel?(): void;
+}
+
+export interface DragDropSubscriptionOptions {
+  /** Web: listen on this node instead of `document`. */
+  target?: EventTarget | null;
+}
+
 export type LibrarySourceKind = "folder" | "archive";
 export type LibraryAccessStatus = "ready" | "needs-access" | "missing";
 
@@ -108,6 +154,7 @@ export interface Settings {
   recentSources: GallerySourceShortcut[];
   favoriteSources: GallerySourceShortcut[];
   autoCheckUpdates: boolean;
+  externalDropBehavior: ExternalDropBehavior;
 }
 
 export interface ScanParams {
@@ -231,7 +278,10 @@ export interface PlatformService {
 
   pickFolders(): Promise<string[] | null>;
 
-  onDragDrop(callback: (paths: string[]) => void): () => void;
+  onDragDrop(
+    listener: DropListener,
+    options?: DragDropSubscriptionOptions,
+  ): () => void;
 
   loadSettings(): Promise<Settings>;
 

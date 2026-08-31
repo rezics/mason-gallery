@@ -90,7 +90,7 @@ describe("disposable browser persistence", () => {
     expect(await loadStoredLibrarySources()).toEqual([]);
   });
 
-  test("migrates a stored v1 settings document to v2", async () => {
+  test("migrates a stored v1 settings document to the current schema", async () => {
     await resetWebPersistence();
     const { autoCheckUpdates: _autoCheckUpdates, ...v1Settings } = {
       ...createDefaultSettings(),
@@ -110,6 +110,7 @@ describe("disposable browser persistence", () => {
 
     const loaded = await loadWebSettings();
     expect(loaded.autoCheckUpdates).toBe(true);
+    expect(loaded.externalDropBehavior).toBe("add-and-open");
     expect(loaded.language).toBe("ja");
     expect(loaded.theme).toBe("light");
 

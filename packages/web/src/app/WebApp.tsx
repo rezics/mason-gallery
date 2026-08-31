@@ -1,4 +1,5 @@
 import {
+  DropCoordinator,
   QuickGalleryPanel,
   Toaster,
   useCoreRuntime,
@@ -54,14 +55,16 @@ export function WebApp() {
       <div className="flex h-screen flex-col bg-background text-foreground">
         <WebTopBar />
         <main className="min-h-0 flex-1 overflow-hidden">
-          <Switch>
-            <Route path="/settings" component={WebSettingsPage} />
-            <Route path="/settings/:category" component={WebSettingsPage} />
-            <Route path="/" component={StandaloneWebGalleryPage} />
-            <Route>
-              <WebNotFoundPage />
-            </Route>
-          </Switch>
+          <DropCoordinator galleryPath="/">
+            <Switch>
+              <Route path="/settings" component={WebSettingsPage} />
+              <Route path="/settings/:category" component={WebSettingsPage} />
+              <Route path="/" component={StandaloneWebGalleryPage} />
+              <Route>
+                <WebNotFoundPage />
+              </Route>
+            </Switch>
+          </DropCoordinator>
         </main>
         <QuickGalleryPanel />
         <Toaster />

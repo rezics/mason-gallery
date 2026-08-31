@@ -111,10 +111,10 @@ export default function HomeLibrarySections() {
 
   const openSource = (source: GallerySourceShortcut) => {
     if (source.kind === "archive") {
-      startArchiveScan(source.path);
+      void startArchiveScan(source.path, { libraryEffect: "touch" });
       return;
     }
-    startScan([source.path]);
+    void startScan([source.path], { libraryEffect: "touch" });
   };
 
   return (

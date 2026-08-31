@@ -1,13 +1,16 @@
 import { Input } from "@/components/ui/input";
 import { NativeSelect as Select } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
+import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { SortMethod } from "@/types";
+import type { ExternalDropBehavior } from "@/types/platform";
 import { SettingsField, SettingsSection } from "./SettingsField";
 
 export function GallerySettingsSection() {
   const t = useI18n();
+  const platform = usePlatform();
   const sortMethod = useSettingsStore((s) => s.sortMethod);
   const setSortMethod = useSettingsStore((s) => s.setSortMethod);
   const pageSize = useSettingsStore((s) => s.pageSize);
@@ -22,9 +25,32 @@ export function GallerySettingsSection() {
   const setOpenGallerySidebarByDefault = useSettingsStore(
     (s) => s.setOpenGallerySidebarByDefault,
   );
+  const externalDropBehavior = useSettingsStore((s) => s.externalDropBehavior);
+  const setExternalDropBehavior = useSettingsStore(
+    (s) => s.setExternalDropBehavior,
+  );
 
   return (
     <SettingsSection>
+      {platform.capabilities.canDragDropFolders && (
+        <SettingsField label={t("settings:externalDropBehavior")}>
+          <Select
+            value={externalDropBehavior}
+            onChange={(event) =>
+              setExternalDropBehavior(
+                event.target.value as ExternalDropBehavior,
+              )
+            }
+          >
+            <option value="add-and-open">
+              {t("settings:externalDropAddAndOpen")}
+            </option>
+            <option value="open-only">
+              {t("settings:externalDropOpenOnly")}
+            </option>
+          </Select>
+        </SettingsField>
+      )}
       <SettingsField label={t("settings:sortMethod")}>
         <Select
           value={sortMethod}

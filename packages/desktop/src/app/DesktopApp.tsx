@@ -1,5 +1,6 @@
 import {
   AppShell,
+  DropCoordinator,
   QuickGalleryPanel,
   Toaster,
   useCoreRuntime,
@@ -53,23 +54,25 @@ export function DesktopApp({ titlebar, updateChecker }: DesktopAppProps) {
         style={{ paddingTop: titlebar ? 36 : 0 }}
       >
         <AppShell>
-          <Suspense fallback={<RouteFallback />}>
-            <Switch>
-              <Route path="/" component={LibraryPage} />
-              <Route path="/library" component={LibraryPage} />
-              <Route path="/library/favorites" component={LibraryPage} />
-              <Route path="/library/recent" component={LibraryPage} />
-              <Route path="/gallery" component={HomePage} />
-              <Route path="/about" component={AboutPage} />
-              <Route path="/cache" component={CachePage} />
-              <Route path="/manage/cache" component={CachePage} />
-              <Route path="/settings" component={SettingsPage} />
-              <Route path="/settings/:category" component={SettingsPage} />
-              <Route>
-                <LibraryPage />
-              </Route>
-            </Switch>
-          </Suspense>
+          <DropCoordinator galleryPath="/gallery">
+            <Suspense fallback={<RouteFallback />}>
+              <Switch>
+                <Route path="/" component={LibraryPage} />
+                <Route path="/library" component={LibraryPage} />
+                <Route path="/library/favorites" component={LibraryPage} />
+                <Route path="/library/recent" component={LibraryPage} />
+                <Route path="/gallery" component={HomePage} />
+                <Route path="/about" component={AboutPage} />
+                <Route path="/cache" component={CachePage} />
+                <Route path="/manage/cache" component={CachePage} />
+                <Route path="/settings" component={SettingsPage} />
+                <Route path="/settings/:category" component={SettingsPage} />
+                <Route>
+                  <LibraryPage />
+                </Route>
+              </Switch>
+            </Suspense>
+          </DropCoordinator>
         </AppShell>
       </main>
       <QuickGalleryPanel />

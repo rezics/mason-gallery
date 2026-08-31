@@ -3,6 +3,9 @@ import type {
   CacheCleanupStrategy,
   CachePolicy,
   CacheStats,
+  DragDropSubscriptionOptions,
+  DropBatch,
+  DropListener,
   ImageBatch,
   LibrarySource,
   LibrarySourceInput,
@@ -18,6 +21,7 @@ import type {
   Thumbnail,
 } from "@mason-gallery/core";
 import {
+  ARCHIVE_EXTENSION_NAMES,
   createDefaultSettings,
   createSettingsEnvelope,
   migrateSettingsEnvelope,
@@ -46,7 +50,7 @@ async function pickArchivePaths(multiple: boolean): Promise<string[] | null> {
     filters: [
       {
         name: "Archives",
-        extensions: ["zip", "rar", "7z", "cbz", "cbr"],
+        extensions: ARCHIVE_EXTENSION_NAMES,
       },
     ],
   });
@@ -206,17 +210,47 @@ export const tauriPlatformService: PlatformService = {
     return Array.isArray(selected) ? selected : [selected];
   },
 
-  onDragDrop(callback: (paths: string[]) => void): () => void {
+  onDragDrop(
+    listener: DropListener,
+    _options?: DragDropSubscriptionOptions,
+  ): () => void {
     let unlistenFn: (() => void) | null = null;
     let disposed = false;
 
     getCurrentWebviewWindow()
       .onDragDropEvent((event) => {
-        if (event.payload.type === "drop") {
-          const paths = event.payload.paths;
-          if (paths.length > 0) {
-            callback(paths);
+        if (event.payload.type === "enter" || event.payload.type === "over") {
+          if (listener.accepts()) {
+            listener.onOver?.(event.payload.position);
+          } else {
+            listener.onCancel?.();
           }
+          return;
+        }
+        if (event.payload.type === "leave") {
+          listener.onCancel?.();
+          return;
+        }
+        if (event.payload.type === "drop") {
+          if (!listener.accepts()) return;
+          const paths = event.payload.paths;
+          if (paths.length === 0) {
+            listener.onDrop({ accepted: [], rejected: [] });
+            return;
+          }
+          void invoke<DropBatch>("classify_drop_paths", { paths }).then(
+            (batch) => listener.onDrop(batch),
+            (error) => {
+              console.error("Failed to classify dropped paths:", error);
+              listener.onDrop({
+                accepted: [],
+                rejected: paths.map((path) => ({
+                  label: path.split(/[\\/]/).pop() || path,
+                  reason: "missing",
+                })),
+              });
+            },
+          );
         }
       })
       .then((fn) => {

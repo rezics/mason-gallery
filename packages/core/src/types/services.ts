@@ -4,6 +4,8 @@ import type {
   CacheCleanupStrategy,
   CachePolicy,
   CacheStats,
+  DragDropSubscriptionOptions,
+  DropListener,
   ImageBatch,
   MigrationCandidate,
   PasswordStorageMode,
@@ -58,7 +60,10 @@ export interface ImageUrlService {
 
 export interface FolderPickerService {
   pickFolders(): Promise<string[] | null>;
-  onDragDrop(callback: (paths: string[]) => void): () => void;
+  onDragDrop(
+    listener: DropListener,
+    options?: DragDropSubscriptionOptions,
+  ): () => void;
 }
 
 export interface DirectoryTreeService {

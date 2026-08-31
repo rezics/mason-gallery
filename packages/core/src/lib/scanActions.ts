@@ -1,11 +1,24 @@
 import { getPlatform } from "@/context/PlatformContext";
+import { dedupeDroppedSources, droppedSourceKey } from "@/lib/dropPolicy";
+import { sourceLabelFromLocator } from "@/lib/sourceLabel";
 import { useAppStore } from "@/stores/appStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { ScanParams, WImage } from "@/types";
+import type { DroppedSource, LibraryEffect } from "@/types/platform";
 
 let activeScanOperation = 0;
+
+export type ScanOpenOptions = {
+  isRescan?: boolean;
+  libraryEffect?: LibraryEffect;
+};
+
+export type OpenSourcesOptions = {
+  libraryEffect?: LibraryEffect;
+  password?: string;
+};
 
 function beginScanOperation(): number {
   activeScanOperation += 1;
@@ -16,44 +29,76 @@ function isActiveScan(operation: number): boolean {
   return operation === activeScanOperation;
 }
 
-function getSourceLabel(path: string): string {
-  const normalized = path.replace(/\\/g, "/").replace(/\/+$/g, "");
-  return normalized.split("/").pop() || path;
+function sourcesFromLocators(
+  locators: string[],
+  kind: DroppedSource["kind"],
+): DroppedSource[] {
+  return locators.map((locator) => ({
+    kind,
+    locator,
+    label: sourceLabelFromLocator(locator),
+  }));
 }
 
 function rememberRecentSources(
-  paths: string[],
-  kind: "folder" | "archive",
+  sources: DroppedSource[],
+  lastOpenedAt: string,
 ): void {
   const addRecentSource = useSettingsStore.getState().addRecentSource;
-  const lastOpenedAt = new Date().toISOString();
-  for (const path of paths) {
+  for (const source of sources) {
     addRecentSource({
-      kind,
-      path,
-      label: getSourceLabel(path),
+      kind: source.kind,
+      path: source.locator,
+      label: source.label,
       lastOpenedAt,
     });
   }
 }
 
 async function rememberLibrarySources(
-  paths: string[],
-  kind: "folder" | "archive",
+  sources: DroppedSource[],
+  lastOpenedAt: string,
 ): Promise<void> {
-  const lastOpenedAt = new Date().toISOString();
   try {
     await useLibraryStore.getState().addSources(
-      paths.map((path) => ({
-        kind,
-        path,
-        label: getSourceLabel(path),
+      sources.map((source) => ({
+        kind: source.kind,
+        path: source.locator,
+        label: source.label,
         lastOpenedAt,
       })),
     );
   } catch (error) {
     console.error("Failed to remember gallery sources:", error);
   }
+}
+
+export async function applyLibraryEffect(
+  sources: DroppedSource[],
+  effect: LibraryEffect,
+): Promise<void> {
+  if (effect === "none" || sources.length === 0) return;
+
+  const lastOpenedAt = new Date().toISOString();
+  if (effect === "touch") {
+    const existingKeys = new Set(
+      useLibraryStore
+        .getState()
+        .sources.map((source) =>
+          droppedSourceKey({ kind: source.kind, locator: source.path }),
+        ),
+    );
+    const known = sources.filter((source) =>
+      existingKeys.has(droppedSourceKey(source)),
+    );
+    if (known.length === 0) return;
+    rememberRecentSources(known, lastOpenedAt);
+    await rememberLibrarySources(known, lastOpenedAt);
+    return;
+  }
+
+  rememberRecentSources(sources, lastOpenedAt);
+  await rememberLibrarySources(sources, lastOpenedAt);
 }
 
 function markLibrarySourcesScanned(paths: string[], imageCount?: number): void {
@@ -101,7 +146,13 @@ function computeBatchFolderCounts(
   return counts;
 }
 
-export async function startScan(paths: string[], isRescan = false) {
+export async function startScan(
+  paths: string[],
+  options: ScanOpenOptions = {},
+) {
+  const isRescan = options.isRescan === true;
+  const libraryEffect = options.libraryEffect ?? (isRescan ? "none" : "ensure");
+  const shouldMarkLibrary = isRescan || libraryEffect !== "none";
   const operation = beginScanOperation();
   const {
     resetAndScan,
@@ -136,8 +187,10 @@ export async function startScan(paths: string[], isRescan = false) {
   }
   setFolders(paths);
   if (!isRescan) {
-    rememberRecentSources(paths, "folder");
-    await rememberLibrarySources(paths, "folder");
+    await applyLibraryEffect(
+      sourcesFromLocators(paths, "folder"),
+      libraryEffect,
+    );
   }
   useAppStore.setState({ isSidebarOpen: openGallerySidebarByDefault });
 
@@ -176,10 +229,12 @@ export async function startScan(paths: string[], isRescan = false) {
       () => {
         if (isActiveScan(operation)) {
           setScanning(false);
-          markLibrarySourcesScanned(
-            paths,
-            paths.length === 1 ? latestTotal : undefined,
-          );
+          if (shouldMarkLibrary) {
+            markLibrarySourcesScanned(
+              paths,
+              paths.length === 1 ? latestTotal : undefined,
+            );
+          }
         }
       },
       (total) => {
@@ -205,14 +260,43 @@ export async function openFolderAndScan() {
   const platform = getPlatform();
   const paths = await platform.pickFolders();
   if (paths && paths.length > 0) {
-    await startScan(paths);
+    await startScan(paths, { libraryEffect: "ensure" });
+  }
+}
+
+export async function openSources(
+  sources: DroppedSource[],
+  options: OpenSourcesOptions = {},
+): Promise<void> {
+  const libraryEffect = options.libraryEffect ?? "ensure";
+  const unique = dedupeDroppedSources(sources);
+  if (unique.length === 0) return;
+
+  await applyLibraryEffect(unique, libraryEffect);
+
+  const folders = unique.filter((source) => source.kind === "folder");
+  const archives = unique.filter((source) => source.kind === "archive");
+
+  if (archives.length === 1 && folders.length === 0 && archives[0]) {
+    await startArchiveScan(archives[0].locator, {
+      password: options.password,
+      libraryEffect: "none",
+    });
+    return;
+  }
+
+  if (folders.length > 0) {
+    await startScan(
+      folders.map((source) => source.locator),
+      { libraryEffect: "none" },
+    );
   }
 }
 
 export function refresh() {
   const { folders } = useAppStore.getState();
   if (folders.length > 0) {
-    startScan(folders, true);
+    void startScan(folders, { isRescan: true });
   }
 }
 
@@ -303,7 +387,11 @@ export async function incrementalRefresh() {
   }
 }
 
-export async function startArchiveScan(archivePath: string, password?: string) {
+export async function startArchiveScan(
+  archivePath: string,
+  options: OpenSourcesOptions = {},
+) {
+  const libraryEffect = options.libraryEffect ?? "ensure";
   beginScanOperation();
   const { resetAndScan, setScanning } = useViewerStore.getState();
   const { setFolders, resetDirectoryState } = useAppStore.getState();
@@ -311,8 +399,10 @@ export async function startArchiveScan(archivePath: string, password?: string) {
   resetAndScan();
   resetDirectoryState();
   setFolders([archivePath]);
-  rememberRecentSources([archivePath], "archive");
-  await rememberLibrarySources([archivePath], "archive");
+  await applyLibraryEffect(
+    sourcesFromLocators([archivePath], "archive"),
+    libraryEffect,
+  );
   useAppStore.setState({ archivePath, isSidebarOpen: false });
 
   const platform = getPlatform();
@@ -342,13 +432,21 @@ export async function startArchiveScan(archivePath: string, password?: string) {
     }
   }
 
-  await executeArchiveScan(archivePath, password);
+  await executeArchiveScan(archivePath, options.password, {
+    markLibrary: libraryEffect !== "none",
+  });
 }
 
 export async function executeArchiveScan(
   archivePath: string,
   password?: string,
+  options: { markLibrary?: boolean } = {},
 ) {
+  const shouldMarkLibrary =
+    options.markLibrary ??
+    useLibraryStore
+      .getState()
+      .sources.some((source) => source.path === archivePath);
   const operation = beginScanOperation();
   const {
     resetAndScan,
@@ -400,7 +498,9 @@ export async function executeArchiveScan(
       () => {
         if (isActiveScan(operation)) {
           setScanning(false);
-          markLibrarySourcesScanned([archivePath], latestTotal);
+          if (shouldMarkLibrary) {
+            markLibrarySourcesScanned([archivePath], latestTotal);
+          }
         }
       },
       (total) => {

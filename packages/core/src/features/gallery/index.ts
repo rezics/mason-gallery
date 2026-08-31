@@ -7,6 +7,7 @@ export { default as WaterfallGrid } from "@/components/WaterfallGrid";
 export {
   incrementalRefresh,
   openFolderAndScan,
+  openSources,
   refresh,
   resetToDropZone,
   startScan,

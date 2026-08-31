@@ -97,5 +97,20 @@ describe("settings persistence", () => {
     expect(saved?.language).toBe("en");
     expect(saved?.theme).toBe("system");
   });
+
+  test("persists externalDropBehavior without changing other fields", async () => {
+    const { savedSettings } = createPlatform(createDefaultSettings());
+
+    expect(useSettingsStore.getState().externalDropBehavior).toBe(
+      "add-and-open",
+    );
+    useSettingsStore.getState().setExternalDropBehavior("open-only");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const saved = savedSettings.at(-1);
+    expect(saved?.externalDropBehavior).toBe("open-only");
+    expect(saved?.autoCheckUpdates).toBe(true);
+    expect(saved?.language).toBe("en");
+  });
 });
 

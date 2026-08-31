@@ -1,15 +1,8 @@
 import { Archive, FolderOpen, UploadCloud } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
-
-const ARCHIVE_EXTENSIONS = [".zip", ".rar", ".7z", ".cbz", ".cbr"];
-
-function isArchiveFile(path: string): boolean {
-  const lower = path.toLowerCase();
-  return ARCHIVE_EXTENSIONS.some((ext) => lower.endsWith(ext));
-}
 
 interface DropZoneProps {
   onFoldersSelected: (paths: string[]) => void;
@@ -22,23 +15,6 @@ export default function DropZone({
 }: DropZoneProps) {
   const t = useI18n();
   const platform = usePlatform();
-
-  useEffect(() => {
-    const cleanup = platform.onDragDrop((paths) => {
-      if (paths.length === 0) return;
-      const archives = paths.filter(isArchiveFile);
-      const folders = paths.filter((p) => !isArchiveFile(p));
-
-      if (archives.length > 0 && archives[0] && onArchiveSelected) {
-        onArchiveSelected(archives[0]);
-      } else if (folders.length > 0) {
-        onFoldersSelected(folders);
-      } else if (paths.length > 0) {
-        onFoldersSelected(paths);
-      }
-    });
-    return cleanup;
-  }, [platform, onFoldersSelected, onArchiveSelected]);
 
   const handleSelectFolder = useCallback(async () => {
     const paths = await platform.pickFolders();
@@ -53,6 +29,7 @@ export default function DropZone({
 
   const canBrowseArchives =
     platform.capabilities.canBrowseArchives && onArchiveSelected;
+  const canDragDrop = platform.capabilities.canDragDropFolders;
 
   return (
     <section className="border-b border-border bg-background px-6 py-8">
@@ -65,9 +42,11 @@ export default function DropZone({
             {t("home:dropZoneTitle")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {canBrowseArchives
-              ? t("archive:dropZoneHint")
-              : t("home:dropZoneHint")}
+            {canDragDrop
+              ? canBrowseArchives
+                ? t("archive:dropZoneHint")
+                : t("home:dropZoneHint")
+              : t("home:selectFolderHint")}
           </p>
         </div>
         <div className="grid w-full max-w-md gap-3 sm:grid-cols-2">

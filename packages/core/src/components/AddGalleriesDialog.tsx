@@ -10,21 +10,13 @@ import {
   DialogRoot,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import { sourceLabelFromLocator } from "@/lib/sourceLabel";
+import { useDropStore } from "@/stores/dropStore";
 import { useLibraryStore } from "@/stores/libraryStore";
-import type { LibrarySourceInput } from "@/types/platform";
-
-const ARCHIVE_EXTENSION = /\.(zip|rar|7z|cbz|cbr)$/i;
-
-function labelFromPath(path: string): string {
-  const normalized = path.replace(/\\/g, "/").replace(/\/+$/g, "");
-  try {
-    return decodeURIComponent(normalized.split("/").pop() || path);
-  } catch {
-    return normalized.split("/").pop() || path;
-  }
-}
+import type { DropBatch, LibrarySourceInput } from "@/types/platform";
 
 function sourceKey(source: Pick<LibrarySourceInput, "kind" | "path">): string {
   const normalizedPath = source.path
@@ -35,11 +27,15 @@ function sourceKey(source: Pick<LibrarySourceInput, "kind" | "path">): string {
   return `${source.kind}:${normalizedPath}`;
 }
 
-function sourceFromPath(path: string): LibrarySourceInput {
+function sourceFromLocator(
+  kind: LibrarySourceInput["kind"],
+  path: string,
+  label?: string,
+): LibrarySourceInput {
   return {
-    kind: ARCHIVE_EXTENSION.test(path) ? "archive" : "folder",
+    kind,
     path,
-    label: labelFromPath(path),
+    label: label || sourceLabelFromLocator(path),
   };
 }
 
@@ -94,11 +90,23 @@ export function AddGalleriesDialog({
   );
 
   useEffect(() => {
-    if (!open || !platform.capabilities.canDragDropFolders) return;
-    return platform.onDragDrop((paths) => {
-      stageSources(paths.map(sourceFromPath));
+    if (!open) return;
+    return useDropStore.getState().registerExclusive((batch: DropBatch) => {
+      stageSources(
+        batch.accepted.map((source) =>
+          sourceFromLocator(source.kind, source.locator, source.label),
+        ),
+      );
+      if (batch.rejected.length > 0) {
+        toast.add({
+          title: t("home:dropSummarySkippedOnly", {
+            skipped: batch.rejected.length,
+          }),
+          type: "warning",
+        });
+      }
     });
-  }, [open, platform, stageSources]);
+  }, [open, stageSources, t]);
 
   const resetAndClose = () => {
     setStaging({ items: [], duplicateCount: 0 });
@@ -112,13 +120,7 @@ export function AddGalleriesDialog({
     try {
       const paths = await platform.pickFolders();
       if (paths) {
-        stageSources(
-          paths.map((path) => ({
-            kind: "folder",
-            path,
-            label: labelFromPath(path),
-          })),
-        );
+        stageSources(paths.map((path) => sourceFromLocator("folder", path)));
       }
     } catch (nextError) {
       setError(String(nextError));
@@ -139,13 +141,7 @@ export function AddGalleriesDialog({
         paths = path ? [path] : null;
       }
       if (paths) {
-        stageSources(
-          paths.map((path) => ({
-            kind: "archive",
-            path,
-            label: labelFromPath(path),
-          })),
-        );
+        stageSources(paths.map((path) => sourceFromLocator("archive", path)));
       }
     } catch (nextError) {
       setError(String(nextError));

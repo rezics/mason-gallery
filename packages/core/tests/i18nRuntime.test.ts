@@ -33,6 +33,9 @@ describe("i18n runtime", () => {
 
     expect(resources.en.settings.general).toBe("General");
     expect(resources.en.settings.autoCheckUpdates).toBeDefined();
+    expect(resources.en.settings.externalDropBehavior).toBeDefined();
+    expect(resources.en.settings.externalDropAddAndOpen).toBeDefined();
+    expect(resources.en.settings.externalDropOpenOnly).toBeDefined();
     expect(resources.en.menu.checkForUpdates).toBeDefined();
     expect(resources.en.menu.feedback).toBeDefined();
     expect(resources.en.update.upToDate).toBeDefined();

@@ -21,5 +21,12 @@
   "webDropDivider": "or",
   "webDropTitle": "Drop a folder anywhere",
   "webEmptyHint": "Open a folder or drop one here to browse your images in a fast waterfall grid.",
-  "webBackHome": "Back home"
+  "webBackHome": "Back home",
+  "selectFolderHint": "Click to select folders",
+  "releaseToOpen": "Release to open",
+  "dropSummary": "Opened {opened}. Skipped {skipped} unsupported items.",
+  "dropSummarySkippedOnly": "Skipped {skipped} unsupported items.",
+  "chooseDropTitle": "Choose which gallery to open",
+  "chooseDropKeepOthers": "Pick one to open now. The others stay in your library.",
+  "chooseDropSessionOthers": "Pick one to open now. The others will not be kept after this session."
 }

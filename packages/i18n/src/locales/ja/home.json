@@ -21,5 +21,12 @@
   "webDropDivider": "または",
   "webDropTitle": "フォルダーをどこにでもドロップ",
   "webEmptyHint": "フォルダーを開くか、ここにドロップすると、画像をウォーターフォール表示で閲覧できます。",
-  "webBackHome": "ホームに戻る"
+  "webBackHome": "ホームに戻る",
+  "selectFolderHint": "クリックしてフォルダーを選択",
+  "releaseToOpen": "離して開く",
+  "dropSummary": "{opened} 件を開き、未対応の {skipped} 件をスキップしました。",
+  "dropSummarySkippedOnly": "未対応の {skipped} 件をスキップしました。",
+  "chooseDropTitle": "開くギャラリーを選択",
+  "chooseDropKeepOthers": "今開く項目を選んでください。ほかの項目はライブラリに残ります。",
+  "chooseDropSessionOthers": "今開く項目を選んでください。ほかの項目はこのセッションでは保持されません。"
 }

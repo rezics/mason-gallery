@@ -2,8 +2,9 @@ import { z } from "zod";
 import type { ColumnBreakpoints } from "@/types";
 import type { Settings } from "@/types/platform";
 
-export const SETTINGS_SCHEMA_VERSION = 2 as const;
+export const SETTINGS_SCHEMA_VERSION = 3 as const;
 export const SETTINGS_SCHEMA_V1_VERSION = 1 as const;
+export const SETTINGS_SCHEMA_V2_VERSION = 2 as const;
 
 const thumbnailSizesSchema = z
   .array(z.number().int().positive().max(4096))
@@ -82,16 +83,26 @@ const settingsFields = {
 };
 
 /**
- * Version 1 documents omit `autoCheckUpdates`. Unknown keys are stripped so
- * unpublished preview fields (theme presets) are dropped instead of
- * discarding the rest of a valid v1 document.
+ * Version 1 documents omit `autoCheckUpdates` and `externalDropBehavior`.
+ * Unknown keys are stripped so unpublished preview fields (theme presets)
+ * are dropped instead of discarding the rest of a valid v1 document.
  */
 const settingsV1Schema = z.object(settingsFields);
+
+/**
+ * Version 2 documents include `autoCheckUpdates` but omit
+ * `externalDropBehavior`.
+ */
+const settingsV2Schema = z.object({
+  ...settingsFields,
+  autoCheckUpdates: z.boolean(),
+});
 
 export const settingsSchema: z.ZodType<Settings> = z
   .object({
     ...settingsFields,
     autoCheckUpdates: z.boolean(),
+    externalDropBehavior: z.enum(["add-and-open", "open-only"]),
   })
   .strict();
 
@@ -134,6 +145,7 @@ const DEFAULT_SETTINGS: Settings = settingsSchema.parse({
   recentSources: [],
   favoriteSources: [],
   autoCheckUpdates: true,
+  externalDropBehavior: "add-and-open",
 });
 
 export function createDefaultSettings(): Settings {
@@ -149,9 +161,17 @@ export function createSettingsEnvelope(settings: Settings): SettingsEnvelope {
 
 function migrateV1Settings(settings: unknown): Settings {
   const parsed = settingsV1Schema.parse(settings);
-  return settingsSchema.parse({
+  return migrateV2Settings({
     ...parsed,
     autoCheckUpdates: true,
+  });
+}
+
+function migrateV2Settings(settings: unknown): Settings {
+  const parsed = settingsV2Schema.parse(settings);
+  return settingsSchema.parse({
+    ...parsed,
+    externalDropBehavior: "add-and-open",
   });
 }
 
@@ -161,6 +181,8 @@ function migrateV1Settings(settings: unknown): Settings {
  * Version 1 has no pre-release legacy branch: those key/value formats were
  * discarded by each platform adapter. Version 2 adds `autoCheckUpdates`,
  * defaulting it on so existing desktop installs keep auto-checking.
+ * Version 3 adds `externalDropBehavior`, defaulting existing users to
+ * add-and-open.
  */
 export function migrateSettingsEnvelope(value: unknown): SettingsEnvelope {
   const header = z
@@ -176,6 +198,10 @@ export function migrateSettingsEnvelope(value: unknown): SettingsEnvelope {
 
   if (header.data.version === SETTINGS_SCHEMA_V1_VERSION) {
     return createSettingsEnvelope(migrateV1Settings(header.data.settings));
+  }
+
+  if (header.data.version === SETTINGS_SCHEMA_V2_VERSION) {
+    return createSettingsEnvelope(migrateV2Settings(header.data.settings));
   }
 
   if (header.data.version !== SETTINGS_SCHEMA_VERSION) {

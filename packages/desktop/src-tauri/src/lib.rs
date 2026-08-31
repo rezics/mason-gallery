@@ -3,6 +3,7 @@ mod archive_commands;
 pub mod archive_scan;
 pub mod commands;
 pub mod database;
+mod drop;
 mod library_commands;
 mod password;
 mod server;
@@ -138,6 +139,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::scan_directory,
+            drop::classify_drop_paths,
             commands::list_directory_tree,
             commands::delete_to_trash,
             commands::open_devtools,

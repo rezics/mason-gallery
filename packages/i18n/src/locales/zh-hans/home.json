@@ -21,5 +21,12 @@
   "webDropDivider": "或",
   "webDropTitle": "把文件夹拖到任意位置",
   "webEmptyHint": "打开一个文件夹，或把文件夹拖到这里，就可以用瀑布流浏览图片。",
-  "webBackHome": "返回首页"
+  "webBackHome": "返回首页",
+  "selectFolderHint": "点击选择文件夹",
+  "releaseToOpen": "松开以打开",
+  "dropSummary": "已打开 {opened} 项，跳过 {skipped} 个不支持的文件。",
+  "dropSummarySkippedOnly": "已跳过 {skipped} 个不支持的文件。",
+  "chooseDropTitle": "选择要打开的图库",
+  "chooseDropKeepOthers": "先打开其中一项。其余项目会留在图库中。",
+  "chooseDropSessionOthers": "先打开其中一项。其余项目不会保留。"
 }

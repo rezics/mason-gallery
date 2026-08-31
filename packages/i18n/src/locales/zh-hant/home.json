@@ -21,5 +21,12 @@
   "webDropDivider": "或",
   "webDropTitle": "將資料夾拖到任意位置",
   "webEmptyHint": "開啟一個資料夾，或將資料夾拖到這裡，就能用瀑布流瀏覽圖片。",
-  "webBackHome": "返回首頁"
+  "webBackHome": "返回首頁",
+  "selectFolderHint": "點擊選擇資料夾",
+  "releaseToOpen": "放開以開啟",
+  "dropSummary": "已開啟 {opened} 項，略過 {skipped} 個不支援的檔案。",
+  "dropSummarySkippedOnly": "已略過 {skipped} 個不支援的檔案。",
+  "chooseDropTitle": "選擇要開啟的圖庫",
+  "chooseDropKeepOthers": "先開啟其中一項。其餘項目會留在圖庫中。",
+  "chooseDropSessionOthers": "先開啟其中一項。其餘項目不會保留。"
 }

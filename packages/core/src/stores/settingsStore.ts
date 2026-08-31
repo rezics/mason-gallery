@@ -9,6 +9,7 @@ import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
 import type {
   CacheCleanupStrategy,
   CachePolicy,
+  ExternalDropBehavior,
   FolderThumbnailsMode,
   GallerySourceShortcut,
   PasswordStorageMode,
@@ -39,6 +40,7 @@ interface SettingsState extends Settings {
   addRecentSource: (source: GallerySourceShortcut) => void;
   toggleFavoriteSource: (source: GallerySourceShortcut) => void;
   setAutoCheckUpdates: (value: boolean) => void;
+  setExternalDropBehavior: (value: ExternalDropBehavior) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -80,6 +82,7 @@ function toPersistedSettings(state: SettingsState): Settings {
     recentSources: state.recentSources,
     favoriteSources: state.favoriteSources,
     autoCheckUpdates: state.autoCheckUpdates,
+    externalDropBehavior: state.externalDropBehavior,
   });
 }
 
@@ -217,6 +220,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setAutoCheckUpdates: (autoCheckUpdates) => {
     set({ autoCheckUpdates });
+    persist(get());
+  },
+  setExternalDropBehavior: (externalDropBehavior) => {
+    set({ externalDropBehavior });
     persist(get());
   },
   toggleFavoriteSource: (source) => {

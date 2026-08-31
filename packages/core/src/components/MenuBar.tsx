@@ -85,7 +85,7 @@ export default function MenuBar({
     const path = await platform.pickArchive?.();
     if (path) {
       navigate("/gallery");
-      void startArchiveScan(path);
+      void startArchiveScan(path, { libraryEffect: "ensure" });
     }
   };
 

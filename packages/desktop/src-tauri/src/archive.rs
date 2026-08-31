@@ -146,7 +146,8 @@ pub fn compute_entry_hash(entry_path: &str) -> String {
     format!("{:016x}", hasher.finish())
 }
 
-/// Check if a file extension is a supported archive
+/// Check if a file extension is a supported archive.
+/// Keep in sync with `packages/core/src/lib/archiveFormats.ts`.
 pub fn is_archive_extension(ext: &str) -> bool {
     matches!(
         ext.to_lowercase().as_str(),

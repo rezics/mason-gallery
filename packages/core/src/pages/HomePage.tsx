@@ -325,8 +325,12 @@ export default function HomePage() {
       {showDropZone ? (
         <div className="min-h-0 flex-1 overflow-auto">
           <DropZone
-            onFoldersSelected={startScan}
-            onArchiveSelected={startArchiveScan}
+            onFoldersSelected={(paths) => {
+              void startScan(paths, { libraryEffect: "ensure" });
+            }}
+            onArchiveSelected={(path) => {
+              void startArchiveScan(path, { libraryEffect: "ensure" });
+            }}
           />
         </div>
       ) : (

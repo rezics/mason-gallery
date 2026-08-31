@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/native-select";
 import { useI18n } from "@/i18n";
 import { startArchiveScan, startScan } from "@/lib/scanActions";
+import { useDropStore } from "@/stores/dropStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import type { LibrarySource, LibrarySourceKind } from "@/types/platform";
 
@@ -89,11 +90,18 @@ export default function LibraryPage() {
   const openSource = (source: LibrarySource, rescan = false) => {
     navigate("/gallery");
     if (source.kind === "archive") {
-      void startArchiveScan(source.path);
+      void startArchiveScan(source.path, { libraryEffect: "touch" });
+    } else if (rescan) {
+      void startScan([source.path], { isRescan: true });
     } else {
-      void startScan([source.path], rescan);
+      void startScan([source.path], { libraryEffect: "touch" });
     }
   };
+
+  useEffect(() => {
+    if (removeIds.length === 0 && renameSource === null) return;
+    return useDropStore.getState().beginBlock();
+  }, [removeIds.length, renameSource]);
 
   const title =
     mode === "favorites"
