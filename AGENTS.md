@@ -80,7 +80,3 @@ Hash-based routing via `wouter`: `/` (image grid), `/about` (about page).
 - **Formatter/Linter**: Biome — 2-space indent, double quotes, semicolons
 - **TypeScript**: Strict mode, ES2022 target, bundler module resolution
 - **Path alias**: `@/` maps to `packages/core/src/` in both Vite configs and tsconfigs
-
-## OpenSpec Workflow
-
-The project uses OpenSpec (`openspec/`) for spec-driven development. Specs live in `openspec/specs/`, changes in `openspec/changes/`. Use the `/opsx:propose`, `/opsx:apply`, `/opsx:explore`, and `/opsx:archive` slash commands to drive the workflow.

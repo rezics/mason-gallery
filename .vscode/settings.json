@@ -3,7 +3,6 @@
         "dotenv",
         "eslintcache",
         "lightbox",
-        "openspec",
         "reflog",
         "shortlog",
         "Tauri",
