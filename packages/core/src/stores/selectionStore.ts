@@ -29,6 +29,7 @@ interface SelectionState {
   selectMany: (entries: SelectableFileIdentity[]) => void;
   clearPackage: (packageKey: string) => void;
   clearAll: () => void;
+  removeByEntryKeys: (entryKeys: string[]) => void;
   markSeen: (entries: SelectableFileIdentity[], seenAt?: string) => void;
   applyMoveResults: (
     results: MoveItemResult[],
@@ -325,6 +326,20 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
     }));
   },
 
+  removeByEntryKeys: (entryKeys) => {
+    if (entryKeys.length === 0) return;
+    const drop = new Set(entryKeys);
+    mutateIfReady((state) => {
+      const entries = state.entries;
+      let changed = false;
+      for (const key of drop) {
+        if (entries.delete(key)) changed = true;
+      }
+      if (!changed) return state;
+      return { ...state, entries };
+    });
+  },
+
   markSeen: (identities, seenAt = nowIso()) => {
     if (identities.length === 0) return;
     mutateIfReady((state) => {
@@ -349,6 +364,8 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
     });
   },
 
+  // TODO: Live moves drop relocated keys instead of calling this. Restore
+  // selection onto destination identities once remapping is reliable.
   applyMoveResults: (results, knownRoots) => {
     const moved = results.filter(
       (result): result is Extract<MoveItemResult, { status: "moved" }> =>

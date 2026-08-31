@@ -149,6 +149,14 @@ describe("selection store", () => {
     expect(useSelectionStore.getState().entries.size).toBe(0);
   });
 
+  test("removeByEntryKeys drops only the requested identities", async () => {
+    createSelectionPlatform();
+    await useSelectionStore.getState().hydrate();
+    useSelectionStore.getState().selectMany([identity("a"), identity("b")]);
+    useSelectionStore.getState().removeByEntryKeys(["a", "missing"]);
+    expect([...useSelectionStore.getState().entries.keys()]).toEqual(["b"]);
+  });
+
   test("rapid toggles persist the final intent", async () => {
     const { stored } = createSelectionPlatform();
     await useSelectionStore.getState().hydrate();

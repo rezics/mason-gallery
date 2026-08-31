@@ -117,7 +117,67 @@ export function coordinateGridAfterMove(results: MoveItemResult[]): void {
 export function applySuccessfulMoveToSelection(
   results: MoveItemResult[],
 ): void {
-  useSelectionStore.getState().applyMoveResults(results, knownPackageRoots());
+  const relocatedKeys = results
+    .filter((result) => result.status === "moved")
+    .map((result) => result.entryKey);
+  if (relocatedKeys.length === 0) return;
+  // TODO: Restore these identities onto destination paths with
+  // applyMoveResults. Remapping after a move is not reliable yet, so a
+  // relocated file is dropped from the selection and unchanged paths stay.
+  useSelectionStore.getState().removeByEntryKeys(relocatedKeys);
+}
+
+export function coordinateGridAfterDelete(deletedPaths: string[]): void {
+  if (deletedPaths.length === 0) return;
+
+  const removed = new Set(deletedPaths);
+  const viewer = useViewerStore.getState();
+  const current = viewer.images[viewer.currentIndex];
+  if (current && removed.has(current.source) && viewer.isViewerOpen) {
+    viewer.closeViewer();
+  }
+
+  for (const image of viewer.images) {
+    if (removed.has(image.source)) {
+      deleteCachedThumbnails(image.sourceId, image.relativePath);
+    }
+  }
+
+  viewer.mergeImages([], removed);
+  const remaining = useViewerStore.getState().images;
+  useViewerStore.setState({ totalCount: remaining.length });
+  useAppStore.setState({
+    folderImageCounts: computeBatchFolderCounts(remaining),
+  });
+}
+
+export function applySuccessfulDeleteToSelection(entryKeys: string[]): void {
+  useSelectionStore.getState().removeByEntryKeys(entryKeys);
+}
+
+export async function deleteSelectedFiles(
+  items: Array<{ entryKey: string; locator: string }>,
+  deleteFile: (path: string) => Promise<void>,
+): Promise<{
+  deletedKeys: string[];
+  deletedPaths: string[];
+  failed: number;
+}> {
+  const deletedKeys: string[] = [];
+  const deletedPaths: string[] = [];
+  let failed = 0;
+
+  for (const item of items) {
+    try {
+      await deleteFile(item.locator);
+      deletedKeys.push(item.entryKey);
+      deletedPaths.push(item.locator);
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return { deletedKeys, deletedPaths, failed };
 }
 
 export function entryDisplayName(entry: {

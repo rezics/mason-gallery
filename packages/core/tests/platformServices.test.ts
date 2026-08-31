@@ -55,6 +55,18 @@ describe("platform service capabilities", () => {
     expect(shouldShowMultiselectEntry(webLikePlatform, [selectable])).toBe(
       false,
     );
-    expect(shouldShowSelectionChrome(webLikePlatform, true, 3)).toBe(false);
+    expect(shouldShowSelectionChrome(webLikePlatform, true)).toBe(false);
+  });
+
+  test("hides selection chrome when multi-select mode is off", () => {
+    const desktopLike = {
+      ...webLikePlatform,
+      capabilities: {
+        ...webLikePlatform.capabilities,
+        canBatchMoveFiles: true,
+      },
+    } satisfies PlatformService;
+    expect(shouldShowSelectionChrome(desktopLike, false)).toBe(false);
+    expect(shouldShowSelectionChrome(desktopLike, true)).toBe(true);
   });
 });

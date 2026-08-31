@@ -2,13 +2,7 @@ import { Check, FolderInput, ListChecks, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import SelectionPanel from "@/components/SelectionPanel";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Progress } from "@/components/ui/progress";
@@ -16,10 +10,12 @@ import { toast } from "@/components/ui/toast";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import {
+  applySuccessfulDeleteToSelection,
   applySuccessfulMoveToSelection,
   availableSelectedEntries,
+  coordinateGridAfterDelete,
   coordinateGridAfterMove,
-  currentPackageKeys,
+  deleteSelectedFiles,
   entryDisplayName,
   selectedEntries,
 } from "@/lib/selectionActions";
@@ -29,6 +25,7 @@ import type {
   MoveConflictPolicy,
   MoveItemResult,
   MoveProgress,
+  PersistedSelectionEntry,
   SelectableFileProbe,
 } from "@/types/platform";
 
@@ -70,8 +67,6 @@ export default function SelectionActionBar({
   const platform = usePlatform();
   const modeEnabled = useSelectionStore((state) => state.modeEnabled);
   const selectedCount = useSelectionStore((state) => state.entries.size);
-  const clearPackage = useSelectionStore((state) => state.clearPackage);
-  const clearAll = useSelectionStore((state) => state.clearAll);
   const [panelOpen, setPanelOpen] = useState(false);
   const [probes, setProbes] = useState<SelectableFileProbe[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -84,12 +79,16 @@ export default function SelectionActionBar({
   const [operationId, setOperationId] = useState<string | null>(null);
   const [movableCount, setMovableCount] = useState(0);
   const [unavailableCount, setUnavailableCount] = useState(0);
-
-  const visible = shouldShowSelectionChrome(
-    platform,
-    modeEnabled,
-    selectedCount,
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PersistedSelectionEntry[]>(
+    [],
   );
+  const [deleteUnavailableCount, setDeleteUnavailableCount] = useState(0);
+  const canDelete =
+    platform.capabilities.canDeleteFiles && !!platform.deleteFile;
+
+  const visible = shouldShowSelectionChrome(platform, modeEnabled);
 
   const refreshProbes = useCallback(async () => {
     const entries = selectedEntries();
@@ -108,6 +107,68 @@ export default function SelectionActionBar({
     await refreshProbes();
     setPanelOpen(true);
   }, [refreshProbes]);
+
+  const startDelete = useCallback(async () => {
+    if (!canDelete) return;
+    const nextProbes = await refreshProbes();
+    const entries = selectedEntries();
+    const deletable = availableSelectedEntries(entries, nextProbes);
+    setPendingDelete(deletable);
+    setDeleteUnavailableCount(entries.length - deletable.length);
+    if (deletable.length === 0) {
+      toast.add({ title: t("selection:nothingToDelete"), type: "warning" });
+      return;
+    }
+    setDeleteConfirmOpen(true);
+  }, [canDelete, refreshProbes, t]);
+
+  const executeDelete = useCallback(async () => {
+    if (!canDelete || !platform.deleteFile) return;
+    const items =
+      pendingDelete.length > 0
+        ? pendingDelete
+        : availableSelectedEntries(
+            selectedEntries(),
+            probes.length > 0 ? probes : await refreshProbes(),
+          );
+    if (items.length === 0) {
+      setDeleteConfirmOpen(false);
+      toast.add({ title: t("selection:nothingToDelete"), type: "warning" });
+      return;
+    }
+    setDeleteConfirmOpen(false);
+    setDeleting(true);
+    try {
+      const { deletedKeys, deletedPaths, failed } = await deleteSelectedFiles(
+        items,
+        platform.deleteFile,
+      );
+      applySuccessfulDeleteToSelection(deletedKeys);
+      coordinateGridAfterDelete(deletedPaths);
+      if (failed === 0) {
+        toast.add({
+          title: t("selection:deleteSuccessCount", {
+            count: deletedKeys.length,
+          }),
+          type: "success",
+        });
+      } else {
+        toast.add({
+          title: t("selection:deletePartial", {
+            deleted: deletedKeys.length,
+            failed,
+          }),
+          type: deletedKeys.length === 0 ? "error" : "warning",
+        });
+      }
+    } catch (error) {
+      console.error("Batch delete failed:", error);
+      toast.add({ title: t("selection:failIo"), type: "error" });
+    } finally {
+      setDeleting(false);
+      setPendingDelete([]);
+    }
+  }, [canDelete, pendingDelete, platform.deleteFile, probes, refreshProbes, t]);
 
   const startMove = useCallback(async () => {
     if (!platform.pickMoveDestination || !platform.probeSelectableFiles) return;
@@ -223,11 +284,23 @@ export default function SelectionActionBar({
           size="sm"
           variant="outline"
           onClick={() => void startMove()}
-          disabled={selectedCount === 0 || moving}
+          disabled={selectedCount === 0 || moving || deleting}
         >
           <FolderInput data-icon="inline-start" />
           {t("selection:moveTo")}
         </Button>
+        {canDelete && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void startDelete()}
+            disabled={selectedCount === 0 || moving || deleting}
+          >
+            <Trash2 data-icon="inline-start" />
+            {t("selection:delete")}
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"
@@ -237,35 +310,6 @@ export default function SelectionActionBar({
           <ListChecks data-icon="inline-start" />
           {t("selection:viewSelected")}
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={selectedCount === 0}
-              />
-            }
-          >
-            <Trash2 data-icon="inline-start" />
-            {t("selection:clear")}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                for (const packageKey of currentPackageKeys()) {
-                  clearPackage(packageKey);
-                }
-              }}
-            >
-              {t("selection:clearCurrentGallery")}
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={() => clearAll()}>
-              {t("selection:clearAllGalleries")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       <SelectionPanel
@@ -273,6 +317,31 @@ export default function SelectionActionBar({
         onOpenChange={setPanelOpen}
         probes={probes}
       />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title={t("selection:deleteConfirmTitle")}
+        cancelLabel={t("selection:cancel")}
+        confirmLabel={t("selection:confirmDelete")}
+        destructive
+        onCancel={() => setDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          void executeDelete();
+        }}
+      >
+        <p>
+          {t("selection:deleteConfirmSummary", {
+            count: pendingDelete.length,
+          })}
+        </p>
+        {deleteUnavailableCount > 0 && (
+          <p>
+            {t("selection:deleteConfirmUnavailable", {
+              count: deleteUnavailableCount,
+            })}
+          </p>
+        )}
+      </ConfirmDialog>
 
       <Dialog
         open={confirmOpen}

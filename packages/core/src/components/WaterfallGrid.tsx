@@ -129,7 +129,7 @@ function ImageCell({
       : { ...data, thumbnails: liveThumbnails };
   const selectable = data.selectableFile != null;
   const selectMode = modeEnabled && selectable;
-  const showSelected = selectable && selected;
+  const showSelected = selectMode && selected;
 
   const hookEnabled =
     folderThumbnails === "lazy" &&

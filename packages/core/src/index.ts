@@ -61,9 +61,12 @@ export {
   startScan,
 } from "./lib/scanActions";
 export {
+  applySuccessfulDeleteToSelection,
   applySuccessfulMoveToSelection,
+  coordinateGridAfterDelete,
   coordinateGridAfterMove,
   currentPackageKeys,
+  deleteSelectedFiles,
   knownPackageRoots,
   visibleSelectableIdentities,
 } from "./lib/selectionActions";

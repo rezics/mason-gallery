@@ -59,10 +59,6 @@ export function shouldShowMultiselectEntry(
 export function shouldShowSelectionChrome(
   platform: PlatformService,
   modeEnabled: boolean,
-  selectedCount: number,
 ): boolean {
-  return (
-    platform.capabilities.canBatchMoveFiles &&
-    (modeEnabled || selectedCount > 0)
-  );
+  return platform.capabilities.canBatchMoveFiles && modeEnabled;
 }

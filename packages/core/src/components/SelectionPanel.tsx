@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -52,6 +54,7 @@ export default function SelectionPanel({
 }) {
   const t = useI18n();
   const entries = useSelectionStore((state) => state.entries);
+  const clearAll = useSelectionStore((state) => state.clearAll);
   const selected = useMemo(() => [...entries.values()], [entries]);
   const roots = knownPackageRoots();
   const availableLocators = useMemo(
@@ -69,7 +72,7 @@ export default function SelectionPanel({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-[420px] max-w-[calc(100vw-1.5rem)] flex-col pt-9">
-        <SheetHeader className="border-b px-5 py-4">
+        <SheetHeader className="shrink-0 border-b px-5 py-4">
           <SheetTitle>{t("selection:selectedPanelTitle")}</SheetTitle>
           <SheetDescription>
             {t("selection:selectedCount", { count: selected.length })}
@@ -131,6 +134,17 @@ export default function SelectionPanel({
             </div>
           )}
         </div>
+        <SheetFooter className="shrink-0 border-t bg-popover p-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={selected.length === 0}
+            onClick={() => clearAll()}
+          >
+            {t("selection:clearSelection")}
+          </Button>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

@@ -10,6 +10,7 @@ import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import { applySuccessfulDeleteToSelection } from "@/lib/selectionActions";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 
@@ -77,6 +78,9 @@ export default function ImageViewer() {
     if (!img) return;
     try {
       await platform.deleteFile(img.source);
+      if (img.selectableFile) {
+        applySuccessfulDeleteToSelection([img.selectableFile.entryKey]);
+      }
       removeImage(currentIndex);
       if (showDeleteToast) {
         toast.add({ title: t("viewer:deleteSuccess"), type: "success" });
