@@ -25,9 +25,7 @@ function PublicWebHeaderContent({ locale, page }: PublicWebHeaderProps) {
   const content = siteContent[locale];
   const homePath = getLocalizedPath(locale, "home");
   const aboutPath = getLocalizedPath(locale, "about");
-  const preferencesPath = `/app/settings/general/${
-    locale === "en" ? "" : `?lang=${locale}`
-  }`;
+  const preferencesPath = `/app/settings/general/?lang=${locale}`;
 
   useEffect(() => {
     if (hydrated && language !== locale) setLanguage(locale);

@@ -476,5 +476,5 @@ export function getLocalizedPath(
   page: "home" | "about",
 ): string {
   const suffix = page === "home" ? "" : "about/";
-  return locale === "en" ? `/${suffix}` : `/${locale}/${suffix}`;
+  return `/${locale}/${suffix}`;
 }

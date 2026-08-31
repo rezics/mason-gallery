@@ -17,6 +17,10 @@ interface SettingsRow {
   envelope: SettingsEnvelope;
 }
 
+export type LoadedWebSettings =
+  | { source: "persisted"; settings: Settings }
+  | { source: "default"; settings: Settings };
+
 export interface DirectoryHandleRow {
   position: number;
   sourcePath: string;
@@ -112,25 +116,27 @@ async function withDisposableRecovery<T>(
   }
 }
 
-export async function loadWebSettings(): Promise<Settings> {
+export async function loadWebSettings(): Promise<LoadedWebSettings> {
   let row: SettingsRow | undefined;
   try {
     row = await withDisposableRecovery((db) => db.settings.get("current"));
   } catch {
-    return createDefaultSettings();
+    return { source: "default", settings: createDefaultSettings() };
   }
 
-  if (!row) return createDefaultSettings();
+  if (!row) {
+    return { source: "default", settings: createDefaultSettings() };
+  }
 
   try {
     const migrated = migrateSettingsEnvelope(row.envelope);
     if (migrated.version !== row.envelope.version) {
       await saveWebSettings(migrated.settings);
     }
-    return migrated.settings;
+    return { source: "persisted", settings: migrated.settings };
   } catch {
     await resetWebPersistence();
-    return createDefaultSettings();
+    return { source: "default", settings: createDefaultSettings() };
   }
 }
 

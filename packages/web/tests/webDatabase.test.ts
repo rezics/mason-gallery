@@ -32,7 +32,20 @@ describe("disposable browser persistence", () => {
 
     await saveWebSettings(settings);
 
-    expect((await loadWebSettings()).theme).toBe("dark");
+    const loaded = await loadWebSettings();
+    expect(loaded.source).toBe("persisted");
+    expect(loaded.settings.theme).toBe("dark");
+  });
+
+  test("distinguishes default settings from an explicit saved preference", async () => {
+    const initial = await loadWebSettings();
+    expect(initial.source).toBe("default");
+    expect(initial.settings.language).toBe("en");
+
+    await saveWebSettings(initial.settings);
+    const saved = await loadWebSettings();
+    expect(saved.source).toBe("persisted");
+    expect(saved.settings.language).toBe("en");
   });
 
   test("stores serializable directory handles in IndexedDB order", async () => {
@@ -109,14 +122,16 @@ describe("disposable browser persistence", () => {
     raw.close();
 
     const loaded = await loadWebSettings();
-    expect(loaded.autoCheckUpdates).toBe(true);
-    expect(loaded.externalDropBehavior).toBe("add-and-open");
-    expect(loaded.language).toBe("ja");
-    expect(loaded.theme).toBe("light");
+    expect(loaded.source).toBe("persisted");
+    expect(loaded.settings.autoCheckUpdates).toBe(true);
+    expect(loaded.settings.externalDropBehavior).toBe("add-and-open");
+    expect(loaded.settings.language).toBe("ja");
+    expect(loaded.settings.theme).toBe("light");
 
     const roundTrip = await loadWebSettings();
-    expect(roundTrip.autoCheckUpdates).toBe(true);
-    expect(roundTrip.language).toBe("ja");
+    expect(roundTrip.source).toBe("persisted");
+    expect(roundTrip.settings.autoCheckUpdates).toBe(true);
+    expect(roundTrip.settings.language).toBe("ja");
   });
 
   test("rebuilds the whole database for an incompatible settings schema", async () => {
@@ -132,6 +147,9 @@ describe("disposable browser persistence", () => {
     });
     raw.close();
 
-    expect(await loadWebSettings()).toEqual(createDefaultSettings());
+    expect(await loadWebSettings()).toEqual({
+      source: "default",
+      settings: createDefaultSettings(),
+    });
   });
 });

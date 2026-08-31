@@ -17,7 +17,14 @@ export default defineConfig({
   integrations: [
     react(),
     sitemap({
-      filter: (page) => !new URL(page).pathname.startsWith("/app/"),
+      filter: (page) => {
+        const pathname = new URL(page).pathname;
+        return (
+          !pathname.startsWith("/app/") &&
+          pathname !== "/" &&
+          pathname !== "/about/"
+        );
+      },
       i18n: {
         defaultLocale: "en",
         locales: {
@@ -33,7 +40,7 @@ export default defineConfig({
     defaultLocale: "en",
     locales: ["en", "zh-hans", "zh-hant", "ja"],
     routing: {
-      prefixDefaultLocale: false,
+      prefixDefaultLocale: true,
     },
   },
   vite: {

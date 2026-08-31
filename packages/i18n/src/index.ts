@@ -1,3 +1,4 @@
+import type { SupportedLanguage } from "./locales";
 import enAbout from "./locales/en/about.json";
 import enActions from "./locales/en/actions.json";
 import enArchive from "./locales/en/archive.json";
@@ -51,6 +52,18 @@ import zhHantSidebar from "./locales/zh-hant/sidebar.json";
 import zhHantUpdate from "./locales/zh-hant/update.json";
 import zhHantViewer from "./locales/zh-hant/viewer.json";
 
+export {
+  fallbackLanguage,
+  isSupportedLanguage,
+  languageLabels,
+  matchSupportedLanguage,
+  negotiateLanguage,
+  resolvePreferredLanguage,
+  resolveSupportedLanguage,
+  type SupportedLanguage,
+  supportedLanguages,
+} from "./locales";
+
 export const namespaces = [
   "common",
   "menu",
@@ -68,58 +81,10 @@ export const namespaces = [
 ] as const;
 
 export const defaultNamespace = "common";
-export const supportedLanguages = ["en", "zh-hans", "zh-hant", "ja"] as const;
-export const fallbackLanguage = "en";
 
 export type Namespace = (typeof namespaces)[number];
-export type SupportedLanguage = (typeof supportedLanguages)[number];
 export type NamespaceMessages = Record<string, string>;
 export type TranslationResource = Record<Namespace, NamespaceMessages>;
-
-export const languageLabels: Record<SupportedLanguage, string> = {
-  en: "English",
-  "zh-hans": "简体中文",
-  "zh-hant": "繁體中文",
-  ja: "日本語",
-};
-
-const supportedLanguageSet = new Set<string>(supportedLanguages);
-
-export function isSupportedLanguage(
-  value: unknown,
-): value is SupportedLanguage {
-  return typeof value === "string" && supportedLanguageSet.has(value);
-}
-
-export function resolvePreferredLanguage(
-  values: Iterable<unknown>,
-  defaultLanguage: SupportedLanguage = fallbackLanguage,
-): SupportedLanguage {
-  for (const value of values) {
-    if (typeof value !== "string") continue;
-
-    const normalized = value.toLowerCase().replace("_", "-");
-    if (isSupportedLanguage(normalized)) return normalized;
-
-    const [language, region] = normalized.split("-");
-    if (language === "zh") {
-      return region === "tw" || region === "hk" || region === "mo"
-        ? "zh-hant"
-        : "zh-hans";
-    }
-    if (language === "ja") return "ja";
-    if (language === "en") return "en";
-  }
-
-  return defaultLanguage;
-}
-
-export function resolveSupportedLanguage(
-  value: unknown,
-  defaultLanguage: SupportedLanguage = fallbackLanguage,
-): SupportedLanguage {
-  return isSupportedLanguage(value) ? value : defaultLanguage;
-}
 
 export const resources: Record<SupportedLanguage, TranslationResource> = {
   en: {

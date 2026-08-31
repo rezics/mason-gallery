@@ -20,13 +20,16 @@ describe("web locale routes", () => {
     expect(getLocalizedWebPath("/about", "zh-hans")).toBe(
       "/zh-hans/about/",
     );
-    expect(getLocalizedWebPath("/", "en")).toBe("/");
-    expect(getLocalizedWebPath("/about", undefined)).toBe("/about/");
+    expect(getLocalizedWebPath("/", "en")).toBe("/en/");
+    expect(getLocalizedWebPath("/about", "en")).toBe("/en/about/");
   });
 
   test("prefers URL locale, then stored language, then browser language", () => {
     expect(getInitialWebLanguage("/zh-hant/about", "en")).toBe("zh-hant");
-    expect(getInitialWebLanguage("/", "ja")).toBe("ja");
+    expect(getInitialWebLanguage("/app/", "ja")).toBe("ja");
+    expect(
+      getInitialWebLanguage("/app/", undefined, "", ["zh-TW", "en-US"]),
+    ).toBe("zh-hant");
   });
 
   test("uses an explicit app language query before stored preferences", () => {

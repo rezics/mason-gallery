@@ -1,4 +1,11 @@
+import { negotiateLanguage } from "../packages/i18n/src/locales";
+
 const R2_ROUTE_PREFIX = "/r2/";
+
+const PUBLIC_ENTRY_PAGES = new Map<string, "home" | "about">([
+  ["/", "home"],
+  ["/about", "about"],
+]);
 
 type AssetBinding = {
   fetch(request: Request): Promise<Response>;
@@ -36,8 +43,37 @@ function getR2Key(url: URL, publicPrefix: string): string | null {
   return key;
 }
 
+function normalizePublicPath(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+}
+
+export function getLanguageRedirect(request: Request): Response | undefined {
+  if (request.method !== "GET" && request.method !== "HEAD") return undefined;
+
+  const requestUrl = new URL(request.url);
+  const page = PUBLIC_ENTRY_PAGES.get(normalizePublicPath(requestUrl.pathname));
+  if (!page) return undefined;
+
+  const locale = negotiateLanguage(request.headers.get("accept-language"));
+  const suffix = page === "home" ? "" : "about/";
+  const location = new URL(`/${locale}/${suffix}`, requestUrl);
+  location.search = requestUrl.search;
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      "Cache-Control": "no-store",
+      Location: location.toString(),
+      Vary: "Accept-Language",
+    },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const languageRedirect = getLanguageRedirect(request);
+    if (languageRedirect) return languageRedirect;
+
     const url = new URL(request.url);
     const key = getR2Key(url, env.R2_PUBLIC_PREFIX);
 

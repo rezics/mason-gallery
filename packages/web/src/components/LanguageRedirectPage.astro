@@ -1,0 +1,72 @@
+---
+import {
+  fallbackLanguage,
+  supportedLanguages,
+} from "@mason-gallery/i18n/locales";
+import {
+  getLocalizedPath,
+  SITE_ORIGIN,
+  siteContent,
+} from "../content/siteContent";
+
+interface Props {
+  page: "home" | "about";
+}
+
+const { page } = Astro.props;
+const defaultPath = getLocalizedPath(fallbackLanguage, page);
+const defaultUrl = new URL(defaultPath, SITE_ORIGIN).toString();
+const content = siteContent[fallbackLanguage];
+---
+
+<!doctype html>
+<html lang={content.htmlLang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="description" content={content.description} />
+    <link rel="canonical" href={defaultUrl} />
+    {
+      supportedLanguages.map((locale) => (
+        <link
+          data-locale={locale}
+          rel="alternate"
+          hreflang={siteContent[locale].htmlLang}
+          href={new URL(getLocalizedPath(locale, page), SITE_ORIGIN).toString()}
+        />
+      ))
+    }
+    <link rel="alternate" hreflang="x-default" href={defaultUrl} />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/logo/logo.svg" type="image/svg+xml" />
+    <script>
+      import {
+        fallbackLanguage,
+        resolvePreferredLanguage,
+      } from "@mason-gallery/i18n/locales";
+
+      const languages = navigator.languages?.length
+        ? navigator.languages
+        : [navigator.language];
+      const locale = resolvePreferredLanguage(languages);
+      const alternate = document.querySelector<HTMLLinkElement>(
+        `link[data-locale="${locale}"]`,
+      );
+      const fallback = document.querySelector<HTMLLinkElement>(
+        `link[data-locale="${fallbackLanguage}"]`,
+      );
+      const target = alternate?.href ?? fallback?.href;
+      if (target) {
+        const targetUrl = new URL(target);
+        targetUrl.search = window.location.search;
+        window.location.replace(targetUrl);
+      }
+    </script>
+    <noscript><meta http-equiv="refresh" content={`0; url=${defaultPath}`} /></noscript>
+    <title>{content.title}</title>
+  </head>
+  <body>
+    <a href={defaultPath}>Mason Gallery</a>
+  </body>
+</html>

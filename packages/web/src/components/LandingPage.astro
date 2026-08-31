@@ -44,9 +44,7 @@ const structuredData = {
 };
 const homePath = getLocalizedPath(locale, "home");
 const aboutPath = getLocalizedPath(locale, "about");
-const preferencesPath = `/app/settings/gallery/${
-  locale === "en" ? "" : `?lang=${locale}`
-}`;
+const preferencesPath = `/app/settings/gallery/?lang=${locale}`;
 ---
 
 <BaseLayout

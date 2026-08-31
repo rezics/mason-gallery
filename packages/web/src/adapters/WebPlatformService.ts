@@ -458,12 +458,13 @@ export const webPlatformService: PlatformService = {
   },
 
   async loadSettings() {
-    const settings = await loadWebSettings();
+    const loaded = await loadWebSettings();
+    const { settings } = loaded;
     return {
       ...settings,
       language: getInitialWebLanguage(
         window.location.pathname,
-        settings.language,
+        loaded.source === "persisted" ? settings.language : undefined,
         window.location.search,
       ),
     };

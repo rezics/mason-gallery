@@ -1,5 +1,5 @@
 ---
-import { siteContent } from "../content/siteContent";
+import { getLocalizedPath, siteContent } from "../content/siteContent";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
 const content = siteContent.en;
@@ -27,7 +27,7 @@ const content = siteContent.en;
         {content.notFoundDescription}
       </p>
       <a
-        href="/"
+        href={getLocalizedPath("en", "home")}
         class="mt-8 inline-flex h-12 items-center justify-center rounded-md bg-primary px-7 font-semibold text-primary-foreground transition hover:bg-primary/90"
       >
         {content.goHome}

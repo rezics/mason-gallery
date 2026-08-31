@@ -18,9 +18,9 @@ describe("static site content", () => {
     }
   });
 
-  test("keeps English unprefixed and localizes other public routes", () => {
-    expect(getLocalizedPath("en", "home")).toBe("/");
-    expect(getLocalizedPath("en", "about")).toBe("/about/");
+  test("uses locale-prefixed canonical public routes", () => {
+    expect(getLocalizedPath("en", "home")).toBe("/en/");
+    expect(getLocalizedPath("en", "about")).toBe("/en/about/");
     expect(getLocalizedPath("zh-hans", "home")).toBe("/zh-hans/");
     expect(getLocalizedPath("zh-hant", "about")).toBe(
       "/zh-hant/about/",
