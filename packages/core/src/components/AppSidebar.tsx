@@ -4,14 +4,17 @@ import {
   Database,
   Images,
   Library,
+  PanelLeftClose,
   Settings,
   Star,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/stores/appStore";
 
 function SidebarLink({
   href,
@@ -49,6 +52,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const t = useI18n();
   const platform = usePlatform();
   const [location] = useLocation();
+  const setAppSidebarOpen = useAppStore((s) => s.setAppSidebarOpen);
   const libraryRoot =
     location === "/" || location === "/library" || location === "/library/";
 
@@ -125,9 +129,25 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </section>
       </nav>
 
-      <p className="border-t border-sidebar-border px-3 pt-3 text-xs text-sidebar-foreground/45">
-        {t("about:version")} 2.1.0
-      </p>
+      <div className="flex items-center gap-2 border-t border-sidebar-border px-1 pt-3">
+        <p className="min-w-0 flex-1 truncate px-2 text-xs text-sidebar-foreground/45">
+          {t("about:version")} 2.1.0
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="text-sidebar-foreground/45 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          title={t("sidebar:collapse")}
+          aria-label={t("sidebar:collapse")}
+          onClick={() => {
+            setAppSidebarOpen(false);
+            onNavigate?.();
+          }}
+        >
+          <PanelLeftClose />
+        </Button>
+      </div>
     </div>
   );
 }

@@ -12,17 +12,21 @@ import {
 } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useI18n } from "@/i18n";
+import { useAppStore } from "@/stores/appStore";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const t = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAppSidebarOpen = useAppStore((s) => s.isAppSidebarOpen);
 
   return (
     <TooltipProvider>
       <div className="flex h-full min-w-0 overflow-hidden bg-background">
-        <aside className="hidden h-full w-[232px] shrink-0 border-r border-sidebar-border md:block">
-          <AppSidebar />
-        </aside>
+        {isAppSidebarOpen ? (
+          <aside className="hidden h-full w-[232px] shrink-0 border-r border-sidebar-border md:block">
+            <AppSidebar />
+          </aside>
+        ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 md:hidden">

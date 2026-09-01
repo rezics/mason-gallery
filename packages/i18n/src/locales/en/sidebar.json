@@ -1,5 +1,6 @@
 {
   "folders": "Folders",
   "showAll": "Show All",
-  "noSubfolders": "No subfolders"
+  "noSubfolders": "No subfolders",
+  "collapse": "Collapse sidebar"
 }

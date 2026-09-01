@@ -7,6 +7,8 @@ import {
   Info,
   MessageSquare,
   MonitorCog,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   RotateCcw,
   Settings,
@@ -66,6 +68,8 @@ export default function MenuBar({
   const platform = usePlatform();
   const toggleQuickPanel = useAppStore((state) => state.toggleQuickPanel);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const isAppSidebarOpen = useAppStore((state) => state.isAppSidebarOpen);
+  const toggleAppSidebar = useAppStore((state) => state.toggleAppSidebar);
   const hasGallery = useViewerStore((state) => state.images.length > 0);
   const [, navigate] = useLocation();
   const canAutoUpdate = platform.capabilities.canAutoUpdate;
@@ -144,6 +148,14 @@ export default function MenuBar({
       <DropdownMenu>
         <MenuButton>{t("menu:view")}</MenuButton>
         <DropdownMenuContent className="min-w-56">
+          <DropdownMenuItem onClick={toggleAppSidebar}>
+            {isAppSidebarOpen ? (
+              <PanelLeftClose data-icon="inline-start" />
+            ) : (
+              <PanelLeftOpen data-icon="inline-start" />
+            )}
+            {isAppSidebarOpen ? t("menu:hideSidebar") : t("menu:showSidebar")}
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate("/library")}>
             <Home data-icon="inline-start" />
             {t("actions:gallery")}

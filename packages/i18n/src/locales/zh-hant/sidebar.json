@@ -1,5 +1,6 @@
 {
   "folders": "資料夾",
   "showAll": "顯示全部",
-  "noSubfolders": "沒有子資料夾"
+  "noSubfolders": "沒有子資料夾",
+  "collapse": "收起側邊欄"
 }

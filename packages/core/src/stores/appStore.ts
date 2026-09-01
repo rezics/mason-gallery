@@ -4,6 +4,8 @@ interface AppState {
   folders: string[];
   isQuickPanelOpen: boolean;
   isSidebarOpen: boolean;
+  /** App navigation sidebar in AppShell. Distinct from the gallery folder sidebar. */
+  isAppSidebarOpen: boolean;
   /** Measured gallery pane width used by the masonry grid. Null when unmounted. */
   galleryLayoutWidth: number | null;
   directoryTree: string[];
@@ -26,8 +28,10 @@ interface AppState {
   setQuickPanelOpen: (open: boolean) => void;
   toggleQuickPanel: () => void;
   setSidebarOpen: (open: boolean) => void;
+  setAppSidebarOpen: (open: boolean) => void;
   setGalleryLayoutWidth: (width: number | null) => void;
   toggleSidebar: () => void;
+  toggleAppSidebar: () => void;
   setDirectoryTree: (tree: string[]) => void;
   setSelectedFolder: (folder: string | null) => void;
   toggleExpandedFolder: (folder: string) => void;
@@ -40,6 +44,7 @@ export const useAppStore = create<AppState>((set) => ({
   folders: [],
   isQuickPanelOpen: false,
   isSidebarOpen: false,
+  isAppSidebarOpen: true,
   galleryLayoutWidth: null,
   directoryTree: [],
   selectedFolder: null,
@@ -56,6 +61,7 @@ export const useAppStore = create<AppState>((set) => ({
   toggleQuickPanel: () =>
     set((state) => ({ isQuickPanelOpen: !state.isQuickPanelOpen })),
   setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
+  setAppSidebarOpen: (isAppSidebarOpen) => set({ isAppSidebarOpen }),
   setGalleryLayoutWidth: (galleryLayoutWidth) =>
     set((state) =>
       state.galleryLayoutWidth === galleryLayoutWidth
@@ -64,6 +70,8 @@ export const useAppStore = create<AppState>((set) => ({
     ),
   toggleSidebar: () =>
     set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  toggleAppSidebar: () =>
+    set((state) => ({ isAppSidebarOpen: !state.isAppSidebarOpen })),
   setDirectoryTree: (directoryTree) => set({ directoryTree }),
   setSelectedFolder: (selectedFolder) => set({ selectedFolder }),
   toggleExpandedFolder: (folder) =>

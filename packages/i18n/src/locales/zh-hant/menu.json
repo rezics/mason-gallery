@@ -4,6 +4,8 @@
   "reset": "新視窗",
   "quit": "結束",
   "view": "檢視",
+  "showSidebar": "顯示側邊欄",
+  "hideSidebar": "隱藏側邊欄",
   "refresh": "重新整理",
   "window": "視窗",
   "devTools": "開發者工具",

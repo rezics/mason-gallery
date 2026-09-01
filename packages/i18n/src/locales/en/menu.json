@@ -4,6 +4,8 @@
   "reset": "New Window",
   "quit": "Quit",
   "view": "View",
+  "showSidebar": "Show Sidebar",
+  "hideSidebar": "Hide Sidebar",
   "refresh": "Refresh",
   "window": "Window",
   "devTools": "Dev Tools",

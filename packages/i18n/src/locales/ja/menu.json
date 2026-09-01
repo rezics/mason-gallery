@@ -4,6 +4,8 @@
   "reset": "新しいウィンドウ",
   "quit": "終了",
   "view": "表示",
+  "showSidebar": "サイドバーを表示",
+  "hideSidebar": "サイドバーを隠す",
   "refresh": "更新",
   "window": "ウィンドウ",
   "devTools": "開発者ツール",

@@ -4,6 +4,8 @@
   "reset": "新窗口",
   "quit": "退出",
   "view": "视图",
+  "showSidebar": "显示侧边栏",
+  "hideSidebar": "隐藏侧边栏",
   "refresh": "刷新",
   "window": "窗口",
   "devTools": "开发者工具",
