@@ -15,7 +15,6 @@
       "/about",
       "/about/",
       "/app",
-      "/app/",
       "/app/*"
     ]
   },
