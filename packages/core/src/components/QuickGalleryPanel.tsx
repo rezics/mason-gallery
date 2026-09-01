@@ -1,4 +1,5 @@
 import { Columns3, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,12 +21,28 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import {
+  getActiveBreakpoint,
+  resolveBreakpointWidth,
+} from "@/lib/columnBreakpoints";
 import { shouldShowMultiselectEntry } from "@/lib/selectionContract";
 import { useAppStore } from "@/stores/appStore";
 import { useSelectionStore } from "@/stores/selectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import type { SortMethod } from "@/types";
+
+function useViewportWidth(enabled: boolean) {
+  const [width, setWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    if (!enabled) return;
+    const update = () => setWidth(window.innerWidth);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [enabled]);
+  return width;
+}
 
 export default function QuickGalleryPanel() {
   const t = useI18n();
@@ -42,7 +59,13 @@ export default function QuickGalleryPanel() {
   );
   const breakpoints = useSettingsStore((state) => state.breakpoints);
   const setBreakpoints = useSettingsStore((state) => state.setBreakpoints);
-  const columnsAtDesktop = breakpoints[1200] ?? 4;
+  const galleryLayoutWidth = useAppStore((state) => state.galleryLayoutWidth);
+  const viewportWidth = useViewportWidth(isOpen && galleryLayoutWidth == null);
+  const layoutWidth = resolveBreakpointWidth({
+    galleryWidth: galleryLayoutWidth,
+    viewportWidth,
+  });
+  const activeBreakpoint = getActiveBreakpoint(layoutWidth, breakpoints);
   const platform = usePlatform();
   const images = useViewerStore((state) => state.images);
   const modeEnabled = useSelectionStore((state) => state.modeEnabled);
@@ -135,16 +158,20 @@ export default function QuickGalleryPanel() {
             <FieldLabel htmlFor="quick-columns">
               {t("settings:columns")}
             </FieldLabel>
+            <FieldDescription>{activeBreakpoint.minWidth}px</FieldDescription>
             <Input
               id="quick-columns"
               type="number"
               min={1}
               max={10}
-              value={columnsAtDesktop}
+              value={activeBreakpoint.columns}
               onChange={(event) => {
                 const value = Number(event.target.value);
                 if (value >= 1 && value <= 10) {
-                  setBreakpoints({ ...breakpoints, 1200: value });
+                  setBreakpoints({
+                    ...breakpoints,
+                    [activeBreakpoint.minWidth]: value,
+                  });
                 }
               }}
             />

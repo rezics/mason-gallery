@@ -18,6 +18,7 @@ import {
 import { usePlatform } from "@/context/PlatformContext";
 import { useThumbnailRequest } from "@/hooks/useThumbnailRequest";
 import { useI18n } from "@/i18n";
+import { getColumnCount } from "@/lib/columnBreakpoints";
 import { requestArchiveUnlock } from "@/lib/scanActions";
 import { selectableIdentitiesInRange } from "@/lib/selectionIdentity";
 import { useEntryThumbnails } from "@/lib/thumbnailCache";
@@ -26,7 +27,7 @@ import { useAppStore } from "@/stores/appStore";
 import { useSelectionStore } from "@/stores/selectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
-import type { ColumnBreakpoints, WImage } from "@/types";
+import type { WImage } from "@/types";
 
 const GridSelectionContext = createContext<{
   onActivate: (index: number, shiftKey: boolean) => void;
@@ -37,17 +38,6 @@ function archivePathFromSource(source: string): string | null {
   const withoutScheme = source.slice("archive:///".length);
   const hashIdx = withoutScheme.indexOf("#");
   return hashIdx === -1 ? withoutScheme : withoutScheme.slice(0, hashIdx);
-}
-
-function getColumnCount(width: number, breakpoints: ColumnBreakpoints): number {
-  const keys = Object.keys(breakpoints)
-    .map(Number)
-    .sort((a, b) => b - a);
-  const maxColumns = Math.max(...Object.values(breakpoints), 1);
-  for (const key of keys) {
-    if (width >= key) return Math.min(breakpoints[key] ?? 1, maxColumns);
-  }
-  return 1;
 }
 
 function useContainerScroll(ref: RefObject<HTMLElement | null>) {
@@ -277,6 +267,16 @@ export default function WaterfallGrid({
 
   const { scrollTop, isScrolling } = useContainerScroll(scrollContainerRef);
   const { width, height } = useContainerSize(scrollContainerRef);
+
+  useEffect(() => {
+    useAppStore.getState().setGalleryLayoutWidth(width > 0 ? width : null);
+  }, [width]);
+
+  useEffect(() => {
+    return () => {
+      useAppStore.getState().setGalleryLayoutWidth(null);
+    };
+  }, []);
 
   const containerRef = useRef<HTMLElement>(null);
   const prevScanIdRef = useRef(scanId);
