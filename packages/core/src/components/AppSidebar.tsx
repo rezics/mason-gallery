@@ -131,7 +131,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="flex items-center gap-2 border-t border-sidebar-border px-1 pt-3">
         <p className="min-w-0 flex-1 truncate px-2 text-xs text-sidebar-foreground/45">
-          {t("about:version")} 2.1.0
+          {t("about:version")} 2.2.0
         </p>
         <Button
           type="button"

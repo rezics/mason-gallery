@@ -27,7 +27,7 @@ export default function AboutPage() {
             <div>
               <h2 className="text-lg font-semibold">{t("common:appName")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {t("about:version")}: 2.1.0
+                {t("about:version")}: 2.2.0
               </p>
             </div>
           </div>

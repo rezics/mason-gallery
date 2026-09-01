@@ -12,7 +12,7 @@
     },
     "packages/cli": {
       "name": "mason-gallery",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "bin": {
         "mason-gallery": "./dist/index.js",
       },
@@ -26,7 +26,7 @@
     },
     "packages/core": {
       "name": "@mason-gallery/core",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "dependencies": {
         "@base-ui/react": "^1.7.0",
         "@fontsource-variable/inter": "^5.3.0",
@@ -58,7 +58,7 @@
     },
     "packages/desktop": {
       "name": "@mason-gallery/desktop",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "dependencies": {
         "@mason-gallery/core": "workspace:*",
         "@tauri-apps/api": "^2",
@@ -89,11 +89,11 @@
     },
     "packages/i18n": {
       "name": "@mason-gallery/i18n",
-      "version": "2.1.0",
+      "version": "2.2.0",
     },
     "packages/web": {
       "name": "@mason-gallery/web",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "dependencies": {
         "@mason-gallery/core": "workspace:*",
         "@mason-gallery/i18n": "workspace:*",

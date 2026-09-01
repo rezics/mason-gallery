@@ -95,6 +95,6 @@ git push origin master
 git checkout master
 git pull
 
-git tag v2.1.0
-git push origin v2.1.0
+git tag v2.2.0
+git push origin v2.2.0
 ```
