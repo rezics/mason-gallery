@@ -31,6 +31,11 @@ describe("external drop policy", () => {
     expect(routeAcceptsExternalDrop("/about")).toBe(false);
     expect(routeAcceptsExternalDrop("/manage/cache")).toBe(false);
     expect(routeAcceptsExternalDrop("/cache")).toBe(false);
+    expect(routeAcceptsExternalDrop("/en")).toBe(false);
+    expect(routeAcceptsExternalDrop("/en/")).toBe(false);
+    expect(routeAcceptsExternalDrop("/zh-hant/")).toBe(false);
+    expect(routeAcceptsExternalDrop("/app")).toBe(false);
+    expect(routeAcceptsExternalDrop("/app/")).toBe(false);
   });
 
   test("gives exclusive receivers priority over modal blocks and page routes", () => {

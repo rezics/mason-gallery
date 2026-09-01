@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   getInitialWebLanguage,
   getLocalizedWebPath,
+  getWebAppHref,
+  getWebAppSettingsHref,
   getWebLocaleFromPathname,
   getWebLocaleFromSearch,
 } from "../src/features/i18n/webLocaleRoutes";
@@ -36,5 +38,16 @@ describe("web locale routes", () => {
     expect(getWebLocaleFromSearch("?lang=zh-hans")).toBe("zh-hans");
     expect(getWebLocaleFromSearch("?lang=unsupported")).toBeUndefined();
     expect(getInitialWebLanguage("/app/", "en", "?lang=ja")).toBe("ja");
+  });
+
+  test("builds app and settings hrefs with an explicit language query", () => {
+    expect(getWebAppHref("en")).toBe("/app/?lang=en");
+    expect(getWebAppHref("zh-hant")).toBe("/app/?lang=zh-hant");
+    expect(getWebAppSettingsHref("ja")).toBe(
+      "/app/settings/general/?lang=ja",
+    );
+    expect(getWebAppSettingsHref("en", "gallery")).toBe(
+      "/app/settings/gallery/?lang=en",
+    );
   });
 });

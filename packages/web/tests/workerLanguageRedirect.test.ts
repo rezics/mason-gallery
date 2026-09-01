@@ -42,6 +42,18 @@ describe("Cloudflare language redirects", () => {
     ).toBeUndefined();
     expect(
       getLanguageRedirect(
+        new Request("https://mason-gallery.rezics.com/app/"),
+      ),
+    ).toBeUndefined();
+    expect(
+      getLanguageRedirect(
+        new Request(
+          "https://mason-gallery.rezics.com/app/settings/general/",
+        ),
+      ),
+    ).toBeUndefined();
+    expect(
+      getLanguageRedirect(
         new Request("https://mason-gallery.rezics.com/", {
           method: "POST",
         }),

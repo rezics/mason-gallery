@@ -20,6 +20,17 @@ export function getLocalizedWebPath(
   return `/${locale}/${suffix}`;
 }
 
+export function getWebAppHref(locale: SupportedLanguage): string {
+  return `/app/?lang=${locale}`;
+}
+
+export function getWebAppSettingsHref(
+  locale: SupportedLanguage,
+  category: "general" | "gallery" | "appearance" = "general",
+): string {
+  return `/app/settings/${category}/?lang=${locale}`;
+}
+
 function getBrowserLanguages(): readonly string[] {
   if (typeof navigator === "undefined") return [fallbackLanguage];
   return navigator.languages?.length

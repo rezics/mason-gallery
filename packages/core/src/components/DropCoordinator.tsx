@@ -27,6 +27,7 @@ import { useViewerStore } from "@/stores/viewerStore";
 import type {
   DropBatch,
   DropListener,
+  DropPersistence,
   DroppedSource,
   LibraryEffect,
 } from "@/types/platform";
@@ -60,10 +61,16 @@ export function DropCoordinator({
   children,
   galleryPath,
   targetRef,
+  forceAccept = false,
+  persistence,
+  onPageDrop,
 }: {
   children: ReactNode;
   galleryPath: string;
   targetRef?: RefObject<EventTarget | null>;
+  forceAccept?: boolean;
+  persistence?: DropPersistence;
+  onPageDrop?: (batch: DropBatch) => void | Promise<void>;
 }) {
   const t = useI18n();
   const platform = usePlatform();
@@ -91,11 +98,17 @@ export function DropCoordinator({
   navigateRef.current = navigate;
   const tRef = useRef(t);
   tRef.current = t;
+  const forceAcceptRef = useRef(forceAccept);
+  forceAcceptRef.current = forceAccept;
+  const persistenceRef = useRef(persistence);
+  persistenceRef.current = persistence;
+  const onPageDropRef = useRef(onPageDrop);
+  onPageDropRef.current = onPageDrop;
 
   const currentDisposition = resolveDropDisposition({
     exclusive: exclusiveHandler != null,
     modalBlocked: isDropBlockedByModal(blockCount),
-    routeAccepts: routeAcceptsExternalDrop(location),
+    routeAccepts: forceAccept || routeAcceptsExternalDrop(location),
   });
 
   const notifyRejected = useCallback((opened: number, skipped: number) => {
@@ -162,9 +175,12 @@ export function DropCoordinator({
         resolveDropDisposition({
           exclusive: exclusiveRef.current != null,
           modalBlocked: isDropBlockedByModal(blockCountRef.current),
-          routeAccepts: routeAcceptsExternalDrop(locationRef.current),
+          routeAccepts:
+            forceAcceptRef.current ||
+            routeAcceptsExternalDrop(locationRef.current),
         }) !== "ignore",
       persistence: () => {
+        if (persistenceRef.current) return persistenceRef.current;
         if (exclusiveRef.current) return "durable";
         return behaviorRef.current === "open-only" ? "session" : "durable";
       },
@@ -173,7 +189,9 @@ export function DropCoordinator({
           resolveDropDisposition({
             exclusive: exclusiveRef.current != null,
             modalBlocked: isDropBlockedByModal(blockCountRef.current),
-            routeAccepts: routeAcceptsExternalDrop(locationRef.current),
+            routeAccepts:
+              forceAcceptRef.current ||
+              routeAcceptsExternalDrop(locationRef.current),
           }) === "page"
         ) {
           useDropStore.getState().setHovering(true);
@@ -185,13 +203,20 @@ export function DropCoordinator({
         const disposition = resolveDropDisposition({
           exclusive: exclusive != null,
           modalBlocked: isDropBlockedByModal(blockCountRef.current),
-          routeAccepts: routeAcceptsExternalDrop(locationRef.current),
+          routeAccepts:
+            forceAcceptRef.current ||
+            routeAcceptsExternalDrop(locationRef.current),
         });
         if (disposition === "exclusive" && exclusive) {
           exclusive(batch);
           return;
         }
         if (disposition === "page") {
+          const custom = onPageDropRef.current;
+          if (custom) {
+            void custom(batch);
+            return;
+          }
           void handlePageDrop(batch);
         }
       },

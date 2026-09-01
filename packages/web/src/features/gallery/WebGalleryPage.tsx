@@ -249,7 +249,11 @@ function PreviewMasonry() {
   );
 }
 
-function WebEmptyGallery() {
+export function WebEmptyGallery({
+  onOpenFolder = openFolderAndScan,
+}: {
+  onOpenFolder?: () => void;
+}) {
   const t = useI18n();
   const platform = usePlatform();
   const showPreview = useLargePreview();
@@ -279,7 +283,7 @@ function WebEmptyGallery() {
               type="button"
               variant="brand"
               className="h-14 w-full rounded-2xl px-6 text-lg shadow-lg shadow-brand/20"
-              onClick={openFolderAndScan}
+              onClick={onOpenFolder}
             >
               <FolderOpen className="size-6" data-icon="inline-start" />
               {t("home:webOpenFolder")}

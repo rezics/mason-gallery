@@ -47,6 +47,25 @@ function normalizePublicPath(pathname: string): string {
   return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
 }
 
+export function isWebAppPath(pathname: string): boolean {
+  const normalized = normalizePublicPath(pathname);
+  return normalized === "/app" || normalized.startsWith("/app/");
+}
+
+export async function fetchWithAppFallback(
+  request: Request,
+  fetchAsset: (request: Request) => Promise<Response>,
+): Promise<Response> {
+  const response = await fetchAsset(request);
+  if (response.status !== 404) return response;
+  if (request.method !== "GET" && request.method !== "HEAD") return response;
+
+  const url = new URL(request.url);
+  if (!isWebAppPath(url.pathname)) return response;
+
+  return fetchAsset(new Request(new URL("/app/", url), request));
+}
+
 export function getLanguageRedirect(request: Request): Response | undefined {
   if (request.method !== "GET" && request.method !== "HEAD") return undefined;
 
@@ -78,7 +97,9 @@ export default {
     const key = getR2Key(url, env.R2_PUBLIC_PREFIX);
 
     if (!key) {
-      return env.ASSETS.fetch(request);
+      return fetchWithAppFallback(request, (assetRequest) =>
+        env.ASSETS.fetch(assetRequest),
+      );
     }
 
     if (request.method !== "GET" && request.method !== "HEAD") {

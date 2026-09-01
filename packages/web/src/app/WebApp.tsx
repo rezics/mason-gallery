@@ -1,13 +1,16 @@
 import {
   DropCoordinator,
+  openSources,
   QuickGalleryPanel,
   Toaster,
   useCoreRuntime,
   useI18n,
 } from "@mason-gallery/core";
 import { Home } from "lucide-react";
+import { useEffect } from "react";
 import { Route, Router, Switch } from "wouter";
 import { WebGalleryPage } from "../features/gallery/WebGalleryPage";
+import { takePendingWebAppOpen } from "../features/gallery/webAppLaunch";
 import { WebSettingsPage } from "../features/settings/WebSettingsPage";
 import { WebTopBar } from "./WebTopBar";
 
@@ -27,7 +30,7 @@ function WebNotFoundPage() {
           {t("common:notFoundDescription")}
         </p>
         <a
-          href="/"
+          href="/app/"
           className="mt-6 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
         >
           <Home />
@@ -47,6 +50,15 @@ export function WebApp() {
     enableStartupCacheCleanup: false,
     enableThumbnailEvents: false,
   });
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const pending = takePendingWebAppOpen();
+    if (!pending) return;
+    void openSources(pending.sources, {
+      libraryEffect: pending.libraryEffect,
+    });
+  }, [hydrated]);
 
   if (!hydrated) return null;
 

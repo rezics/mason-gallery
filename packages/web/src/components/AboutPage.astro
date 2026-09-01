@@ -6,6 +6,7 @@ import {
   SITE_ORIGIN,
   siteContent,
 } from "../content/siteContent";
+import { getWebAppHref } from "../features/i18n/webLocaleRoutes";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
 interface Props {
@@ -65,7 +66,7 @@ const structuredData = {
       </div>
       <div class="mt-12 flex flex-col gap-3 sm:flex-row">
         <a
-          href={`${getLocalizedPath(locale, "home")}#app-entry`}
+          href={getWebAppHref(locale)}
           class="inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 font-semibold text-primary-foreground transition hover:bg-primary/90"
         >
           {content.launchApp}

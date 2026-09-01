@@ -13,7 +13,10 @@ import {
 } from "@mason-gallery/i18n";
 import type { MouseEvent, MouseEventHandler } from "react";
 import { useLocation } from "wouter";
-import { getLocalizedWebPath } from "../features/i18n/webLocaleRoutes";
+import {
+  getLocalizedWebPath,
+  getWebAppSettingsHref,
+} from "../features/i18n/webLocaleRoutes";
 import { WebHeader } from "./WebHeader";
 
 export function WebTopBar({ embedded = false }: { embedded?: boolean }) {
@@ -26,9 +29,8 @@ export function WebTopBar({ embedded = false }: { embedded?: boolean }) {
   const hasGallery = useViewerStore((state) => state.images.length > 0);
   const isScanning = useViewerStore((state) => state.isScanning);
   const rootPath = getLocalizedWebPath("/", language);
-  const preferencesHref = `/app/settings/general/${
-    language === "en" ? "" : `?lang=${language}`
-  }`;
+  const appHomePath = "/app/";
+  const preferencesHref = getWebAppSettingsHref(language);
 
   const goHome = () => {
     resetToDropZone();
@@ -36,7 +38,10 @@ export function WebTopBar({ embedded = false }: { embedded?: boolean }) {
       document.getElementById("app-entry")?.scrollIntoView();
       return;
     }
-    window.location.assign(rootPath);
+    const current = location.split("?")[0] ?? location;
+    if (current !== "/") {
+      navigate("/");
+    }
   };
 
   const handleBrandClick: MouseEventHandler<HTMLAnchorElement> = (event) => {
@@ -70,7 +75,7 @@ export function WebTopBar({ embedded = false }: { embedded?: boolean }) {
     <WebHeader
       preferencesLabel={t("settings:preferences")}
       aboutLabel={t("menu:about")}
-      brandHref={rootPath}
+      brandHref={embedded ? rootPath : appHomePath}
       preferencesHref={preferencesHref}
       aboutHref={getLocalizedWebPath("/about", language)}
       languageMenu={{

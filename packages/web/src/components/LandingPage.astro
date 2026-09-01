@@ -9,6 +9,7 @@ import {
   siteContent,
 } from "../content/siteContent";
 import EmbeddedApp from "../EmbeddedApp";
+import { getWebAppSettingsHref } from "../features/i18n/webLocaleRoutes";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import StaticHeroFallback from "./StaticHeroFallback.astro";
 
@@ -44,7 +45,7 @@ const structuredData = {
 };
 const homePath = getLocalizedPath(locale, "home");
 const aboutPath = getLocalizedPath(locale, "about");
-const preferencesPath = `/app/settings/gallery/?lang=${locale}`;
+const preferencesPath = getWebAppSettingsHref(locale);
 ---
 
 <BaseLayout

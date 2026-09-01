@@ -7,6 +7,7 @@ import {
   publicLocales,
   siteContent,
 } from "../content/siteContent";
+import { getWebAppSettingsHref } from "../features/i18n/webLocaleRoutes";
 import { WebHeader } from "./WebHeader";
 import { WebRuntimeProvider } from "./WebRuntimeProvider";
 
@@ -25,7 +26,7 @@ function PublicWebHeaderContent({ locale, page }: PublicWebHeaderProps) {
   const content = siteContent[locale];
   const homePath = getLocalizedPath(locale, "home");
   const aboutPath = getLocalizedPath(locale, "about");
-  const preferencesPath = `/app/settings/general/?lang=${locale}`;
+  const preferencesPath = getWebAppSettingsHref(locale);
 
   useEffect(() => {
     if (hydrated && language !== locale) setLanguage(locale);

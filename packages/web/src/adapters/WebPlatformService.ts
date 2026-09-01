@@ -1,6 +1,7 @@
 import type {
   DragDropSubscriptionOptions,
   DropListener,
+  DroppedSource,
   ImageBatch,
   LibraryAccessStatus,
   LibrarySource,
@@ -216,6 +217,20 @@ async function registerStoredDirectoryHandles(
   return registered;
 }
 
+export async function pickWebFolderSources(): Promise<DroppedSource[] | null> {
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: "read" });
+    const registered = await registerStoredDirectoryHandles([dirHandle]);
+    return registered.map((row) => ({
+      kind: "folder" as const,
+      locator: row.sourcePath,
+      label: row.name,
+    }));
+  } catch {
+    return null;
+  }
+}
+
 async function hasReadPermission(
   handle: FileSystemDirectoryHandle,
 ): Promise<boolean> {
@@ -385,13 +400,8 @@ export const webPlatformService: PlatformService = {
   },
 
   async pickFolders(): Promise<string[] | null> {
-    try {
-      const dirHandle = await window.showDirectoryPicker({ mode: "read" });
-      const registered = await registerStoredDirectoryHandles([dirHandle]);
-      return registered.map((row) => row.sourcePath);
-    } catch {
-      return null;
-    }
+    const sources = await pickWebFolderSources();
+    return sources?.map((source) => source.locator) ?? null;
   },
 
   onDragDrop(
