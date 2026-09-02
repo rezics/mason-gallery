@@ -4,6 +4,7 @@
   "description": "A multi-platform image viewer with masonry layout",
   "type": "module",
   "private": true,
+  "packageManager": "bun@1.4.0",
   "workspaces": [
     "packages/*"
   ],

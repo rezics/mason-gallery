@@ -20,21 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Setup Task
-        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2
-
-      - name: Cache Bun downloads
-        uses: actions/cache@v6
+      - name: Setup JS
+        uses: ./.github/actions/setup-js
         with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+          save-cache: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
 
       - name: Build and deploy to Cloudflare Workers
         run: task deploy:web

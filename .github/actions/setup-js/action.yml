@@ -1,0 +1,41 @@
+name: Setup JS
+description: Install Bun and Task, restore or save the Bun package cache, and install workspace dependencies.
+
+inputs:
+  save-cache:
+    description: Save the Bun package cache after a successful install. Use on the default branch only.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+
+    - name: Setup Task
+      uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2
+
+    - name: Get Bun cache directory
+      id: bun-cache-dir
+      shell: bash
+      run: echo "dir=$(bun pm cache)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore Bun cache
+      id: bun-cache
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ steps.bun-cache-dir.outputs.dir }}
+        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: bun-${{ runner.os }}-
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+
+    - name: Save Bun cache
+      if: ${{ inputs.save-cache == 'true' && steps.bun-cache.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ steps.bun-cache-dir.outputs.dir }}
+        key: ${{ steps.bun-cache.outputs.cache-primary-key }}

@@ -26,15 +26,19 @@ jobs:
         include:
           - name: Windows
             platform: windows-latest
+            cache: windows
             args: ""
           - name: macOS Apple Silicon
             platform: macos-latest
+            cache: macos-aarch64
             args: "--target aarch64-apple-darwin"
           - name: macOS Intel
             platform: macos-latest
+            cache: macos-x86_64
             args: "--target x86_64-apple-darwin"
           - name: Linux
             platform: ubuntu-22.04
+            cache: linux
             args: ""
 
     runs-on: ${{ matrix.platform }}
@@ -44,21 +48,24 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Setup Task
-        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2
+      - name: Setup JS
+        uses: ./.github/actions/setup-js
+        with:
+          save-cache: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'true' || 'false' }}
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
+          toolchain: 1.95.0
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "./packages/desktop/src-tauri -> target"
+          shared-key: tauri-${{ matrix.cache }}
+          cache-on-failure: true
+          save-if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
 
       - name: Install system dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -74,16 +81,6 @@ jobs:
             libssl-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
-
-      - name: Cache Bun downloads
-        uses: actions/cache@v6
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
 
       - name: Generate icons
         run: task desktop:generate:icons
