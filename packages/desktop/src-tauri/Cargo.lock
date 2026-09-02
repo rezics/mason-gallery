@@ -2947,6 +2947,8 @@ dependencies = [
  "trash",
  "unrar",
  "walkdir",
+ "windows-sys 0.61.2",
+ "winreg",
  "zip 2.4.2",
 ]
 

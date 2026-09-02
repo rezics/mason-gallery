@@ -41,5 +41,9 @@ rusqlite_migration = "2.6"
 dashmap = "6"
 tempfile = "3"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_UI_Shell"] }
+winreg = "0.55"
+
 [profile.dev.package.scrypt]
 opt-level = 3

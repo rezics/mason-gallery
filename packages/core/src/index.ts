@@ -2,6 +2,7 @@ export { AppShell } from "./components/AppShell";
 export { BackButton } from "./components/BackButton";
 export { DropCoordinator } from "./components/DropCoordinator";
 export { default as DropZone } from "./components/DropZone";
+export { ExternalOpenCoordinator } from "./components/ExternalOpenCoordinator";
 export { default as ImageViewer } from "./components/ImageViewer";
 export { default as MenuBar } from "./components/MenuBar";
 export { default as QuickGalleryPanel } from "./components/QuickGalleryPanel";
@@ -47,6 +48,10 @@ export {
   resolveDropDisposition,
   routeAcceptsExternalDrop,
 } from "./lib/dropPolicy";
+export {
+  parseDropBatch,
+  parseSystemIntegrationStatus,
+} from "./lib/platformPayloads";
 export { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from "./lib/projectLinks";
 export {
   applyLibraryEffect,
@@ -135,6 +140,7 @@ export type {
   CacheCleanupStrategy,
   CachePolicy,
   CacheStats,
+  DesktopPlatform,
   DragDropSubscriptionOptions,
   DropBatch,
   DropListener,
@@ -171,6 +177,10 @@ export type {
   SelectionEntryKey,
   Settings,
   SourceOverride,
+  SystemIntegrationRegistration,
+  SystemIntegrationSelection,
+  SystemIntegrationStatus,
+  SystemIntegrationTargetStatus,
   ThemePreference,
   ThumbnailPolicy,
   ThumbRetain,

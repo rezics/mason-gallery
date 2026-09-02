@@ -4,6 +4,7 @@ pub mod archive_scan;
 pub mod commands;
 pub mod database;
 mod drop;
+mod external_open;
 mod file_commands;
 mod library_commands;
 mod password;
@@ -11,6 +12,7 @@ mod selection_commands;
 mod server;
 pub mod services;
 mod settings_commands;
+mod system_integration;
 
 use database::Database;
 use server::{AllowedRoots, SharedPolicy};
@@ -29,20 +31,29 @@ pub struct CacheDir(pub PathBuf);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
+        .manage(external_open::ExternalOpenQueue::default())
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            external_open::enqueue_paths(app, external_open::paths_from_args(&args));
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _: Result<(), tauri::Error> = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::default().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(w) = app.get_webview_window("main") {
-                let _: Result<(), tauri::Error> = w.set_focus();
-            }
-        }))
         .plugin(tauri_plugin_persisted_scope::init())
         .setup(|app| {
+            #[cfg(any(windows, target_os = "linux"))]
+            external_open::enqueue_paths(
+                app.handle(),
+                external_open::paths_from_os_args(std::env::args_os()),
+            );
+
             let allowed_roots: AllowedRoots = Arc::new(RwLock::new(HashSet::new()));
 
             let app_data_dir = app
@@ -143,6 +154,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::scan_directory,
             drop::classify_drop_paths,
+            external_open::take_pending_open_sources,
             commands::list_directory_tree,
             commands::delete_to_trash,
             commands::open_devtools,
@@ -182,7 +194,22 @@ pub fn run() {
             selection_commands::probe_selectable_files,
             file_commands::move_files,
             file_commands::cancel_move_files,
+            system_integration::get_system_integration_status,
+            system_integration::set_system_integration,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Opened { urls } = event {
+            external_open::enqueue_paths(app_handle, external_open::paths_from_urls(urls));
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = (app_handle, event);
+    });
 }

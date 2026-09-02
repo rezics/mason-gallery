@@ -1,6 +1,7 @@
 import {
   AppShell,
   DropCoordinator,
+  ExternalOpenCoordinator,
   QuickGalleryPanel,
   Toaster,
   useCoreRuntime,
@@ -55,6 +56,7 @@ export function DesktopApp({ titlebar, updateChecker }: DesktopAppProps) {
       >
         <AppShell>
           <DropCoordinator galleryPath="/gallery">
+            <ExternalOpenCoordinator galleryPath="/gallery" />
             <Suspense fallback={<RouteFallback />}>
               <Switch>
                 <Route path="/" component={LibraryPage} />

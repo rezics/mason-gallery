@@ -42,6 +42,7 @@ function createSelectionPlatform() {
       canDragDropFolders: false,
       canBrowseArchives: false,
       canBatchMoveFiles: true,
+      hasSystemIntegration: false,
     },
     loadSettings: async () => createDefaultSettings(),
     saveSettings: async () => {},

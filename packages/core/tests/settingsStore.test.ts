@@ -21,6 +21,7 @@ function createPlatform(settings: Settings) {
       canDragDropFolders: false,
       canBrowseArchives: false,
       canBatchMoveFiles: false,
+      hasSystemIntegration: false,
     },
     loadSettings: async () => settings,
     saveSettings: async (document: Settings) => {
@@ -114,4 +115,3 @@ describe("settings persistence", () => {
     expect(saved?.language).toBe("en");
   });
 });
-

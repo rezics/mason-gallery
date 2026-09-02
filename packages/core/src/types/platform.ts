@@ -90,6 +90,34 @@ export interface DropBatch {
   rejected: DropRejection[];
 }
 
+export type DesktopPlatform = "windows" | "macos" | "linux";
+export type SystemIntegrationRegistration =
+  | "enabled"
+  | "disabled"
+  | "needs-repair"
+  | "managed";
+
+export type SystemIntegrationTargetStatus =
+  | {
+      state: Exclude<SystemIntegrationRegistration, "managed">;
+      configurable: true;
+    }
+  | {
+      state: "managed";
+      configurable: false;
+    };
+
+export interface SystemIntegrationStatus {
+  platform: DesktopPlatform;
+  folders: SystemIntegrationTargetStatus;
+  archives: SystemIntegrationTargetStatus;
+}
+
+export interface SystemIntegrationSelection {
+  folders: boolean;
+  archives: boolean;
+}
+
 export interface DropHoverPosition {
   x: number;
   y: number;
@@ -220,6 +248,7 @@ export interface PlatformCapabilities {
   canDragDropFolders: boolean;
   canBrowseArchives: boolean;
   canBatchMoveFiles: boolean;
+  hasSystemIntegration: boolean;
 }
 
 export interface PersistedSelectionEntry extends SelectableFileIdentity {
@@ -369,6 +398,9 @@ export interface PlatformService {
     options?: DragDropSubscriptionOptions,
   ): () => void;
 
+  /** Subscribe to validated folders and archives opened by the operating system. */
+  onOpenSources?(listener: (batch: DropBatch) => void): () => void;
+
   loadSettings(): Promise<Settings>;
 
   saveSettings(settings: Settings): Promise<void>;
@@ -378,6 +410,12 @@ export interface PlatformService {
    * other targets fall back to `window.open`.
    */
   openExternalUrl?(url: string): Promise<void>;
+
+  getSystemIntegrationStatus?(): Promise<SystemIntegrationStatus>;
+
+  setSystemIntegration?(
+    selection: SystemIntegrationSelection,
+  ): Promise<SystemIntegrationStatus>;
 
   listDirectoryTree(paths: string[]): Promise<string[]>;
 

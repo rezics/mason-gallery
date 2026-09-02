@@ -18,6 +18,7 @@ const webLikePlatform = {
     canDragDropFolders: true,
     canBrowseArchives: false,
     canBatchMoveFiles: false,
+    hasSystemIntegration: false,
   },
   scanImages: async () => {},
   getImageUrl: (source: string) => source,

@@ -16,6 +16,7 @@ import {
 } from "@mason-gallery/core";
 
 let settings = createDefaultSettings();
+let previewIntegrationSelection = { folders: false, archives: false };
 let librarySources: LibrarySource[] = [
   {
     id: 1,
@@ -172,6 +173,7 @@ export const previewPlatformService: PlatformService = {
     canDragDropFolders: true,
     canBrowseArchives: true,
     canBatchMoveFiles: true,
+    hasSystemIntegration: true,
   },
   async scanImages(_params, onBatch, onComplete, onCount) {
     onCount?.(0);
@@ -196,6 +198,31 @@ export const previewPlatformService: PlatformService = {
   },
   openExternalUrl: async (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
+  },
+  getSystemIntegrationStatus: async () => ({
+    platform: "windows",
+    folders: {
+      state: previewIntegrationSelection.folders ? "enabled" : "disabled",
+      configurable: true,
+    },
+    archives: {
+      state: previewIntegrationSelection.archives ? "enabled" : "disabled",
+      configurable: true,
+    },
+  }),
+  setSystemIntegration: async (selection) => {
+    previewIntegrationSelection = selection;
+    return {
+      platform: "windows",
+      folders: {
+        state: selection.folders ? "enabled" : "disabled",
+        configurable: true,
+      },
+      archives: {
+        state: selection.archives ? "enabled" : "disabled",
+        configurable: true,
+      },
+    };
   },
   listDirectoryTree: async () => [],
   scanArchive: async (_params, onBatch, onComplete, onCount) => {

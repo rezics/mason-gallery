@@ -1,0 +1,9 @@
+[Desktop Entry]
+Categories={{{categories}}}
+{{#if comment}}Comment={{{comment}}}
+{{/if}}Exec={{{exec}}} --shell-open %F
+Icon={{{icon}}}
+Name={{{name}}}
+Terminal=false
+Type=Application
+MimeType=inode/directory;application/zip;application/x-zip-compressed;application/vnd.rar;application/x-rar;application/x-rar-compressed;application/x-7z-compressed;application/vnd.comicbook+zip;application/vnd.comicbook-rar;application/x-cbz;application/x-cbr;

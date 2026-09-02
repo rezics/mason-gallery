@@ -23,6 +23,7 @@ describe("settings route visibility", () => {
     expect(
       getVisibleSettingsCategory("/settings/cache", {
         canBrowseArchives: false,
+        hasSystemIntegration: false,
       }),
     ).toBe("general");
   });
@@ -30,6 +31,7 @@ describe("settings route visibility", () => {
   test("keeps archive and cache settings visible on desktop-capable platforms", () => {
     const categories = getSupportedSettingsCategories({
       canBrowseArchives: true,
+      hasSystemIntegration: false,
     });
 
     expect(categories).toContain("archive");
@@ -37,7 +39,23 @@ describe("settings route visibility", () => {
     expect(
       getVisibleSettingsCategory("/settings/cache", {
         canBrowseArchives: true,
+        hasSystemIntegration: false,
       }),
     ).toBe("cache");
+  });
+
+  test("shows system integration only when the platform can provide it", () => {
+    expect(
+      getSupportedSettingsCategories({
+        canBrowseArchives: true,
+        hasSystemIntegration: true,
+      }),
+    ).toContain("integration");
+    expect(
+      getSupportedSettingsCategories({
+        canBrowseArchives: true,
+        hasSystemIntegration: false,
+      }),
+    ).not.toContain("integration");
   });
 });

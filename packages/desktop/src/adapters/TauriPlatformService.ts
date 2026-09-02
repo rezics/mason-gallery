@@ -25,6 +25,8 @@ import type {
   SelectableFileProbe,
   SelectionEntryKey,
   SourceOverride,
+  SystemIntegrationSelection,
+  SystemIntegrationStatus,
   Thumbnail,
 } from "@mason-gallery/core";
 import {
@@ -32,9 +34,11 @@ import {
   createDefaultSettings,
   createSettingsEnvelope,
   migrateSettingsEnvelope,
+  parseDropBatch,
   parseMoveItemResults,
   parseSelectableFileProbes,
   parseSelectionState,
+  parseSystemIntegrationStatus,
 } from "@mason-gallery/core";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -168,6 +172,7 @@ export const tauriPlatformService: PlatformService = {
     canDragDropFolders: true,
     canBrowseArchives: true,
     canBatchMoveFiles: true,
+    hasSystemIntegration: true,
   },
 
   async scanImages(
@@ -249,8 +254,8 @@ export const tauriPlatformService: PlatformService = {
             listener.onDrop({ accepted: [], rejected: [] });
             return;
           }
-          void invoke<DropBatch>("classify_drop_paths", { paths }).then(
-            (batch) => listener.onDrop(batch),
+          void invoke<unknown>("classify_drop_paths", { paths }).then(
+            (value) => listener.onDrop(parseDropBatch(value)),
             (error) => {
               console.error("Failed to classify dropped paths:", error);
               listener.onDrop({
@@ -275,6 +280,51 @@ export const tauriPlatformService: PlatformService = {
     };
   },
 
+  onOpenSources(listener: (batch: DropBatch) => void): () => void {
+    let unlistenFn: (() => void) | null = null;
+    let disposed = false;
+    let draining = false;
+    let drainRequested = false;
+
+    const drainPending = async () => {
+      if (draining) {
+        drainRequested = true;
+        return;
+      }
+      draining = true;
+      try {
+        do {
+          drainRequested = false;
+          const value = await invoke<unknown>("take_pending_open_sources");
+          const batch = parseDropBatch(value);
+          if (batch.accepted.length > 0 || batch.rejected.length > 0) {
+            listener(batch);
+          }
+        } while (drainRequested);
+      } catch (error) {
+        console.error("Failed to receive paths opened by the system:", error);
+      } finally {
+        draining = false;
+      }
+    };
+
+    listen("shell-open:pending", () => {
+      void drainPending();
+    }).then((fn) => {
+      if (disposed) {
+        fn();
+        return;
+      }
+      unlistenFn = fn;
+      void drainPending();
+    });
+
+    return () => {
+      disposed = true;
+      unlistenFn?.();
+    };
+  },
+
   async loadSettings() {
     const envelope = await invoke<unknown | null>("load_settings");
     return envelope
@@ -291,6 +341,20 @@ export const tauriPlatformService: PlatformService = {
   async openExternalUrl(url: string): Promise<void> {
     const { openUrl } = await import("@tauri-apps/plugin-opener");
     await openUrl(url);
+  },
+
+  async getSystemIntegrationStatus(): Promise<SystemIntegrationStatus> {
+    return parseSystemIntegrationStatus(
+      await invoke<unknown>("get_system_integration_status"),
+    );
+  },
+
+  async setSystemIntegration(
+    selection: SystemIntegrationSelection,
+  ): Promise<SystemIntegrationStatus> {
+    return parseSystemIntegrationStatus(
+      await invoke<unknown>("set_system_integration", { selection }),
+    );
   },
 
   async listDirectoryTree(paths: string[]): Promise<string[]> {

@@ -45,6 +45,7 @@ function createPlatform() {
       canDragDropFolders: true,
       canBrowseArchives: true,
       canBatchMoveFiles: false,
+      hasSystemIntegration: false,
     },
     scanImages: async (
       params: { paths: string[] },

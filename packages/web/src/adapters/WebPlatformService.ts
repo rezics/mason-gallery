@@ -309,6 +309,7 @@ export const webPlatformService: PlatformService = {
       canDragDropFolders: canUseFileSystemDrop(),
       canBrowseArchives: false,
       canBatchMoveFiles: false,
+      hasSystemIntegration: false,
     };
   },
 

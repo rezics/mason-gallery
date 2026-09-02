@@ -10,6 +10,7 @@ import { CacheSettingsSection } from "./settings/CacheSettingsSection";
 import { FilesSettingsSection } from "./settings/FilesSettingsSection";
 import { GallerySettingsSection } from "./settings/GallerySettingsSection";
 import { GeneralSettingsSection } from "./settings/GeneralSettingsSection";
+import { SystemIntegrationSettingsSection } from "./settings/SystemIntegrationSettingsSection";
 import {
   getSupportedSettingsCategories,
   getVisibleSettingsCategory,
@@ -33,6 +34,7 @@ export default function SettingsPage() {
     gallery: t("settings:gallery"),
     appearance: t("settings:appearance"),
     files: t("settings:files"),
+    integration: t("settings:systemIntegration"),
     archive: t("archive:settingsSection"),
     cache: t("cache:section"),
   };
@@ -75,6 +77,9 @@ export default function SettingsPage() {
           {visibleCategory === "gallery" && <GallerySettingsSection />}
           {visibleCategory === "appearance" && <AppearanceSettingsSection />}
           {visibleCategory === "files" && <FilesSettingsSection />}
+          {visibleCategory === "integration" && (
+            <SystemIntegrationSettingsSection />
+          )}
           {visibleCategory === "archive" && (
             <ArchiveSettingsSection
               onManageCache={() => navigate("/manage/cache")}

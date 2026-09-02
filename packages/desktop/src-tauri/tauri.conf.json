@@ -3,6 +3,7 @@
   "productName": "MasonGallery",
   "version": "2.2.0",
   "identifier": "com.mason-gallery.app",
+  "mainBinaryName": "mason-gallery",
   "build": {
     "beforeDevCommand": "task dev:vite",
     "devUrl": "http://localhost:1420",
@@ -27,24 +28,18 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
+    "publisher": "MasonGallery",
+    "category": "Photography",
+    "shortDescription": "Browse image folders and archives in a masonry gallery.",
+    "homepage": "https://github.com/rezics/mason-gallery",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "windows": {
-      "nsis": {
-        "displayLanguageSelector": true,
-        "languages": [
-          "English",
-          "SimpChinese",
-          "TradChinese",
-          "Japanese"
-        ]
-      }
-    }
+    ]
   },
   "plugins": {
     "updater": {

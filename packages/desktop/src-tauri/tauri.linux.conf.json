@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["appimage", "deb", "rpm"],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "./linux/mason-gallery.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "./linux/mason-gallery.desktop"
+      }
+    }
+  }
+}

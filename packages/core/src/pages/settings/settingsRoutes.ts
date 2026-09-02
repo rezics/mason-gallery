@@ -5,6 +5,7 @@ export const SETTINGS_CATEGORIES = [
   "gallery",
   "appearance",
   "files",
+  "integration",
   "archive",
   "cache",
 ] as const;
@@ -21,11 +22,17 @@ export function getSettingsCategory(path: string): SettingsCategory {
 }
 
 export function getSupportedSettingsCategories(
-  capabilities: Pick<PlatformCapabilities, "canBrowseArchives">,
+  capabilities: Pick<
+    PlatformCapabilities,
+    "canBrowseArchives" | "hasSystemIntegration"
+  >,
 ): SettingsCategory[] {
   return SETTINGS_CATEGORIES.filter((item) => {
     if (item === "archive" || item === "cache") {
       return capabilities.canBrowseArchives;
+    }
+    if (item === "integration") {
+      return capabilities.hasSystemIntegration;
     }
     return true;
   });
@@ -33,7 +40,10 @@ export function getSupportedSettingsCategories(
 
 export function getVisibleSettingsCategory(
   path: string,
-  capabilities: Pick<PlatformCapabilities, "canBrowseArchives">,
+  capabilities: Pick<
+    PlatformCapabilities,
+    "canBrowseArchives" | "hasSystemIntegration"
+  >,
 ): SettingsCategory {
   const category = getSettingsCategory(path);
   return getSupportedSettingsCategories(capabilities).includes(category)
