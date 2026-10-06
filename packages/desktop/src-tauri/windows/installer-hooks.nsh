@@ -1,37 +1,87 @@
 !include "LogicLib.nsh"
 !include "nsDialogs.nsh"
 
+; Tauri includes hooks before MUI_LANGUAGE defines LANG_* constants. Use our
+; own NSIS language IDs so translations bind to the selected language table.
+!define MASON_LANG_ENGLISH 1033
+!define MASON_LANG_SIMPCHINESE 2052
+!define MASON_LANG_TRADCHINESE 1028
+!define MASON_LANG_JAPANESE 1041
+
+!ifndef MASON_INSTALL_REGKEY
+  !define MASON_INSTALL_REGKEY "Software\MasonGallery\MasonGallery"
+!endif
+!ifndef MASON_LEGACY_INSTALL_REGKEY
+  !define MASON_LEGACY_INSTALL_REGKEY "Software\mason-gallery\MasonGallery"
+!endif
+
+!define MUI_CUSTOMFUNCTION_GUIINIT MasonRestoreLegacyInstallLocation
+
+Var MasonLegacyInstallDirectory
 Var ShellIntegrationPageInitialized
 Var ShellFoldersCheckbox
 Var ShellArchivesCheckbox
 Var ShellFoldersSelected
 Var ShellArchivesSelected
 
-LangString ShellIntegrationTitle ${LANG_ENGLISH} "System integration"
-LangString ShellIntegrationSubtitle ${LANG_ENGLISH} "Choose where MasonGallery appears in File Explorer."
-LangString ShellIntegrationDescription ${LANG_ENGLISH} "These optional commands appear in the classic context menu under Show more options. They do not change your default apps."
-LangString ShellIntegrationFolders ${LANG_ENGLISH} "Add 'Open with MasonGallery' for folders"
-LangString ShellIntegrationArchives ${LANG_ENGLISH} "Add 'Open with MasonGallery' for ZIP, RAR, 7Z, CBZ, and CBR files"
+LangString ShellIntegrationTitle ${MASON_LANG_ENGLISH} "System integration"
+LangString ShellIntegrationSubtitle ${MASON_LANG_ENGLISH} "Choose where MasonGallery appears in File Explorer."
+LangString ShellIntegrationDescription ${MASON_LANG_ENGLISH} "These optional commands appear in the classic context menu under Show more options. They do not change your default apps."
+LangString ShellIntegrationFolders ${MASON_LANG_ENGLISH} "Add 'Open with MasonGallery' for folders"
+LangString ShellIntegrationArchives ${MASON_LANG_ENGLISH} "Add 'Open with MasonGallery' for ZIP, RAR, 7Z, CBZ, and CBR files"
 
-LangString ShellIntegrationTitle ${LANG_SIMPCHINESE} "系统集成"
-LangString ShellIntegrationSubtitle ${LANG_SIMPCHINESE} "选择 MasonGallery 在文件资源管理器中的显示位置。"
-LangString ShellIntegrationDescription ${LANG_SIMPCHINESE} "这些可选命令会显示在“显示更多选项”下的经典右键菜单中，不会更改默认应用。"
-LangString ShellIntegrationFolders ${LANG_SIMPCHINESE} "为文件夹添加“使用 MasonGallery 打开”"
-LangString ShellIntegrationArchives ${LANG_SIMPCHINESE} "为 ZIP、RAR、7Z、CBZ 和 CBR 文件添加“使用 MasonGallery 打开”"
+LangString ShellIntegrationTitle ${MASON_LANG_SIMPCHINESE} "系统集成"
+LangString ShellIntegrationSubtitle ${MASON_LANG_SIMPCHINESE} "选择 MasonGallery 在文件资源管理器中的显示位置。"
+LangString ShellIntegrationDescription ${MASON_LANG_SIMPCHINESE} "这些可选命令会显示在“显示更多选项”下的经典右键菜单中，不会更改默认应用。"
+LangString ShellIntegrationFolders ${MASON_LANG_SIMPCHINESE} "为文件夹添加“使用 MasonGallery 打开”"
+LangString ShellIntegrationArchives ${MASON_LANG_SIMPCHINESE} "为 ZIP、RAR、7Z、CBZ 和 CBR 文件添加“使用 MasonGallery 打开”"
 
-LangString ShellIntegrationTitle ${LANG_TRADCHINESE} "系統整合"
-LangString ShellIntegrationSubtitle ${LANG_TRADCHINESE} "選擇 MasonGallery 在檔案總管中的顯示位置。"
-LangString ShellIntegrationDescription ${LANG_TRADCHINESE} "這些選用指令會顯示在「顯示更多選項」下的傳統右鍵選單中，不會變更預設應用程式。"
-LangString ShellIntegrationFolders ${LANG_TRADCHINESE} "為資料夾加入「使用 MasonGallery 開啟」"
-LangString ShellIntegrationArchives ${LANG_TRADCHINESE} "為 ZIP、RAR、7Z、CBZ 和 CBR 檔案加入「使用 MasonGallery 開啟」"
+LangString ShellIntegrationTitle ${MASON_LANG_TRADCHINESE} "系統整合"
+LangString ShellIntegrationSubtitle ${MASON_LANG_TRADCHINESE} "選擇 MasonGallery 在檔案總管中的顯示位置。"
+LangString ShellIntegrationDescription ${MASON_LANG_TRADCHINESE} "這些選用指令會顯示在「顯示更多選項」下的傳統右鍵選單中，不會變更預設應用程式。"
+LangString ShellIntegrationFolders ${MASON_LANG_TRADCHINESE} "為資料夾加入「使用 MasonGallery 開啟」"
+LangString ShellIntegrationArchives ${MASON_LANG_TRADCHINESE} "為 ZIP、RAR、7Z、CBZ 和 CBR 檔案加入「使用 MasonGallery 開啟」"
 
-LangString ShellIntegrationTitle ${LANG_JAPANESE} "システム連携"
-LangString ShellIntegrationSubtitle ${LANG_JAPANESE} "エクスプローラーで MasonGallery を表示する場所を選択します。"
-LangString ShellIntegrationDescription ${LANG_JAPANESE} "これらのオプションコマンドは「その他のオプションを表示」にある従来のコンテキストメニューへ追加されます。デフォルトアプリは変更しません。"
-LangString ShellIntegrationFolders ${LANG_JAPANESE} "フォルダーに「MasonGallery で開く」を追加"
-LangString ShellIntegrationArchives ${LANG_JAPANESE} "ZIP、RAR、7Z、CBZ、CBR ファイルに「MasonGallery で開く」を追加"
+LangString ShellIntegrationTitle ${MASON_LANG_JAPANESE} "システム連携"
+LangString ShellIntegrationSubtitle ${MASON_LANG_JAPANESE} "エクスプローラーで MasonGallery を表示する場所を選択します。"
+LangString ShellIntegrationDescription ${MASON_LANG_JAPANESE} "これらのオプションコマンドは「その他のオプションを表示」にある従来のコンテキストメニューへ追加されます。デフォルトアプリは変更しません。"
+LangString ShellIntegrationFolders ${MASON_LANG_JAPANESE} "フォルダーに「MasonGallery で開く」を追加"
+LangString ShellIntegrationArchives ${MASON_LANG_JAPANESE} "ZIP、RAR、7Z、CBZ、CBR ファイルに「MasonGallery で開く」を追加"
 
 Page custom ShellIntegrationPageCreate ShellIntegrationPageLeave
+
+; v2.2.0 used the default publisher "mason-gallery". Tauri's maintenance page
+; passes the current publisher's saved directory to the old uninstaller, so
+; restore that directory before the page can run it with an empty _?= argument.
+Function MasonRestoreLegacyInstallLocation
+  ReadRegStr $0 HKCU "${MASON_INSTALL_REGKEY}" ""
+  ${If} $0 != ""
+    Return
+  ${EndIf}
+  ReadRegStr $MasonLegacyInstallDirectory HKCU "${MASON_LEGACY_INSTALL_REGKEY}" ""
+  ${If} $MasonLegacyInstallDirectory == ""
+    Return
+  ${EndIf}
+  ${IfNot} ${FileExists} "$MasonLegacyInstallDirectory\uninstall.exe"
+    Return
+  ${EndIf}
+  ${IfNot} ${FileExists} "$MasonLegacyInstallDirectory\mason-gallery.exe"
+    Return
+  ${EndIf}
+
+  WriteRegStr HKCU "${MASON_INSTALL_REGKEY}" "" "$MasonLegacyInstallDirectory"
+  ; Preserve an explicit /D= destination or a directory chosen by the user.
+  ; NSIS removes /D= from $CMDLINE after parsing it; inspect the original
+  ; Windows command line so an explicitly chosen default path is preserved.
+  System::Call 'kernel32::GetCommandLineW() w.r0'
+  ClearErrors
+  ${GetOptions} $0 "/D=" $0
+  ${If} ${Errors}
+    ${If} $INSTDIR == "$LOCALAPPDATA\MasonGallery"
+      StrCpy $INSTDIR "$MasonLegacyInstallDirectory"
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
 
 Function ShellIntegrationPageCreate
   ClearErrors
@@ -144,6 +194,12 @@ FunctionEnd
     ${EndIf}
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   ${EndIf}
+!macroend
+
+; Silent installers do not call .onGUIInit. Restore a legacy custom location
+; before copying files, while still respecting an explicit /D= destination.
+!macro NSIS_HOOK_PREINSTALL
+  Call MasonRestoreLegacyInstallLocation
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL

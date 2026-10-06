@@ -29,6 +29,29 @@ jobs:
       - name: Run behavior and updater release tests
         run: task test
 
+  installer-languages:
+    name: Windows installer regressions
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup JS
+        uses: ./.github/actions/setup-js
+      - name: Setup NSIS 3.11
+        shell: pwsh
+        run: |
+          $nsisArchive = Join-Path $env:RUNNER_TEMP "nsis-3.11.zip"
+          $nsisDirectory = Join-Path $env:RUNNER_TEMP "nsis-3.11"
+          Invoke-WebRequest -Uri "https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.11/nsis-3.11.zip" -OutFile $nsisArchive
+          Expand-Archive -LiteralPath $nsisArchive -DestinationPath $nsisDirectory
+          $compiler = Get-ChildItem -LiteralPath $nsisDirectory -Recurse -Filter makensis.exe | Sort-Object { $_.FullName.Length } | Select-Object -First 1
+          if (-not $compiler) { throw "NSIS compiler is missing" }
+          "NSIS_DIR=$($compiler.DirectoryName)" >> $env:GITHUB_ENV
+      - name: Verify installer languages and legacy upgrade paths
+        run: bun test scripts/nsis-language.test.mjs scripts/nsis-upgrade.test.mjs
+
   rust:
     runs-on: ubuntu-22.04
     permissions:
