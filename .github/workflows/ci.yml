@@ -26,6 +26,9 @@ jobs:
       - name: Run frontend checks
         run: task check
 
+      - name: Run behavior and updater release tests
+        run: task test
+
   rust:
     runs-on: ubuntu-22.04
     permissions:
