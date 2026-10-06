@@ -178,7 +178,9 @@ describe("update controller", () => {
         if (failCheck) throw "HTTP 404";
         return { version: "2.3.0" };
       },
-      install: async () => { installs += 1; },
+      install: async () => {
+        installs += 1;
+      },
     });
     await controller.check(request("manual"));
     failCheck = true;

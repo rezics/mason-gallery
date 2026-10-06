@@ -26,6 +26,7 @@ function command(program, args, options = {}) {
   return execFileSync(program, args, {
     cwd: root,
     encoding: "utf8",
+    stdio: "pipe",
     ...options,
   });
 }
@@ -224,7 +225,12 @@ function signFile(file, pubkey) {
       ["x", "--no-install", "tauri", "signer", "sign", file],
       { cwd: join(root, "packages/desktop") },
     );
-  } catch {
+  } catch (error) {
+    if (error?.stderr?.toString().includes("Wrong password for that key")) {
+      throw new Error(
+        "TAURI_SIGNING_PRIVATE_KEY_PASSWORD does not decrypt the existing signing key.",
+      );
+    }
     throw new Error(
       "Updater signing failed. Check the signing private key and password secrets.",
     );
@@ -365,6 +371,11 @@ function assemble(tag, repairOnly) {
   withTemp((directory) => {
     const platforms = {};
     const signed = new Map();
+    if (repairOnly) {
+      const probe = join(directory, "signing-check.txt");
+      writeFileSync(probe, "MasonGallery updater repair signing preflight\n");
+      signFile(probe, config.plugins.updater.pubkey);
+    }
     for (const [target, name] of artifacts) {
       const asset = release.assets.find((item) => item.name === name);
       assert(
