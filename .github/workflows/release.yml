@@ -10,6 +10,10 @@ on:
         description: "Release tag to build, for example v2.2.0"
         required: true
         type: string
+      repair_only:
+        description: "Only sign existing release assets and restore updater metadata; do not build or publish a version"
+        type: boolean
+        default: false
 
 concurrency:
   group: release-desktop-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -17,6 +21,7 @@ concurrency:
 
 jobs:
   release:
+    if: ${{ !inputs.repair_only }}
     name: Build ${{ matrix.name }}
     permissions:
       contents: write
@@ -28,18 +33,26 @@ jobs:
             platform: windows-latest
             cache: windows
             args: ""
+            target: windows-x86_64
+            bundle-dir: packages/desktop/src-tauri/target/release/bundle
           - name: macOS Apple Silicon
             platform: macos-latest
             cache: macos-aarch64
             args: "--target aarch64-apple-darwin"
+            target: darwin-aarch64
+            bundle-dir: packages/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle
           - name: macOS Intel
             platform: macos-latest
             cache: macos-x86_64
             args: "--target x86_64-apple-darwin"
+            target: darwin-x86_64
+            bundle-dir: packages/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle
           - name: Linux
             platform: ubuntu-22.04
             cache: linux
             args: ""
+            target: linux-x86_64
+            bundle-dir: packages/desktop/src-tauri/target/release/bundle
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -58,6 +71,15 @@ jobs:
         with:
           toolchain: 1.95.0
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Verify updater configuration and signing key
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bun scripts/desktop-updater.mjs preflight "$RELEASE_TAG"
+        shell: bash
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -86,7 +108,7 @@ jobs:
         run: task desktop:generate:icons
 
       - name: Build desktop release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -99,5 +121,49 @@ jobs:
           releaseBody: "See the assets to download and install this version."
           releaseDraft: true
           prerelease: false
-          updaterJsonPreferNsis: ${{ matrix.platform == 'windows-latest' }}
+          # Assemble once after every platform succeeds, avoiding parallel JSON overwrites.
+          includeUpdaterJson: false
           args: ${{ matrix.args }}
+
+      - name: Require valid signed updater bundles
+        env:
+          BUNDLE_DIR: ${{ matrix.bundle-dir }}
+          UPDATE_TARGET: ${{ matrix.target }}
+        run: bun scripts/desktop-updater.mjs validate-local "$BUNDLE_DIR" "$UPDATE_TARGET"
+        shell: bash
+
+  validate-updater:
+    name: Verify complete release updater
+    needs: release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - uses: ./.github/actions/setup-js
+      - name: Assemble and verify all updater URLs and signatures on the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: bun scripts/desktop-updater.mjs assemble "$RELEASE_TAG"
+
+  repair-updater:
+    name: Repair existing updater metadata
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.repair_only }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-js
+      - name: Sign and verify existing assets, then upload updater metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bun scripts/desktop-updater.mjs repair "$RELEASE_TAG"

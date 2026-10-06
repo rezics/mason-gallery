@@ -18,7 +18,7 @@ async function discardPendingUpdate(): Promise<void> {
 export const tauriUpdateBackend: UpdateBackend = {
   async check() {
     await discardPendingUpdate();
-    const update = await check();
+    const update = await check({ timeout: 15_000 });
     if (!update) return null;
     pendingUpdate = update;
     return { version: update.version };

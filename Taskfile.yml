@@ -68,8 +68,9 @@ tasks:
             - bunx biome format --write .
 
     test:
-        desc: Run behavior tests for the shared core and web app.
+        desc: Run behavior tests for the updater release scripts, shared core and web app.
         cmds:
+            - bun test scripts
             - task: core:test
             - task: web:test
 
