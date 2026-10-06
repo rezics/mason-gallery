@@ -3,7 +3,6 @@ import { execFileSync } from "node:child_process";
 import {
   createHash,
   generateKeyPairSync,
-  getRelease,
   randomBytes,
   sign,
 } from "node:crypto";
@@ -12,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  getRelease,
   requiredTargets,
   validateManifest,
   verifyUpdaterSignature,
