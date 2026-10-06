@@ -10,6 +10,7 @@ import {
 
 function createV1Settings() {
   const {
+    inputBindings: _inputBindings,
     autoCheckUpdates: _autoCheckUpdates,
     externalDropBehavior: _externalDropBehavior,
     ...settings
@@ -18,8 +19,11 @@ function createV1Settings() {
 }
 
 function createV2Settings() {
-  const { externalDropBehavior: _externalDropBehavior, ...settings } =
-    createDefaultSettings();
+  const {
+    inputBindings: _inputBindings,
+    externalDropBehavior: _externalDropBehavior,
+    ...settings
+  } = createDefaultSettings();
   return settings;
 }
 
@@ -28,8 +32,8 @@ describe("settings schema", () => {
     const settings = createDefaultSettings();
     const envelope = createSettingsEnvelope(settings);
 
-    expect(envelope.version).toBe(3);
-    expect(SETTINGS_SCHEMA_VERSION).toBe(3);
+    expect(envelope.version).toBe(4);
+    expect(SETTINGS_SCHEMA_VERSION).toBe(4);
     expect(settings.autoCheckUpdates).toBe(true);
     expect(settings.externalDropBehavior).toBe("add-and-open");
     expect(migrateSettingsEnvelope(envelope)).toEqual(envelope);
@@ -37,9 +41,9 @@ describe("settings schema", () => {
 
   test("rejects unsupported and unversioned persisted documents", () => {
     expect(() => migrateSettingsEnvelope({ settings: {} })).toThrow();
-    expect(() =>
-      migrateSettingsEnvelope({ version: 4, settings: {} }),
-    ).toThrow("Unsupported settings schema version: 4");
+    expect(() => migrateSettingsEnvelope({ version: 5, settings: {} })).toThrow(
+      "Unsupported settings schema version: 5",
+    );
   });
 
   test("rejects the removed duplicate thumbnailSizes field", () => {
@@ -51,7 +55,7 @@ describe("settings schema", () => {
     expect(settingsSchema.safeParse(oldDocument).success).toBe(false);
   });
 
-  test("migrates v1 settings to v2 and keeps existing preferences", () => {
+  test("migrates v1 settings to the current version and keeps existing preferences", () => {
     const v1Settings = {
       ...createV1Settings(),
       language: "zh-hant" as const,
@@ -69,7 +73,7 @@ describe("settings schema", () => {
       settings: v1Settings,
     });
 
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(4);
     expect(migrated.settings.autoCheckUpdates).toBe(true);
     expect(migrated.settings.externalDropBehavior).toBe("add-and-open");
     expect(migrated.settings.language).toBe("zh-hant");
@@ -78,7 +82,7 @@ describe("settings schema", () => {
     expect(migrated.settings.cachePolicy).toEqual(v1Settings.cachePolicy);
   });
 
-  test("migrates v2 settings to v3 with add-and-open as the drop default", () => {
+  test("migrates v2 settings to the current version with add-and-open as the drop default", () => {
     const v2Settings = {
       ...createV2Settings(),
       language: "ja" as const,
@@ -90,7 +94,7 @@ describe("settings schema", () => {
       settings: v2Settings,
     });
 
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(4);
     expect(SETTINGS_SCHEMA_V2_VERSION).toBe(2);
     expect(migrated.settings.autoCheckUpdates).toBe(false);
     expect(migrated.settings.externalDropBehavior).toBe("add-and-open");
@@ -110,7 +114,7 @@ describe("settings schema", () => {
       },
     });
 
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(4);
     expect(migrated.settings.language).toBe(v1Settings.language);
     expect(migrated.settings.theme).toBe(v1Settings.theme);
     expect(

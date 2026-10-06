@@ -1,7 +1,27 @@
-import { FolderOpen, Info, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FolderOpen,
+  Info,
+  RotateCcw,
+  Trash2,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Lightbox from "yet-another-react-lightbox";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import Lightbox, {
+  type ControllerRef,
+  type ZoomRef,
+} from "yet-another-react-lightbox";
 import Counter from "yet-another-react-lightbox/plugins/counter";
 import "yet-another-react-lightbox/plugins/counter.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
@@ -10,6 +30,14 @@ import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import {
+  type ActionHandlers,
+  useInputSuspension,
+} from "@/input/useActionInputs";
+import {
+  ViewerActionsContext,
+  ViewerInputPlugin,
+} from "@/input/ViewerInputAdapter";
 import { applySuccessfulDeleteToSelection } from "@/lib/selectionActions";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useViewerStore } from "@/stores/viewerStore";
@@ -23,15 +51,20 @@ function ViewerButton({
   title,
   onClick,
   children,
+  className = "",
+  disabled = false,
 }: {
   title: string;
   onClick?: () => void;
   children: ReactNode;
+  className?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
-      className="yarl__button inline-flex items-center justify-center text-white/85 transition-colors hover:text-white"
+      disabled={disabled}
+      className={`yarl__button inline-flex items-center justify-center text-white/85 transition-colors hover:text-white ${className}`}
       title={title}
       aria-label={title}
       onClick={onClick}
@@ -55,6 +88,18 @@ export default function ImageViewer() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const controllerRef = useRef<ControllerRef>(null);
+  const zoomRef = useRef<ZoomRef>(null);
+  const deleting = useRef(false);
+  const [zoomed, setZoomed] = useState(false);
+  useInputSuspension(confirmOpen || infoOpen);
+  useEffect(() => {
+    if (!isViewerOpen) {
+      setConfirmOpen(false);
+      setInfoOpen(false);
+      setZoomed(false);
+    }
+  }, [isViewerOpen]);
 
   const currentImage = images[currentIndex];
   const canDelete =
@@ -76,6 +121,8 @@ export default function ImageViewer() {
     if (!canDelete || !platform.deleteFile) return;
     const img = images[currentIndex];
     if (!img) return;
+    if (deleting.current) return;
+    deleting.current = true;
     try {
       await platform.deleteFile(img.source);
       if (img.selectableFile) {
@@ -88,6 +135,8 @@ export default function ImageViewer() {
       if (images.length <= 1) closeViewer();
     } catch (error) {
       console.error("Failed to delete:", error);
+    } finally {
+      deleting.current = false;
     }
   }, [
     canDelete,
@@ -101,7 +150,7 @@ export default function ImageViewer() {
   ]);
 
   const requestDelete = useCallback(() => {
-    if (!canDelete) return;
+    if (!canDelete || deleting.current) return;
     if (confirmDeleteSetting) {
       setConfirmOpen(true);
     } else {
@@ -109,20 +158,45 @@ export default function ImageViewer() {
     }
   }, [canDelete, confirmDeleteSetting, executeDelete]);
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === "Delete" && canDelete) {
-        requestDelete();
-      }
+  const handlers: ActionHandlers = {
+    "viewer.previous": () => controllerRef.current?.prev(),
+    "viewer.next": () => controllerRef.current?.next(),
+    "viewer.zoomIn": () => zoomRef.current?.zoomIn(),
+    "viewer.zoomOut": () => zoomRef.current?.zoomOut(),
+    "viewer.resetZoom": () => zoomRef.current?.changeZoom(1),
+    "viewer.toggleZoom": () => {
+      const zoom = zoomRef.current;
+      if (zoom)
+        zoom.changeZoom(
+          zoom.zoom >= zoom.maxZoom
+            ? 1
+            : zoom.zoom * Math.max(Math.sqrt(zoom.maxZoom), 2),
+        );
     },
-    [canDelete, requestDelete],
-  );
-
-  useEffect(() => {
-    if (!isViewerOpen) return;
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isViewerOpen, handleKeyDown]);
+    "viewer.close": closeViewer,
+    "viewer.info": () => setInfoOpen(true),
+    ...(canDelete ? { "viewer.delete": requestDelete } : {}),
+    ...(canReveal
+      ? {
+          "viewer.reveal": () =>
+            currentImage && platform.revealFile?.(currentImage.source),
+        }
+      : {}),
+  };
+  const wheelZoom = (delta: number, event: WheelEvent) => {
+    const zoom = zoomRef.current;
+    const container =
+      event.currentTarget instanceof Element
+        ? event.currentTarget.getBoundingClientRect()
+        : undefined;
+    if (zoom)
+      zoom.changeZoom(
+        zoom.zoom * Math.min(1 + Math.abs(delta / 100), 2) ** -Math.sign(delta),
+        true,
+        container ? event.clientX - container.left - container.width / 2 : 0,
+        container ? event.clientY - container.top - container.height / 2 : 0,
+      );
+  };
 
   if (!isViewerOpen) return null;
 
@@ -133,7 +207,7 @@ export default function ImageViewer() {
       <ViewerButton
         key="info"
         title={t("viewer:info")}
-        onClick={() => setInfoOpen((open) => !open)}
+        onClick={handlers["viewer.info"]}
       >
         <Info />
       </ViewerButton>,
@@ -144,7 +218,7 @@ export default function ImageViewer() {
         <ViewerButton
           key="folder"
           title={t("viewer:revealInFolder")}
-          onClick={() => platform.revealFile?.(currentImage.source)}
+          onClick={handlers["viewer.reveal"]}
         >
           <FolderOpen />
         </ViewerButton>,
@@ -156,7 +230,7 @@ export default function ImageViewer() {
         <ViewerButton
           key="delete"
           title={t("viewer:deleteConfirm")}
-          onClick={requestDelete}
+          onClick={handlers["viewer.delete"]}
         >
           <Trash2 />
         </ViewerButton>,
@@ -164,23 +238,89 @@ export default function ImageViewer() {
     }
   }
 
-  toolbarButtons.push("close");
+  toolbarButtons.push(
+    <ViewerButton
+      key="reset"
+      title={t("settings:action_viewer_resetZoom")}
+      onClick={handlers["viewer.resetZoom"]}
+    >
+      <RotateCcw />
+    </ViewerButton>,
+    "close",
+  );
 
   return (
     <>
-      <Lightbox
-        open={isViewerOpen}
-        close={closeViewer}
-        slides={slides}
-        index={currentIndex}
-        on={{
-          view: ({ index }) => setCurrentIndex(index),
+      <ViewerActionsContext.Provider
+        value={{
+          handlers,
+          zoomed,
+          isZoomed: () => (zoomRef.current?.zoom ?? 1) > 1,
+          wheelZoom,
         }}
-        plugins={[Counter, Zoom]}
-        zoom={{ scrollToZoom: true }}
-        controller={{ closeOnBackdropClick: true }}
-        toolbar={{ buttons: toolbarButtons }}
-      />
+      >
+        <Lightbox
+          open={isViewerOpen}
+          close={closeViewer}
+          slides={slides}
+          index={currentIndex}
+          on={{
+            view: ({ index }) => setCurrentIndex(index),
+            zoom: ({ zoom }) => setZoomed(zoom > 1),
+          }}
+          plugins={[Counter, Zoom, ViewerInputPlugin]}
+          zoom={{ ref: zoomRef, scrollToZoom: false, doubleClickDelay: 0 }}
+          controller={{ ref: controllerRef, closeOnBackdropClick: true }}
+          toolbar={{ buttons: toolbarButtons }}
+          render={{
+            buttonPrev: () => (
+              <ViewerButton
+                className="yarl__navigation_prev"
+                title={t("settings:action_viewer_previous")}
+                onClick={handlers["viewer.previous"]}
+              >
+                <ChevronLeft />
+              </ViewerButton>
+            ),
+            buttonNext: () => (
+              <ViewerButton
+                className="yarl__navigation_next"
+                title={t("settings:action_viewer_next")}
+                onClick={handlers["viewer.next"]}
+              >
+                <ChevronRight />
+              </ViewerButton>
+            ),
+            buttonClose: () => (
+              <ViewerButton
+                key="close"
+                title={t("settings:action_viewer_close")}
+                onClick={handlers["viewer.close"]}
+              >
+                <X />
+              </ViewerButton>
+            ),
+            buttonZoom: (zoom) => (
+              <Fragment key="zoom">
+                <ViewerButton
+                  title={t("settings:action_viewer_zoomIn")}
+                  disabled={zoom.disabled || zoom.zoom >= zoom.maxZoom}
+                  onClick={handlers["viewer.zoomIn"]}
+                >
+                  <ZoomIn />
+                </ViewerButton>
+                <ViewerButton
+                  title={t("settings:action_viewer_zoomOut")}
+                  disabled={zoom.disabled || zoom.zoom <= zoom.minZoom}
+                  onClick={handlers["viewer.zoomOut"]}
+                >
+                  <ZoomOut />
+                </ViewerButton>
+              </Fragment>
+            ),
+          }}
+        />
+      </ViewerActionsContext.Provider>
 
       {currentImage && (
         <Dialog
@@ -188,7 +328,7 @@ export default function ImageViewer() {
           title={t("viewer:info")}
           onClose={() => setInfoOpen(false)}
         >
-          <p>
+          <p className="break-all">
             {t("viewer:fileName")}: {getFileName(currentImage.source)}
           </p>
           {currentImage.width && currentImage.height && (
@@ -215,7 +355,7 @@ export default function ImageViewer() {
           executeDelete();
         }}
       >
-        <p>{getFileName(currentImage?.source ?? "")}</p>
+        <p className="break-all">{getFileName(currentImage?.source ?? "")}</p>
       </ConfirmDialog>
     </>
   );

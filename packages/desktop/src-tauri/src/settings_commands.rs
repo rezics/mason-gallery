@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use tauri::State;
 
-const SETTINGS_DOCUMENT_VERSION: u64 = 2;
+const SETTINGS_DOCUMENT_VERSION: u64 = 4;
 const SETTINGS_DOCUMENT_MIN_READ_VERSION: u64 = 1;
 
 fn read_settings_version(envelope: &Value) -> Result<u64, String> {
@@ -64,7 +64,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn load_accepts_v1_and_v2_envelopes() {
+    fn load_accepts_all_supported_envelopes() {
         assert_eq!(
             validate_settings_envelope_for_load(&json!({"version": 1, "settings": {}})),
             Ok(1)
@@ -73,21 +73,30 @@ mod tests {
             validate_settings_envelope_for_load(&json!({"version": 2, "settings": {}})),
             Ok(2)
         );
+        for version in 3..=4 {
+            assert_eq!(
+                validate_settings_envelope_for_load(&json!({"version": version, "settings": {}})),
+                Ok(version as i64)
+            );
+        }
         assert!(validate_settings_envelope_for_load(&json!({"settings": {}})).is_err());
         assert!(
-            validate_settings_envelope_for_load(&json!({"version": 3, "settings": {}})).is_err()
+            validate_settings_envelope_for_load(&json!({"version": 5, "settings": {}})).is_err()
         );
     }
 
     #[test]
-    fn save_requires_current_v2_envelope() {
+    fn save_requires_current_v4_envelope() {
         assert_eq!(
-            validate_settings_envelope_for_save(&json!({"version": 2, "settings": {}})),
-            Ok(2)
+            validate_settings_envelope_for_save(&json!({"version": 4, "settings": {}})),
+            Ok(4)
         );
         assert!(
             validate_settings_envelope_for_save(&json!({"version": 1, "settings": {}})).is_err()
         );
         assert!(validate_settings_envelope_for_save(&json!({"settings": {}})).is_err());
+        assert!(
+            validate_settings_envelope_for_save(&json!({"version": 3, "settings": {}})).is_err()
+        );
     }
 }

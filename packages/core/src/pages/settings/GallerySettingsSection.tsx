@@ -33,7 +33,10 @@ export function GallerySettingsSection() {
   return (
     <SettingsSection>
       {platform.capabilities.canDragDropFolders && (
-        <SettingsField label={t("settings:externalDropBehavior")}>
+        <SettingsField
+          id="setting-externalDropBehavior"
+          label={t("settings:externalDropBehavior")}
+        >
           <Select
             value={externalDropBehavior}
             onChange={(event) =>
@@ -51,7 +54,7 @@ export function GallerySettingsSection() {
           </Select>
         </SettingsField>
       )}
-      <SettingsField label={t("settings:sortMethod")}>
+      <SettingsField id="setting-sortMethod" label={t("settings:sortMethod")}>
         <Select
           value={sortMethod}
           onChange={(event) => setSortMethod(event.target.value as SortMethod)}
@@ -62,7 +65,7 @@ export function GallerySettingsSection() {
           <option value="time-desc">{t("settings:timeDesc")}</option>
         </Select>
       </SettingsField>
-      <SettingsField label={t("settings:pageSize")}>
+      <SettingsField id="setting-pageSize" label={t("settings:pageSize")}>
         <Input
           type="number"
           min={10}
@@ -75,6 +78,7 @@ export function GallerySettingsSection() {
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:showGridPosition")}</span>
         <Switch
+          id="setting-showGridPosition"
           aria-label={t("settings:showGridPosition")}
           checked={showGridPosition}
           onCheckedChange={setShowGridPosition}
@@ -83,12 +87,13 @@ export function GallerySettingsSection() {
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:openGallerySidebarByDefault")}</span>
         <Switch
+          id="setting-openGallerySidebarByDefault"
           aria-label={t("settings:openGallerySidebarByDefault")}
           checked={openGallerySidebarByDefault}
           onCheckedChange={setOpenGallerySidebarByDefault}
         />
       </div>
-      <SettingsField label={t("settings:columns")}>
+      <SettingsField id="setting-columns" label={t("settings:columns")}>
         <div className="grid gap-2">
           {Object.keys(breakpoints)
             .map(Number)

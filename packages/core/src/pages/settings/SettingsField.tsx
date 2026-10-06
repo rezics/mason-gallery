@@ -8,10 +8,14 @@ export function SettingsField({
   label,
   children,
   hint,
+  id,
+  invalid,
 }: {
   label: string;
   children: ReactNode;
   hint?: string;
+  id?: string;
+  invalid?: boolean;
 }) {
   const control =
     isValidElement<{ "aria-label"?: string }>(children) &&
@@ -23,7 +27,7 @@ export function SettingsField({
       : children;
 
   return (
-    <Field>
+    <Field id={id} tabIndex={-1} data-invalid={invalid || undefined}>
       <FieldTitle>{label}</FieldTitle>
       {control}
       {hint && <FieldDescription>{hint}</FieldDescription>}

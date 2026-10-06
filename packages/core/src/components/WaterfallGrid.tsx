@@ -303,9 +303,21 @@ export default function WaterfallGrid({
 
   const safeWidth = Math.max(width, 1);
   const columnCount = getColumnCount(safeWidth, breakpoints);
+  // Positioners retain indices. Rebuild on removals without resetting the
+  // incremental measurements of batches appended during a scan.
+  const previousDataset = useRef({ count: images.length, revision: 0 });
+  const datasetRevision =
+    previousDataset.current.revision +
+    (images.length < previousDataset.current.count ? 1 : 0);
+  useLayoutEffect(() => {
+    previousDataset.current = {
+      count: images.length,
+      revision: datasetRevision,
+    };
+  }, [images.length, datasetRevision]);
   const positioner = usePositioner(
     { width: safeWidth, columnCount, columnGutter: 8 },
-    [scanId, columnCount, selectedFolder],
+    [scanId, columnCount, selectedFolder, datasetRevision],
   );
 
   useEffect(() => {

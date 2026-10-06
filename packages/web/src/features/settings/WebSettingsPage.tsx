@@ -1,8 +1,14 @@
 import { BackButton, useI18n } from "@mason-gallery/core";
 import { cn } from "@mason-gallery/core/lib/utils";
 import { AppearanceSettingsSection } from "@mason-gallery/core/pages/settings/AppearanceSettingsSection";
+import { ControlsSettingsSection } from "@mason-gallery/core/pages/settings/ControlsSettingsSection";
 import { GallerySettingsSection } from "@mason-gallery/core/pages/settings/GallerySettingsSection";
 import { GeneralSettingsSection } from "@mason-gallery/core/pages/settings/GeneralSettingsSection";
+import {
+  SettingsSearch,
+  useSettingFocus,
+} from "@mason-gallery/core/pages/settings/SettingsSearch";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   getWebSettingsCategory,
@@ -12,11 +18,18 @@ import {
 
 export function WebSettingsPage() {
   const t = useI18n();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const visibleCategory = getWebSettingsCategory(location);
+  const [focusTarget, setFocusTarget] = useState<{
+    anchor: string;
+    category: string;
+    fallbackAnchor?: string;
+  } | null>(null);
+  useSettingFocus(focusTarget);
 
   const categoryLabels: Record<WebSettingsCategory, string> = {
     general: t("settings:general"),
+    controls: t("settings:controls"),
     gallery: t("settings:gallery"),
     appearance: t("settings:appearance"),
   };
@@ -52,13 +65,25 @@ export function WebSettingsPage() {
 
       <div className="min-w-0 flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto max-w-3xl space-y-6">
-          <header>
+          <header className="flex flex-col gap-4">
             <h2 className="text-2xl font-semibold">
               {categoryLabels[visibleCategory]}
             </h2>
+            <SettingsSearch
+              categories={WEB_SETTINGS_CATEGORIES}
+              onSelect={(entry) => {
+                setFocusTarget({
+                  anchor: entry.anchor,
+                  category: entry.category,
+                  fallbackAnchor: entry.fallbackAnchor,
+                });
+                navigate(`/settings/${entry.category}`);
+              }}
+            />
           </header>
 
           {visibleCategory === "general" && <GeneralSettingsSection />}
+          {visibleCategory === "controls" && <ControlsSettingsSection />}
           {visibleCategory === "gallery" && <GallerySettingsSection />}
           {visibleCategory === "appearance" && <AppearanceSettingsSection />}
         </div>

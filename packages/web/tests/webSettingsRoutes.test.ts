@@ -10,6 +10,7 @@ describe("web settings routes", () => {
       "general",
       "gallery",
       "appearance",
+      "controls",
     ]);
     expect(getWebSettingsCategory("/settings")).toBe("general");
     expect(getWebSettingsCategory("/settings/general")).toBe("general");
@@ -26,6 +27,7 @@ describe("web settings routes", () => {
   test("accepts an optional locale prefix", () => {
     expect(getWebSettingsCategory("/zh-hant/settings/appearance")).toBe(
       "appearance",
+      "controls",
     );
     expect(getWebSettingsCategory("/ja/settings/nope")).toBe("general");
   });
@@ -33,6 +35,7 @@ describe("web settings routes", () => {
   test("accepts the noindex app settings prefix", () => {
     expect(getWebSettingsCategory("/app/settings/appearance")).toBe(
       "appearance",
+      "controls",
     );
     expect(getWebSettingsCategory("/app/settings/gallery")).toBe("gallery");
     expect(getWebSettingsCategory("/app/settings/general")).toBe("general");

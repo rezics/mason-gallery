@@ -46,6 +46,35 @@ beforeEach(() => {
 });
 
 describe("settings persistence", () => {
+  test("persists disabled and custom bindings, restores defaults and hydrates the saved document", async () => {
+    const { savedSettings } = createPlatform(createDefaultSettings());
+    useSettingsStore.getState().setActionBindings("viewer.next", []);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      savedSettings.at(-1)?.inputBindings.overrides["viewer.next"],
+    ).toEqual([]);
+    useSettingsStore.getState().setActionBindings("viewer.next", undefined);
+    useSettingsStore
+      .getState()
+      .setInputBindings({
+        preset: "wheel-navigation",
+        overrides: {
+          "viewer.close": [
+            { type: "keyboard", key: "Q", match: "key", modifiers: [] },
+          ],
+        },
+      });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const saved = savedSettings.at(-1);
+    expect(saved?.inputBindings.overrides["viewer.next"]).toBeUndefined();
+    if (!saved) throw new Error("Settings were not persisted");
+    createPlatform(saved);
+    useSettingsStore.setState({ ...createDefaultSettings(), _hydrated: false });
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().inputBindings).toEqual(
+      saved.inputBindings,
+    );
+  });
   test("hydrates one validated document and derives thumbnail sizes", async () => {
     const settings: Settings = {
       ...createDefaultSettings(),

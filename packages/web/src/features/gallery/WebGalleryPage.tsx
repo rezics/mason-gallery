@@ -7,11 +7,19 @@ import {
   useAppStore,
   useI18n,
   usePlatform,
+  useSettingsStore,
   useViewerStore,
   WaterfallGrid,
 } from "@mason-gallery/core";
+import { Dialog } from "@mason-gallery/core/components/ui/dialog";
+import { Input } from "@mason-gallery/core/components/ui/input";
+import {
+  useActionInputs,
+  useInputSuspension,
+} from "@mason-gallery/core/input/useActionInputs";
 import { FolderOpen, LockKeyhole, UploadCloud } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { Positioner } from "masonic";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WebFolderRail } from "./WebFolderRail";
 
 type PreviewImage = {
@@ -332,6 +340,13 @@ export function WebGalleryPage() {
   const totalCount = useViewerStore((s) => s.totalCount);
   const selectedFolder = useAppStore((s) => s.selectedFolder);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const positionerRef = useRef<Positioner | null>(null);
+  const showGridPosition = useSettingsStore((state) => state.showGridPosition);
+  const [jumpOpen, setJumpOpen] = useState(false);
+  const [jumpValue, setJumpValue] = useState("1");
+  const onPositionerReady = useCallback((positioner: Positioner) => {
+    positionerRef.current = positioner;
+  }, []);
 
   const images = useMemo(() => {
     const withIndex = allImages.map((img, i) => ({ ...img, globalIndex: i }));
@@ -341,6 +356,27 @@ export function WebGalleryPage() {
   }, [allImages, selectedFolder]);
 
   const showEmptyGallery = allImages.length === 0 && !isScanning;
+  useInputSuspension(jumpOpen);
+  const openJump = () => setJumpOpen(true);
+  useActionInputs(
+    "grid",
+    images.length && showGridPosition ? { "grid.jump": openJump } : {},
+  );
+  const jump = () => {
+    const index = Math.max(
+      0,
+      Math.min(images.length - 1, Number.parseInt(jumpValue, 10) - 1),
+    );
+    if (!Number.isFinite(index)) return;
+    const positioner = positionerRef.current;
+    const top =
+      positioner?.get(index)?.top ??
+      (positioner && positioner.size() > 0
+        ? (positioner.shortestColumn() / positioner.size()) * index
+        : 0);
+    scrollContainerRef.current?.scrollTo({ top, behavior: "smooth" });
+    setJumpOpen(false);
+  };
   const progressValue =
     isScanning && totalCount > 0 ? (allImages.length / totalCount) * 100 : 35;
 
@@ -359,7 +395,13 @@ export function WebGalleryPage() {
       ) : (
         <>
           <div className="flex items-center justify-between border-b border-border bg-background/85 px-6 py-3 text-sm backdrop-blur">
-            <span className="font-medium text-foreground">
+            <button
+              type="button"
+              className="font-medium text-foreground"
+              onClick={openJump}
+              disabled={!showGridPosition || !images.length || isScanning}
+              title={t("home:goToImage")}
+            >
               {isScanning
                 ? totalCount > 0
                   ? t("home:scanProgress", {
@@ -368,7 +410,7 @@ export function WebGalleryPage() {
                     })
                   : t("home:scanning")
                 : t("home:imageCount", { count: images.length })}
-            </span>
+            </button>
             <button
               type="button"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -384,6 +426,7 @@ export function WebGalleryPage() {
               className="min-w-0 flex-1 overflow-auto bg-background"
             >
               <WaterfallGrid
+                onPositionerReady={onPositionerReady}
                 scrollContainerRef={scrollContainerRef}
                 images={images}
               />
@@ -393,6 +436,24 @@ export function WebGalleryPage() {
       )}
 
       <ImageViewer />
+      <Dialog
+        open={jumpOpen}
+        title={t("home:goToImage")}
+        onClose={() => setJumpOpen(false)}
+        actions={<Button onClick={jump}>{t("home:goToImage")}</Button>}
+      >
+        <Input
+          type="number"
+          min={1}
+          max={images.length}
+          aria-label={t("home:goToImage")}
+          value={jumpValue}
+          onChange={(event) => setJumpValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) jump();
+          }}
+        />
+      </Dialog>
     </div>
   );
 }

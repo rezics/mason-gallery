@@ -35,6 +35,7 @@ export function FilesSettingsSection() {
   return (
     <SettingsSection>
       <SettingsField
+        id="setting-formats"
         label={t("settings:formats")}
         hint={t("settings:formatsHint")}
       >
@@ -50,6 +51,7 @@ export function FilesSettingsSection() {
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:confirmDelete")}</span>
         <Switch
+          id="setting-confirmDelete"
           aria-label={t("settings:confirmDelete")}
           checked={confirmDelete}
           onCheckedChange={setConfirmDelete}
@@ -58,6 +60,7 @@ export function FilesSettingsSection() {
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
         <span>{t("settings:showDeleteToast")}</span>
         <Switch
+          id="setting-showDeleteToast"
           aria-label={t("settings:showDeleteToast")}
           checked={showDeleteToast}
           onCheckedChange={setShowDeleteToast}

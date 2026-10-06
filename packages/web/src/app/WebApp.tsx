@@ -5,10 +5,15 @@ import {
   Toaster,
   useCoreRuntime,
   useI18n,
+  useViewerStore,
 } from "@mason-gallery/core";
+import {
+  ApplicationActionsContext,
+  useActionInputs,
+} from "@mason-gallery/core/input/useActionInputs";
 import { Home } from "lucide-react";
-import { useEffect } from "react";
-import { Route, Router, Switch } from "wouter";
+import { type ReactNode, useEffect } from "react";
+import { Route, Router, Switch, useLocation } from "wouter";
 import { WebGalleryPage } from "../features/gallery/WebGalleryPage";
 import { takePendingWebAppOpen } from "../features/gallery/webAppLaunch";
 import { WebSettingsPage } from "../features/settings/WebSettingsPage";
@@ -45,6 +50,22 @@ function StandaloneWebGalleryPage() {
   return <WebGalleryPage />;
 }
 
+function AppInputs({ children }: { children: ReactNode }) {
+  const [, navigate] = useLocation();
+  const applicationHandlers = {
+    "app.settings": () => {
+      useViewerStore.getState().closeViewer();
+      navigate("/settings");
+    },
+  };
+  useActionInputs("app", applicationHandlers);
+  return (
+    <ApplicationActionsContext.Provider value={applicationHandlers}>
+      {children}
+    </ApplicationActionsContext.Provider>
+  );
+}
+
 export function WebApp() {
   const { hydrated } = useCoreRuntime({
     enableStartupCacheCleanup: false,
@@ -64,23 +85,25 @@ export function WebApp() {
 
   return (
     <Router base="/app">
-      <div className="flex h-screen flex-col bg-background text-foreground">
-        <WebTopBar />
-        <main className="min-h-0 flex-1 overflow-hidden">
-          <DropCoordinator galleryPath="/">
-            <Switch>
-              <Route path="/settings" component={WebSettingsPage} />
-              <Route path="/settings/:category" component={WebSettingsPage} />
-              <Route path="/" component={StandaloneWebGalleryPage} />
-              <Route>
-                <WebNotFoundPage />
-              </Route>
-            </Switch>
-          </DropCoordinator>
-        </main>
-        <QuickGalleryPanel />
-        <Toaster />
-      </div>
+      <AppInputs>
+        <div className="flex h-screen flex-col bg-background text-foreground">
+          <WebTopBar />
+          <main className="min-h-0 flex-1 overflow-hidden">
+            <DropCoordinator galleryPath="/">
+              <Switch>
+                <Route path="/settings" component={WebSettingsPage} />
+                <Route path="/settings/:category" component={WebSettingsPage} />
+                <Route path="/" component={StandaloneWebGalleryPage} />
+                <Route>
+                  <WebNotFoundPage />
+                </Route>
+              </Switch>
+            </DropCoordinator>
+          </main>
+          <QuickGalleryPanel />
+          <Toaster />
+        </div>
+      </AppInputs>
     </Router>
   );
 }

@@ -36,6 +36,22 @@ export {
 export * from "./features/gallery";
 export type { Namespace, SupportedLanguage } from "./i18n/index";
 export { i18n, setI18nLanguage, useI18n } from "./i18n/index";
+export type {
+  ActionId,
+  InputBinding,
+  InputScope,
+  InputSettings,
+  KeyboardBinding,
+} from "./input/bindings";
+export {
+  ACTION_IDS,
+  ACTIONS,
+  defaultBindings,
+  defaultInputSettings,
+  findBindingConflicts,
+  resolveBindings,
+} from "./input/bindings";
+export { useActionInputs, useInputSuspension } from "./input/useActionInputs";
 export {
   ARCHIVE_EXTENSION_NAMES,
   ARCHIVE_EXTENSIONS,
@@ -107,6 +123,7 @@ export {
   migrateSettingsEnvelope,
   SETTINGS_SCHEMA_V1_VERSION,
   SETTINGS_SCHEMA_V2_VERSION,
+  SETTINGS_SCHEMA_V3_VERSION,
   SETTINGS_SCHEMA_VERSION,
   settingsEnvelopeSchema,
   settingsSchema,

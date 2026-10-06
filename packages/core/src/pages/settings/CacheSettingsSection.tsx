@@ -53,7 +53,10 @@ export function CacheSettingsSection({
 
   return (
     <SettingsSection>
-      <SettingsField label={t("cache:extractedMode")}>
+      <SettingsField
+        id="setting-extractedMode"
+        label={t("cache:extractedMode")}
+      >
         <Select
           value={cachePolicy.extracted.mode}
           onChange={(event) =>
@@ -71,7 +74,10 @@ export function CacheSettingsSection({
         </Select>
       </SettingsField>
       {cachePolicy.extracted.mode === "lru-capped" && (
-        <SettingsField label={t("cache:extractedMaxSizePerSource")}>
+        <SettingsField
+          id="setting-extractedMaxSizePerSource"
+          label={t("cache:extractedMaxSizePerSource")}
+        >
           <Input
             type="number"
             min={0}
@@ -93,7 +99,10 @@ export function CacheSettingsSection({
         </SettingsField>
       )}
       {cachePolicy.extracted.mode !== "no-cache" && (
-        <SettingsField label={t("cache:extractedMinFileSize")}>
+        <SettingsField
+          id="setting-extractedMinFileSize"
+          label={t("cache:extractedMinFileSize")}
+        >
           <Input
             type="number"
             min={0}
@@ -114,7 +123,10 @@ export function CacheSettingsSection({
           />
         </SettingsField>
       )}
-      <SettingsField label={t("cache:thumbnailRetention")}>
+      <SettingsField
+        id="setting-thumbnailRetention"
+        label={t("cache:thumbnailRetention")}
+      >
         <Select
           value={cachePolicy.thumbnails.retain}
           onChange={(event) =>
@@ -133,7 +145,10 @@ export function CacheSettingsSection({
         </Select>
       </SettingsField>
       {cachePolicy.thumbnails.retain === "lru-capped" && (
-        <SettingsField label={t("cache:thumbnailMaxTotalSize")}>
+        <SettingsField
+          id="setting-thumbnailMaxTotalSize"
+          label={t("cache:thumbnailMaxTotalSize")}
+        >
           <Input
             type="number"
             min={0}
@@ -155,6 +170,7 @@ export function CacheSettingsSection({
         </SettingsField>
       )}
       <SettingsField
+        id="setting-thumbnailSizes"
         label={t("cache:thumbnailSizes")}
         hint={t("cache:thumbnailSizesHint")}
       >
@@ -168,6 +184,7 @@ export function CacheSettingsSection({
         />
       </SettingsField>
       <SettingsField
+        id="setting-folderThumbnails"
         label={t("cache:folderThumbnails")}
         hint={t("cache:folderThumbnailsHint")}
       >
@@ -185,6 +202,7 @@ export function CacheSettingsSection({
         <Button
           type="button"
           variant="destructive"
+          id="setting-clearThumbs"
           onClick={() => onClearRequested("thumbs")}
         >
           {t("cache:clearThumbs")}
@@ -192,6 +210,7 @@ export function CacheSettingsSection({
         <Button
           type="button"
           variant="destructive"
+          id="setting-clearExtracted"
           onClick={() => onClearRequested("extracted")}
         >
           {t("cache:clearExtracted")}

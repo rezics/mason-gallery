@@ -7,9 +7,11 @@ import { cn } from "@/lib/utils";
 import { AppearanceSettingsSection } from "./settings/AppearanceSettingsSection";
 import { ArchiveSettingsSection } from "./settings/ArchiveSettingsSection";
 import { CacheSettingsSection } from "./settings/CacheSettingsSection";
+import { ControlsSettingsSection } from "./settings/ControlsSettingsSection";
 import { FilesSettingsSection } from "./settings/FilesSettingsSection";
 import { GallerySettingsSection } from "./settings/GallerySettingsSection";
 import { GeneralSettingsSection } from "./settings/GeneralSettingsSection";
+import { SettingsSearch, useSettingFocus } from "./settings/SettingsSearch";
 import { SystemIntegrationSettingsSection } from "./settings/SystemIntegrationSettingsSection";
 import {
   getSupportedSettingsCategories,
@@ -28,9 +30,16 @@ export default function SettingsPage() {
   const [clearConfirm, setClearConfirm] = useState<
     null | "thumbs" | "extracted"
   >(null);
+  const [focusTarget, setFocusTarget] = useState<{
+    anchor: string;
+    category: string;
+    fallbackAnchor?: string;
+  } | null>(null);
+  useSettingFocus(focusTarget);
 
   const categoryLabels: Record<SettingsCategory, string> = {
     general: t("settings:general"),
+    controls: t("settings:controls"),
     gallery: t("settings:gallery"),
     appearance: t("settings:appearance"),
     files: t("settings:files"),
@@ -67,13 +76,25 @@ export default function SettingsPage() {
 
       <div className="min-w-0 flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto max-w-3xl space-y-6">
-          <header>
+          <header className="flex flex-col gap-4">
             <h2 className="text-2xl font-semibold">
               {categoryLabels[visibleCategory]}
             </h2>
+            <SettingsSearch
+              categories={supportedCategories}
+              onSelect={(entry) => {
+                setFocusTarget({
+                  anchor: entry.anchor,
+                  category: entry.category,
+                  fallbackAnchor: entry.fallbackAnchor,
+                });
+                navigate(`/settings/${entry.category}`);
+              }}
+            />
           </header>
 
           {visibleCategory === "general" && <GeneralSettingsSection />}
+          {visibleCategory === "controls" && <ControlsSettingsSection />}
           {visibleCategory === "gallery" && <GallerySettingsSection />}
           {visibleCategory === "appearance" && <AppearanceSettingsSection />}
           {visibleCategory === "files" && <FilesSettingsSection />}

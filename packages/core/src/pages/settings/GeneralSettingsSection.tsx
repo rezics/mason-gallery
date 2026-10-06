@@ -31,7 +31,7 @@ export function GeneralSettingsSection() {
   return (
     <>
       <SettingsSection>
-        <SettingsField label={t("settings:language")}>
+        <SettingsField id="setting-language" label={t("settings:language")}>
           <NativeSelect
             className="w-full"
             value={language}
@@ -48,7 +48,7 @@ export function GeneralSettingsSection() {
 
       {showUpdates && (
         <SettingsSection>
-          <SettingsField label={t("settings:updates")}>
+          <SettingsField id="setting-updates" label={t("settings:updates")}>
             <Button
               type="button"
               className="w-full sm:w-auto"
@@ -69,6 +69,7 @@ export function GeneralSettingsSection() {
           <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
             <span>{t("settings:autoCheckUpdates")}</span>
             <Switch
+              id="setting-autoCheckUpdates"
               aria-label={t("settings:autoCheckUpdates")}
               checked={autoCheckUpdates}
               onCheckedChange={setAutoCheckUpdates}

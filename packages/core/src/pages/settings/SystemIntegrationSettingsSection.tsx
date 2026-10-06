@@ -152,6 +152,7 @@ export function SystemIntegrationSettingsSection() {
           </Button>
         )}
         <Switch
+          id={`setting-systemIntegration${kind === "folders" ? "Folders" : "Archives"}`}
           aria-label={label}
           checked={isSelected(target)}
           disabled={busy || !target.configurable}
@@ -178,6 +179,7 @@ export function SystemIntegrationSettingsSection() {
             </p>
           </div>
           <Switch
+            id="setting-systemIntegrationMaster"
             aria-label={t("settings:systemIntegrationMaster")}
             checked={integrationEnabled}
             disabled={busy}

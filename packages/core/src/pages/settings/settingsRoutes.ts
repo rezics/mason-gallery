@@ -4,6 +4,7 @@ export const SETTINGS_CATEGORIES = [
   "general",
   "gallery",
   "appearance",
+  "controls",
   "files",
   "integration",
   "archive",

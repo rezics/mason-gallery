@@ -2,6 +2,7 @@ export const WEB_SETTINGS_CATEGORIES = [
   "general",
   "gallery",
   "appearance",
+  "controls",
 ] as const;
 
 export type WebSettingsCategory = (typeof WEB_SETTINGS_CATEGORIES)[number];

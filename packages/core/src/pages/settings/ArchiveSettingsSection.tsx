@@ -25,7 +25,10 @@ export function ArchiveSettingsSection({
 
   return (
     <SettingsSection>
-      <SettingsField label={t("archive:cacheCleanup")}>
+      <SettingsField
+        id="setting-cacheCleanup"
+        label={t("archive:cacheCleanup")}
+      >
         <Select
           value={cacheCleanupStrategy}
           onChange={(event) =>
@@ -36,7 +39,10 @@ export function ArchiveSettingsSection({
           <option value="keep-all">{t("archive:keepAll")}</option>
         </Select>
       </SettingsField>
-      <SettingsField label={t("archive:passwordStorage")}>
+      <SettingsField
+        id="setting-passwordStorage"
+        label={t("archive:passwordStorage")}
+      >
         <Select
           value={passwordStorageMode}
           onChange={(event) =>

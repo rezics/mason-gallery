@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import WaterfallGrid from "@/components/WaterfallGrid";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import { useActionInputs, useInputSuspension } from "@/input/useActionInputs";
 import {
   executeArchiveScan,
   expandLockedArchive,
@@ -169,40 +170,22 @@ export default function HomePage() {
     setJumpValue("");
   }, [jumpValue, images.length, scrollToIndex]);
 
-  // Ctrl+G shortcut to open jump input; multi-select Escape / Ctrl+A.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "g" && images.length > 0 && showGridPosition) {
-        e.preventDefault();
-        setIsJumpInputOpen(true);
-        return;
-      }
-
-      const target = e.target as HTMLElement | null;
-      const typing =
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        Boolean(target?.isContentEditable);
-      if (typing || isJumpInputOpen) return;
-
-      const selection = useSelectionStore.getState();
-      if (e.key === "Escape" && selection.modeEnabled) {
-        e.preventDefault();
-        selection.setModeEnabled(false);
-        return;
-      }
-      if (
-        selection.modeEnabled &&
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "a"
-      ) {
-        e.preventDefault();
-        selection.selectMany(visibleSelectableIdentities(images));
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [images, images.length, isJumpInputOpen, showGridPosition]);
+  useInputSuspension(isJumpInputOpen);
+  const selectionMode = useSelectionStore((state) => state.modeEnabled);
+  const openJump = () => setIsJumpInputOpen(true);
+  useActionInputs("grid", {
+    ...(images.length > 0 && showGridPosition ? { "grid.jump": openJump } : {}),
+    ...(selectionMode
+      ? {
+          "grid.cancelSelection": () =>
+            useSelectionStore.getState().setModeEnabled(false),
+          "grid.selectAll": () =>
+            useSelectionStore
+              .getState()
+              .selectMany(visibleSelectableIdentities(images)),
+        }
+      : {}),
+  });
 
   const hasImages = allImages.length > 0;
   const showDropZone = !hasImages && !isScanning;
@@ -402,6 +385,7 @@ export default function HomePage() {
                     value={jumpValue}
                     onChange={(e) => setJumpValue(e.target.value)}
                     onKeyDown={(e) => {
+                      if (e.nativeEvent.isComposing) return;
                       if (e.key === "Enter") handleJumpConfirm();
                       if (e.key === "Escape") {
                         setIsJumpInputOpen(false);
@@ -424,7 +408,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="select-none text-sm text-muted-foreground hover:text-foreground"
-                  onClick={() => setIsJumpInputOpen(true)}
+                  onClick={openJump}
                   title={t("home:goToImage")}
                 >
                   ~{currentIndex} / {images.length}

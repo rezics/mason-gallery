@@ -14,7 +14,7 @@ export function AppearanceSettingsSection() {
 
   return (
     <SettingsSection>
-      <SettingsField label={t("settings:themeMode")}>
+      <SettingsField id="setting-theme" label={t("settings:themeMode")}>
         <NativeSelect
           className="w-full"
           value={theme}

@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { defaultInputSettings, inputSettingsSchema } from "@/input/bindings";
 import type { ColumnBreakpoints } from "@/types";
 import type { Settings } from "@/types/platform";
 
-export const SETTINGS_SCHEMA_VERSION = 3 as const;
+export const SETTINGS_SCHEMA_VERSION = 4 as const;
 export const SETTINGS_SCHEMA_V1_VERSION = 1 as const;
 export const SETTINGS_SCHEMA_V2_VERSION = 2 as const;
+export const SETTINGS_SCHEMA_V3_VERSION = 3 as const;
 
 const thumbnailSizesSchema = z
   .array(z.number().int().positive().max(4096))
@@ -98,11 +100,18 @@ const settingsV2Schema = z.object({
   autoCheckUpdates: z.boolean(),
 });
 
+const settingsV3Schema = z.object({
+  ...settingsFields,
+  autoCheckUpdates: z.boolean(),
+  externalDropBehavior: z.enum(["add-and-open", "open-only"]),
+});
+
 export const settingsSchema: z.ZodType<Settings> = z
   .object({
     ...settingsFields,
     autoCheckUpdates: z.boolean(),
     externalDropBehavior: z.enum(["add-and-open", "open-only"]),
+    inputBindings: inputSettingsSchema,
   })
   .strict();
 
@@ -146,6 +155,7 @@ const DEFAULT_SETTINGS: Settings = settingsSchema.parse({
   favoriteSources: [],
   autoCheckUpdates: true,
   externalDropBehavior: "add-and-open",
+  inputBindings: defaultInputSettings(),
 });
 
 export function createDefaultSettings(): Settings {
@@ -169,9 +179,16 @@ function migrateV1Settings(settings: unknown): Settings {
 
 function migrateV2Settings(settings: unknown): Settings {
   const parsed = settingsV2Schema.parse(settings);
-  return settingsSchema.parse({
+  return migrateV3Settings({
     ...parsed,
     externalDropBehavior: "add-and-open",
+  });
+}
+
+function migrateV3Settings(settings: unknown): Settings {
+  return settingsSchema.parse({
+    ...settingsV3Schema.parse(settings),
+    inputBindings: defaultInputSettings(),
   });
 }
 
@@ -183,6 +200,7 @@ function migrateV2Settings(settings: unknown): Settings {
  * defaulting it on so existing desktop installs keep auto-checking.
  * Version 3 adds `externalDropBehavior`, defaulting existing users to
  * add-and-open.
+ * Version 4 adds input bindings while preserving the current viewer preset.
  */
 export function migrateSettingsEnvelope(value: unknown): SettingsEnvelope {
   const header = z
@@ -202,6 +220,10 @@ export function migrateSettingsEnvelope(value: unknown): SettingsEnvelope {
 
   if (header.data.version === SETTINGS_SCHEMA_V2_VERSION) {
     return createSettingsEnvelope(migrateV2Settings(header.data.settings));
+  }
+
+  if (header.data.version === SETTINGS_SCHEMA_V3_VERSION) {
+    return createSettingsEnvelope(migrateV3Settings(header.data.settings));
   }
 
   if (header.data.version !== SETTINGS_SCHEMA_VERSION) {

@@ -6,6 +6,18 @@ Masonry layout Image Viewer — desktop, web, and CLI.
 
 [繁体中文](./doc/readme/zh-Hant.md)
 
+## Controls
+
+Open **Preferences → Controls & shortcuts** to customize keyboard, mouse, and wheel
+bindings. **Current controls** keeps wheel zoom and arrow-key panning when zoomed in.
+**Wheel navigation** switches images with the wheel and zooms with the left and right
+mouse buttons. Mouse bindings apply to the image; touch pinch remains available.
+
+Use **Record keys** for keyboard shortcuts, or enter keys such as `Escape` and
+`Delete` directly. Remove every binding to disable an action; **Restore** returns it
+to the selected preset. Switching presets keeps custom bindings. Settings search
+finds individual controls and focuses them when selected.
+
 ## Monorepo Structure
 
 ```

@@ -2,6 +2,12 @@ import { resolveSupportedLanguage } from "@mason-gallery/i18n";
 import { create } from "zustand";
 import { getPlatform } from "@/context/PlatformContext";
 import {
+  type ActionId,
+  type InputBinding,
+  type InputSettings,
+  inputSettingsSchema,
+} from "@/input/bindings";
+import {
   createDefaultSettings,
   settingsSchema,
 } from "@/persistence/settingsSchema";
@@ -42,6 +48,11 @@ interface SettingsState extends Settings {
   setAutoCheckUpdates: (value: boolean) => void;
   setExternalDropBehavior: (value: ExternalDropBehavior) => void;
   hydrate: () => Promise<void>;
+  setInputBindings: (settings: InputSettings) => void;
+  setActionBindings: (
+    id: ActionId,
+    bindings: InputBinding[] | undefined,
+  ) => void;
 }
 
 const DEFAULT_SETTINGS = createDefaultSettings();
@@ -83,6 +94,7 @@ function toPersistedSettings(state: SettingsState): Settings {
     favoriteSources: state.favoriteSources,
     autoCheckUpdates: state.autoCheckUpdates,
     externalDropBehavior: state.externalDropBehavior,
+    inputBindings: state.inputBindings,
   });
 }
 
@@ -225,6 +237,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setExternalDropBehavior: (externalDropBehavior) => {
     set({ externalDropBehavior });
     persist(get());
+  },
+  setInputBindings: (value) => {
+    const inputBindings = inputSettingsSchema.parse(value);
+    set({ inputBindings });
+    persist(get());
+  },
+  setActionBindings: (id, bindings) => {
+    const inputBindings = get().inputBindings;
+    const overrides = { ...inputBindings.overrides };
+    if (bindings === undefined) delete overrides[id];
+    else overrides[id] = bindings;
+    get().setInputBindings({ ...inputBindings, overrides });
   },
   toggleFavoriteSource: (source) => {
     const favoriteSources = get().favoriteSources.some((item) =>

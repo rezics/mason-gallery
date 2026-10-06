@@ -1,3 +1,4 @@
+import type { InputSettings } from "@/input/bindings";
 import type {
   ColumnBreakpoints,
   Locale,
@@ -189,6 +190,7 @@ export interface Settings {
   favoriteSources: GallerySourceShortcut[];
   autoCheckUpdates: boolean;
   externalDropBehavior: ExternalDropBehavior;
+  inputBindings: InputSettings;
 }
 
 export interface ScanParams {
