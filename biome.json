@@ -23,7 +23,7 @@
     }
   },
   "files": {
-    "includes": ["packages/*/src/**", "*.ts", "*.json"]
+    "includes": ["packages/*/src/**", "scripts/**", "*.ts", "*.json"]
   },
   "overrides": [
     {

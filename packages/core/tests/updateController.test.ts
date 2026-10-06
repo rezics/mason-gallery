@@ -154,6 +154,7 @@ describe("update controller", () => {
     const checkError = await controller.check(request("manual"));
     expect(checkError.status).toBe("error");
     expect(checkError.errorPhase).toBe("check");
+    expect(checkError.errorMessage).toBe("network");
 
     const available = createUpdateController({
       check: async () => ({ version: "2.2.0" }),
@@ -166,6 +167,34 @@ describe("update controller", () => {
     expect(installError.status).toBe("error");
     expect(installError.errorPhase).toBe("install");
     expect(installError.version).toBe("2.2.0");
+    expect(installError.errorMessage).toBe("disk");
+  });
+
+  test("a failed refresh cannot install a discarded update and can be retried", async () => {
+    let failCheck = false;
+    let installs = 0;
+    const controller = createUpdateController({
+      check: async () => {
+        if (failCheck) throw "HTTP 404";
+        return { version: "2.3.0" };
+      },
+      install: async () => {
+        installs += 1;
+      },
+    });
+    await controller.check(request("manual"));
+    failCheck = true;
+    const failed = await controller.check(request("manual"));
+    expect(failed.version).toBeNull();
+    expect(failed.errorMessage).toBe("HTTP 404");
+    await controller.install();
+    expect(installs).toBe(0);
+    failCheck = false;
+    const retried = await controller.check(request("manual"));
+    expect(retried.status).toBe("available");
+    expect(retried.errorMessage).toBeNull();
+    await controller.install();
+    expect(installs).toBe(1);
   });
 
   test("hides update checks when the platform cannot auto-update", () => {

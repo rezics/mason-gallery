@@ -13,6 +13,7 @@ export interface UpdateSnapshot {
   status: UpdateStatus;
   version: string | null;
   errorPhase: UpdateErrorPhase | null;
+  errorMessage: string | null;
   lastCheckReason: UpdateCheckReason | null;
   bannerVisible: boolean;
 }
@@ -34,6 +35,7 @@ export const IDLE_UPDATE_SNAPSHOT: UpdateSnapshot = {
   status: "idle",
   version: null,
   errorPhase: null,
+  errorMessage: null,
   lastCheckReason: null,
   bannerVisible: false,
 };
@@ -85,7 +87,9 @@ export function createUpdateController(backend: UpdateBackend | null = null) {
     emit({
       ...snapshot,
       status: "checking",
+      version: null,
       errorPhase: null,
+      errorMessage: null,
       lastCheckReason: request.reason,
       bannerVisible: false,
     });
@@ -98,6 +102,7 @@ export function createUpdateController(backend: UpdateBackend | null = null) {
             status: "available",
             version: update.version,
             errorPhase: null,
+            errorMessage: null,
             lastCheckReason: request.reason,
             bannerVisible: true,
           });
@@ -107,14 +112,16 @@ export function createUpdateController(backend: UpdateBackend | null = null) {
           status: "up-to-date",
           version: null,
           errorPhase: null,
+          errorMessage: null,
           lastCheckReason: request.reason,
           bannerVisible: false,
         });
-      } catch {
+      } catch (error) {
         emit({
           status: "error",
-          version: snapshot.version,
+          version: null,
           errorPhase: "check",
+          errorMessage: error instanceof Error ? error.message : String(error),
           lastCheckReason: request.reason,
           bannerVisible: false,
         });
@@ -144,6 +151,7 @@ export function createUpdateController(backend: UpdateBackend | null = null) {
       status: "installing",
       version,
       errorPhase: null,
+      errorMessage: null,
       lastCheckReason: snapshot.lastCheckReason,
       bannerVisible: true,
     });
@@ -151,11 +159,12 @@ export function createUpdateController(backend: UpdateBackend | null = null) {
     inFlight = (async () => {
       try {
         await currentBackend.install();
-      } catch {
+      } catch (error) {
         emit({
           status: "error",
           version,
           errorPhase: "install",
+          errorMessage: error instanceof Error ? error.message : String(error),
           lastCheckReason: snapshot.lastCheckReason,
           bannerVisible: true,
         });

@@ -7,6 +7,7 @@ export default function UpdateChecker() {
   const status = useUpdateStore((state) => state.status);
   const version = useUpdateStore((state) => state.version);
   const errorPhase = useUpdateStore((state) => state.errorPhase);
+  const errorMessage = useUpdateStore((state) => state.errorMessage);
   const lastCheckReason = useUpdateStore((state) => state.lastCheckReason);
   const bannerVisible = useUpdateStore((state) => state.bannerVisible);
   const check = useUpdateStore((state) => state.check);
@@ -20,10 +21,11 @@ export default function UpdateChecker() {
 
   useEffect(() => {
     const key = `${status}:${lastCheckReason}:${errorPhase ?? ""}`;
-    if (key === notifiedKeyRef.current) return;
     if (status === "idle" || status === "checking" || status === "installing") {
+      notifiedKeyRef.current = "";
       return;
     }
+    if (key === notifiedKeyRef.current) return;
     notifiedKeyRef.current = key;
 
     if (status === "up-to-date" && lastCheckReason === "manual") {
@@ -39,10 +41,11 @@ export default function UpdateChecker() {
           errorPhase === "install"
             ? t("update:installFailed")
             : t("update:checkFailed"),
+        description: errorMessage ?? undefined,
         type: "error",
       });
     }
-  }, [errorPhase, lastCheckReason, status, t]);
+  }, [errorMessage, errorPhase, lastCheckReason, status, t]);
 
   if (status === "installing") {
     return (

@@ -74,27 +74,52 @@ This creates:
    - `TAURI_SIGNING_PRIVATE_KEY` — contents of the private key file
    - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — password entered during generation (if any)
 
+Keep the existing signing key when repairing updates. Installed clients trust the public
+key bundled with their version; replacing the key would prevent them from installing updates.
+
+The signing key was rotated after v2.2.0. Automatic updates from v2.2.0 are not being
+repaired. Users of versions carrying the previous public key must manually install a
+v2.2.1 or a later release carrying the new public key before using automatic updates again.
+
+The desktop release workflow verifies the signing key before building, checks each
+platform's signed bundle, and downloads the completed `latest.json` and its installers
+to verify all four supported targets. A successful build alone is insufficient. Releases
+remain drafts until these checks pass and a maintainer publishes them.
+
+To restore updater metadata for an existing published release without rebuilding its
+installers or publishing a new version, dispatch **Release Desktop** with that release's
+tag and `repair_only=true`, using the original signing credentials for that release.
+For example, from a branch containing the repair workflow:
+
+```bash
+gh workflow run release.yml --ref YOUR_BRANCH -f tag=YOUR_RELEASE_TAG -f repair_only=true
+```
+
+Repair checks the original assets' SHA-256 digests, signs them using the repository
+Secrets, verifies signatures against the public key from the original tag, and uploads
+the signatures followed by `latest.json`. It preserves the binaries, tag, release notes,
+and publication state. If a valid manifest already exists, repair only verifies it.
+
+To verify the repository signing Secrets against the current branch's public key without
+building binaries or modifying any release, dispatch with `verify_only=true`:
+
+```bash
+gh workflow run release.yml --ref YOUR_BRANCH -f tag=YOUR_RELEASE_TAG -f verify_only=true
+```
+
 ## Publish
 
 ```bash
-git checkout master
+git switch main
+git pull --ff-only origin main
 
-git pull origin master
+# Synchronize workspace, Rust, Tauri and displayed versions before tagging.
+task check
+task test
 
-# compress `dev` into a single commit merge.
-git merge --squash dev --allow-unrelated-histories
-
-git checkout --theirs .
-
-git commit -m "release: vX.X.X"
-
-git push origin master
+git tag v2.2.1
+git push origin v2.2.1
 ```
 
-```bash
-git checkout master
-git pull
-
-git tag v2.2.0
-git push origin v2.2.0
-```
+The tag starts **Release Desktop**. Wait for all builds and the complete updater
+verification to succeed, then review and publish the draft GitHub Release.
