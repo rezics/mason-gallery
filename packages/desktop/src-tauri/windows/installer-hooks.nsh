@@ -71,8 +71,11 @@ Function MasonRestoreLegacyInstallLocation
 
   WriteRegStr HKCU "${MASON_INSTALL_REGKEY}" "" "$MasonLegacyInstallDirectory"
   ; Preserve an explicit /D= destination or a directory chosen by the user.
+  ; NSIS removes /D= from $CMDLINE after parsing it; inspect the original
+  ; Windows command line so an explicitly chosen default path is preserved.
+  System::Call 'kernel32::GetCommandLineW() w.r0'
   ClearErrors
-  ${GetOptions} $CMDLINE "/D=" $0
+  ${GetOptions} $0 "/D=" $0
   ${If} ${Errors}
     ${If} $INSTDIR == "$LOCALAPPDATA\MasonGallery"
       StrCpy $INSTDIR "$MasonLegacyInstallDirectory"

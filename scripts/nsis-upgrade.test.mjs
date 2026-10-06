@@ -110,9 +110,17 @@ SectionEnd
         throw new Error(
           `NSIS upgrade probe compilation failed: ${compiled.stdout}\n${compiled.stderr}`,
         );
-      for (const mode of ["default", "existing", "explicit", "invalid"]) {
+      for (const mode of [
+        "default",
+        "existing",
+        "explicit",
+        "explicit-default",
+        "invalid",
+      ]) {
         const args = ["/S", `/MODE=${mode}`];
         if (mode === "explicit") args.push(`/D=${chosen}`);
+        if (mode === "explicit-default")
+          args.push(`/D=${join(process.env.LOCALAPPDATA, "MasonGallery")}`);
         const run = spawnSync(exe, args, {
           windowsHide: true,
           timeout: 15_000,
@@ -133,6 +141,11 @@ SectionEnd
         } else if (mode === "explicit") {
           expect(savedDirectory).toBe(legacy);
           expect(destination).toBe(chosen);
+        } else if (mode === "explicit-default") {
+          expect(savedDirectory).toBe(legacy);
+          expect(destination).toBe(
+            join(process.env.LOCALAPPDATA, "MasonGallery"),
+          );
         } else {
           expect(savedDirectory).toBe("");
           expect(destination).toBe(
