@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash, createPublicKey, verify } from "node:crypto";
 import {
+  existsSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -15,13 +16,9 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const configPath = "packages/desktop/src-tauri/tauri.conf.json";
 export const requiredTargets = [
   "windows-x86_64",
-  "windows-x86_64-nsis",
-  "windows-x86_64-msi",
   "darwin-aarch64",
   "darwin-x86_64",
   "linux-x86_64",
-  "linux-x86_64-deb",
-  "linux-x86_64-rpm",
 ];
 
 function command(program, args, options = {}) {
@@ -127,6 +124,28 @@ function getConfig(tag) {
   return JSON.parse(text);
 }
 
+function getBundleTargets(tag, platform) {
+  const path = `packages/desktop/src-tauri/tauri.${platform}.conf.json`;
+  const present = tag
+    ? command("git", ["ls-tree", "--name-only", tag, "--", path]).trim() !== ""
+    : existsSync(join(root, path));
+  const overrides = present
+    ? JSON.parse(
+        tag
+          ? command("git", ["show", `${tag}:${path}`])
+          : readFileSync(join(root, path), "utf8"),
+      )
+    : {};
+  const targets = overrides.bundle?.targets ?? getConfig(tag).bundle.targets;
+  assert(
+    targets === "all" ||
+      (Array.isArray(targets) &&
+        targets.every((item) => typeof item === "string")),
+    "Invalid bundle targets",
+  );
+  return targets;
+}
+
 function validateTag(tag) {
   assert(
     /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(tag ?? ""),
@@ -182,7 +201,7 @@ export function releaseAssetUrl(release, asset) {
   );
 }
 
-export function validateManifest(manifest, release) {
+export function validateManifest(manifest, release, targets = requiredTargets) {
   assert(
     manifest && typeof manifest === "object" && !Array.isArray(manifest),
     "Invalid updater manifest",
@@ -202,7 +221,7 @@ export function validateManifest(manifest, release) {
       Number.isFinite(Date.parse(manifest.pub_date)),
       "Invalid updater publication date",
     );
-  for (const target of requiredTargets)
+  for (const target of targets)
     assert(
       Object.hasOwn(manifest.platforms, target),
       `Missing updater platform: ${target}`,
@@ -341,9 +360,14 @@ function validateRelease(tag) {
       download(tag, manifestAsset, directory).content.toString("utf8"),
     );
     const downloads = new Map();
+    const targets = artifactEntries(getConfig(tag), tag.slice(1), {
+      windows: getBundleTargets(tag, "windows"),
+      linux: getBundleTargets(tag, "linux"),
+    }).map(([target]) => target);
     for (const { target, entry, asset } of validateManifest(
       manifest,
       release,
+      targets,
     )) {
       if (!downloads.has(asset.name))
         downloads.set(asset.name, download(tag, asset, directory).content);
@@ -357,20 +381,32 @@ function validateRelease(tag) {
   });
 }
 
-function artifactEntries(config, version) {
+export function artifactEntries(config, version, bundles) {
   const product = config.productName;
+  const enabled = (platform, type) =>
+    bundles[platform] === "all" || bundles[platform].includes(type);
+  const windows = [
+    ["nsis", `${product}_${version}_x64-setup.exe`],
+    ["msi", `${product}_${version}_x64_en-US.msi`],
+  ].filter(([type]) => enabled("windows", type));
+  const linux = [
+    ["appimage", `${product}_${version}_amd64.AppImage`],
+    ["deb", `${product}_${version}_amd64.deb`],
+    ["rpm", `${product}-${version}-1.x86_64.rpm`],
+  ].filter(([type]) => enabled("linux", type));
+  assert(
+    windows.length > 0 && linux.length > 0,
+    "No supported Windows or Linux updater bundle is configured",
+  );
   return [
-    ["windows-x86_64", `${product}_${version}_x64-setup.exe`],
-    ["windows-x86_64-nsis", `${product}_${version}_x64-setup.exe`],
-    ["windows-x86_64-msi", `${product}_${version}_x64_en-US.msi`],
+    ["windows-x86_64", windows[0][1]],
+    ...windows.map(([type, file]) => [`windows-x86_64-${type}`, file]),
     ["darwin-aarch64", `${product}_aarch64.app.tar.gz`],
     ["darwin-aarch64-app", `${product}_aarch64.app.tar.gz`],
     ["darwin-x86_64", `${product}_x64.app.tar.gz`],
     ["darwin-x86_64-app", `${product}_x64.app.tar.gz`],
-    ["linux-x86_64", `${product}_${version}_amd64.AppImage`],
-    ["linux-x86_64-appimage", `${product}_${version}_amd64.AppImage`],
-    ["linux-x86_64-deb", `${product}_${version}_amd64.deb`],
-    ["linux-x86_64-rpm", `${product}-${version}-1.x86_64.rpm`],
+    ["linux-x86_64", linux[0][1]],
+    ...linux.map(([type, file]) => [`linux-x86_64-${type}`, file]),
   ];
 }
 
@@ -396,7 +432,10 @@ function assemble(tag, repairOnly) {
     config.version === version,
     "Release tag does not match its original app version",
   );
-  const artifacts = artifactEntries(config, version);
+  const artifacts = artifactEntries(config, version, {
+    windows: getBundleTargets(tag, "windows"),
+    linux: getBundleTargets(tag, "linux"),
+  });
   withTemp((directory) => {
     const platforms = {};
     const signed = new Map();
@@ -443,7 +482,11 @@ function assemble(tag, repairOnly) {
       pub_date: release.published_at ?? new Date().toISOString(),
       platforms,
     };
-    validateManifest(manifest, release);
+    validateManifest(
+      manifest,
+      release,
+      artifacts.map(([target]) => target),
+    );
     const manifestFile = join(directory, "latest.json");
     writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
     // Publish the manifest last, after every artifact has been verified. Binaries,

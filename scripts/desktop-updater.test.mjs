@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  artifactEntries,
   getRelease,
   requiredTargets,
   validateManifest,
@@ -157,6 +158,33 @@ function manifestFixture() {
 }
 
 describe("complete updater manifest", () => {
+  test("uses configured installer types and does not require MSI for an NSIS-only release", () => {
+    const config = { productName: "MasonGallery" };
+    const entries = artifactEntries(config, "2.2.1", {
+      windows: ["nsis"],
+      linux: ["appimage", "deb", "rpm"],
+    });
+    expect(entries.some(([target]) => target === "windows-x86_64-msi")).toBe(
+      false,
+    );
+    expect(entries.find(([target]) => target === "windows-x86_64")[1]).toBe(
+      "MasonGallery_2.2.1_x64-setup.exe",
+    );
+    expect(entries.find(([target]) => target === "linux-x86_64-deb")[1]).toBe(
+      "MasonGallery_2.2.1_amd64.deb",
+    );
+    expect(entries.find(([target]) => target === "linux-x86_64-rpm")[1]).toBe(
+      "MasonGallery-2.2.1-1.x86_64.rpm",
+    );
+    const all = artifactEntries(config, "2.2.1", {
+      windows: "all",
+      linux: "all",
+    });
+    expect(all.some(([target]) => target === "windows-x86_64-msi")).toBe(true);
+    expect(() =>
+      artifactEntries(config, "2.2.1", { windows: [], linux: "all" }),
+    ).toThrow("No supported");
+  });
   test("resolves draft releases through their numeric ID when get-by-tag is unavailable", () => {
     const draft = { ...manifestFixture().release, draft: true };
     const request = (args) => {
