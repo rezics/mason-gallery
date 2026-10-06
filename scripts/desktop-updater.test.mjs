@@ -187,4 +187,21 @@ describe("complete updater manifest", () => {
       "not a release asset",
     );
   });
+
+  test("requires stable tagged URLs for draft assets before publication", () => {
+    const { release, manifest } = manifestFixture();
+    const taggedUrl = release.assets[0].browser_download_url;
+    release.assets[0].browser_download_url = taggedUrl.replace(
+      "/download/v2.2.0/",
+      "/download/untagged-test/",
+    );
+    expect(validateManifest(manifest, release)).toHaveLength(
+      requiredTargets.length,
+    );
+    manifest.platforms["windows-x86_64"].url =
+      release.assets[0].browser_download_url;
+    expect(() => validateManifest(manifest, release)).toThrow(
+      "not a release asset",
+    );
+  });
 });

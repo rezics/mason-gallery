@@ -160,6 +160,14 @@ function download(tag, asset, directory) {
   return { file, content };
 }
 
+export function releaseAssetUrl(release, asset) {
+  // Draft assets can have untagged download URLs that stop working on publication.
+  return asset.browser_download_url.replace(
+    /\/download\/untagged-[^/]+\//,
+    `/download/${encodeURIComponent(release.tag_name)}/`,
+  );
+}
+
 export function validateManifest(manifest, release) {
   assert(
     manifest && typeof manifest === "object" && !Array.isArray(manifest),
@@ -194,7 +202,7 @@ export function validateManifest(manifest, release) {
       `Incomplete updater platform: ${target}`,
     );
     const asset = release.assets.find(
-      (item) => item.browser_download_url === entry.url,
+      (item) => releaseAssetUrl(release, item) === entry.url,
     );
     assert(
       asset && entry.url.startsWith("https://github.com/"),
@@ -409,7 +417,7 @@ function assemble(tag, repairOnly) {
         signed.set(name, { file, signature });
       }
       platforms[target] = {
-        url: asset.browser_download_url,
+        url: releaseAssetUrl(release, asset),
         signature: signed.get(name).signature,
       };
     }
