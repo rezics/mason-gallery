@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## [2.2.1] - 2026-10-06
+
+### fixed
+- desktop update checks now use releases with a complete signed update manifest; release builds verify all supported platforms before publication
+- update queries time out after 15 seconds and show the failure reason when a manual check fails
+- failed update refreshes clear stale installation state; repeated manual checks can show their result again
+- web landing-page folder drops open the app with the selected folders
+
+### added
+- desktop system open-with integration for folders and archives, with registration controls in Settings
+
+### migration
+- the updater signing key has changed: manually install v2.2.1 if upgrading from v2.2.0 or earlier, then use this version as the starting point for future automatic updates
+- v2.2.1 can check the update feed; while it remains the latest release, a manual check reports that the app is up to date
+
 ## [2.2.0] - 2026-09-01
 
 ### added

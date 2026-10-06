@@ -79,7 +79,7 @@ key bundled with their version; replacing the key would prevent them from instal
 
 The signing key was rotated after v2.2.0. Automatic updates from v2.2.0 are not being
 repaired. Users of versions carrying the previous public key must manually install a
-future release carrying the new public key before using automatic updates again.
+v2.2.1 or a later release carrying the new public key before using automatic updates again.
 
 The desktop release workflow verifies the signing key before building, checks each
 platform's signed bundle, and downloads the completed `latest.json` and its installers
@@ -110,24 +110,16 @@ gh workflow run release.yml --ref YOUR_BRANCH -f tag=YOUR_RELEASE_TAG -f verify_
 ## Publish
 
 ```bash
-git checkout master
+git switch main
+git pull --ff-only origin main
 
-git pull origin master
+# Synchronize workspace, Rust, Tauri and displayed versions before tagging.
+task check
+task test
 
-# compress `dev` into a single commit merge.
-git merge --squash dev --allow-unrelated-histories
-
-git checkout --theirs .
-
-git commit -m "release: vX.X.X"
-
-git push origin master
+git tag v2.2.1
+git push origin v2.2.1
 ```
 
-```bash
-git checkout master
-git pull
-
-git tag v2.2.0
-git push origin v2.2.0
-```
+The tag starts **Release Desktop**. Wait for all builds and the complete updater
+verification to succeed, then review and publish the draft GitHub Release.
