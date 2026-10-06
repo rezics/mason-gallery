@@ -77,6 +77,10 @@ This creates:
 Keep the existing signing key when repairing updates. Installed clients trust the public
 key bundled with their version; replacing the key would prevent them from installing updates.
 
+The signing key was rotated after v2.2.0. Automatic updates from v2.2.0 are not being
+repaired. Users of versions carrying the previous public key must manually install a
+future release carrying the new public key before using automatic updates again.
+
 The desktop release workflow verifies the signing key before building, checks each
 platform's signed bundle, and downloads the completed `latest.json` and its installers
 to verify all four supported targets. A successful build alone is insufficient. Releases
@@ -84,16 +88,24 @@ remain drafts until these checks pass and a maintainer publishes them.
 
 To restore updater metadata for an existing published release without rebuilding its
 installers or publishing a new version, dispatch **Release Desktop** with that release's
-tag and `repair_only=true`. For example, from a branch containing the repair workflow:
+tag and `repair_only=true`, using the original signing credentials for that release.
+For example, from a branch containing the repair workflow:
 
 ```bash
-gh workflow run release.yml --ref YOUR_BRANCH -f tag=v2.2.0 -f repair_only=true
+gh workflow run release.yml --ref YOUR_BRANCH -f tag=YOUR_RELEASE_TAG -f repair_only=true
 ```
 
 Repair checks the original assets' SHA-256 digests, signs them using the repository
 Secrets, verifies signatures against the public key from the original tag, and uploads
 the signatures followed by `latest.json`. It preserves the binaries, tag, release notes,
 and publication state. If a valid manifest already exists, repair only verifies it.
+
+To verify the repository signing Secrets against the current branch's public key without
+building binaries or modifying any release, dispatch with `verify_only=true`:
+
+```bash
+gh workflow run release.yml --ref YOUR_BRANCH -f tag=YOUR_RELEASE_TAG -f verify_only=true
+```
 
 ## Publish
 

@@ -256,11 +256,7 @@ function preflight(tag) {
     ),
     "Updater endpoint does not match the release repository",
   );
-  withTemp((directory) => {
-    const file = join(directory, "signing-check.txt");
-    writeFileSync(file, "MasonGallery updater signing preflight\n");
-    signFile(file, config.plugins.updater.pubkey);
-  });
+  verifySigning();
   // An existing published release must use repair mode; do not replace its binaries.
   const releases = JSON.parse(
     gh([
@@ -273,6 +269,15 @@ function preflight(tag) {
     "Release is already published. Use repair_only to repair updater metadata.",
   );
   console.log("Updater configuration and signing key verified.");
+}
+
+function verifySigning() {
+  withTemp((directory) => {
+    const file = join(directory, "signing-check.txt");
+    writeFileSync(file, "MasonGallery updater signing preflight\n");
+    signFile(file, getConfig().plugins.updater.pubkey);
+  });
+  console.log("Updater signing credentials match the configured public key.");
 }
 
 function walk(directory) {
@@ -439,7 +444,8 @@ if (
 ) {
   const [mode, argument, target] = process.argv.slice(2);
   try {
-    if (mode === "validate-local") validateLocal(argument, target);
+    if (mode === "verify-signing") verifySigning();
+    else if (mode === "validate-local") validateLocal(argument, target);
     else {
       validateTag(argument);
       if (mode === "preflight") preflight(argument);

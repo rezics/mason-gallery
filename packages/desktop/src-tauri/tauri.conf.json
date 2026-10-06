@@ -43,7 +43,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwRjQxMDUxMjc5RDhEREYKUldUZmpaMG5VUkQwVU1jT2NveC84U2VpbmJ2TzdiaEQ4clNudkxaUjVCa0QzWk5SREZYcVYwQ1QK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDMjVBMDdBNzcxMjExNUUKUldSZUVSSjNlcUFsN0t2RjRHb25Pd2lVUXhKRFJLcDRWQk83MUo1R295ekM3WW5nTThqY0wxTHEK",
       "endpoints": [
         "https://github.com/rezics/mason-gallery/releases/latest/download/latest.json"
       ]
