@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -56,6 +56,7 @@ test.skipIf(process.platform !== "win32")(
       root,
       "packages/desktop/src-tauri/windows/installer-hooks.nsh",
     );
+    const registryScope = `Software\\MasonGalleryInstallerTests\\${basename(directory)}`;
     const config = JSON.parse(
       readFileSync(
         join(root, "packages/desktop/src-tauri/tauri.windows.conf.json"),
@@ -77,6 +78,8 @@ Name "MasonGallery language probe"
 OutFile "${exe}"
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!define MASON_INSTALL_REGKEY "${registryScope}\\current"
+!define MASON_LEGACY_INSTALL_REGKEY "${registryScope}\\legacy"
 !include "${hook}"
 !insertmacro MUI_PAGE_INSTFILES
 ${languages.map((language) => `!insertmacro MUI_LANGUAGE "${language}"`).join("\n")}

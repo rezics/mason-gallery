@@ -8,6 +8,16 @@
 !define MASON_LANG_TRADCHINESE 1028
 !define MASON_LANG_JAPANESE 1041
 
+!ifndef MASON_INSTALL_REGKEY
+  !define MASON_INSTALL_REGKEY "Software\MasonGallery\MasonGallery"
+!endif
+!ifndef MASON_LEGACY_INSTALL_REGKEY
+  !define MASON_LEGACY_INSTALL_REGKEY "Software\mason-gallery\MasonGallery"
+!endif
+
+!define MUI_CUSTOMFUNCTION_GUIINIT MasonRestoreLegacyInstallLocation
+
+Var MasonLegacyInstallDirectory
 Var ShellIntegrationPageInitialized
 Var ShellFoldersCheckbox
 Var ShellArchivesCheckbox
@@ -39,6 +49,36 @@ LangString ShellIntegrationFolders ${MASON_LANG_JAPANESE} "フォルダーに「
 LangString ShellIntegrationArchives ${MASON_LANG_JAPANESE} "ZIP、RAR、7Z、CBZ、CBR ファイルに「MasonGallery で開く」を追加"
 
 Page custom ShellIntegrationPageCreate ShellIntegrationPageLeave
+
+; v2.2.0 used the default publisher "mason-gallery". Tauri's maintenance page
+; passes the current publisher's saved directory to the old uninstaller, so
+; restore that directory before the page can run it with an empty _?= argument.
+Function MasonRestoreLegacyInstallLocation
+  ReadRegStr $0 HKCU "${MASON_INSTALL_REGKEY}" ""
+  ${If} $0 != ""
+    Return
+  ${EndIf}
+  ReadRegStr $MasonLegacyInstallDirectory HKCU "${MASON_LEGACY_INSTALL_REGKEY}" ""
+  ${If} $MasonLegacyInstallDirectory == ""
+    Return
+  ${EndIf}
+  ${IfNot} ${FileExists} "$MasonLegacyInstallDirectory\uninstall.exe"
+    Return
+  ${EndIf}
+  ${IfNot} ${FileExists} "$MasonLegacyInstallDirectory\mason-gallery.exe"
+    Return
+  ${EndIf}
+
+  WriteRegStr HKCU "${MASON_INSTALL_REGKEY}" "" "$MasonLegacyInstallDirectory"
+  ; Preserve an explicit /D= destination or a directory chosen by the user.
+  ClearErrors
+  ${GetOptions} $CMDLINE "/D=" $0
+  ${If} ${Errors}
+    ${If} $INSTDIR == "$LOCALAPPDATA\MasonGallery"
+      StrCpy $INSTDIR "$MasonLegacyInstallDirectory"
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
 
 Function ShellIntegrationPageCreate
   ClearErrors
@@ -151,6 +191,12 @@ FunctionEnd
     ${EndIf}
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   ${EndIf}
+!macroend
+
+; Silent installers do not call .onGUIInit. Restore a legacy custom location
+; before copying files, while still respecting an explicit /D= destination.
+!macro NSIS_HOOK_PREINSTALL
+  Call MasonRestoreLegacyInstallLocation
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL

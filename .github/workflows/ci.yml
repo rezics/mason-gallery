@@ -30,7 +30,7 @@ jobs:
         run: task test
 
   installer-languages:
-    name: Windows installer languages
+    name: Windows installer regressions
     runs-on: windows-latest
     permissions:
       contents: read
@@ -49,8 +49,8 @@ jobs:
           $compiler = Get-ChildItem -LiteralPath $nsisDirectory -Recurse -Filter makensis.exe | Sort-Object { $_.FullName.Length } | Select-Object -First 1
           if (-not $compiler) { throw "NSIS compiler is missing" }
           "NSIS_DIR=$($compiler.DirectoryName)" >> $env:GITHUB_ENV
-      - name: Compile and verify all configured installer languages
-        run: bun test scripts/nsis-language.test.mjs
+      - name: Verify installer languages and legacy upgrade paths
+        run: bun test scripts/nsis-language.test.mjs scripts/nsis-upgrade.test.mjs
 
   rust:
     runs-on: ubuntu-22.04
