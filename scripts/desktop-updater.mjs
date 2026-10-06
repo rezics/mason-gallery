@@ -20,6 +20,8 @@ export const requiredTargets = [
   "darwin-aarch64",
   "darwin-x86_64",
   "linux-x86_64",
+  "linux-x86_64-deb",
+  "linux-x86_64-rpm",
 ];
 
 function command(program, args, options = {}) {
@@ -132,11 +134,23 @@ function validateTag(tag) {
   );
 }
 
-function getRelease(tag) {
+export function getRelease(tag, request = gh) {
+  // GitHub's get-by-tag endpoint excludes drafts. Resolve through gh first so
+  // both draft assembly and published-release verification use the same path.
+  const id = request([
+    "release",
+    "view",
+    tag,
+    "--json",
+    "databaseId",
+    "--jq",
+    ".databaseId",
+  ]).trim();
+  assert(/^\d+$/.test(id), "Invalid GitHub release ID");
   return JSON.parse(
-    gh([
+    request([
       "api",
-      `repos/${process.env.GITHUB_REPOSITORY ?? "rezics/mason-gallery"}/releases/tags/${tag}`,
+      `repos/${process.env.GITHUB_REPOSITORY ?? "rezics/mason-gallery"}/releases/${id}`,
     ]),
   );
 }
@@ -302,7 +316,7 @@ function validateLocal(directory, target) {
     if (target.startsWith("windows-"))
       return /(?:-setup\.exe|\.msi)$/.test(file);
     if (target.startsWith("darwin-")) return file.endsWith(".app.tar.gz");
-    return file.endsWith(".AppImage");
+    return /\.(?:AppImage|deb|rpm)$/.test(file);
   });
   assert(files.length > 0, `No updater bundles found for ${target}`);
   for (const file of files) {
@@ -355,6 +369,8 @@ function artifactEntries(config, version) {
     ["darwin-x86_64-app", `${product}_x64.app.tar.gz`],
     ["linux-x86_64", `${product}_${version}_amd64.AppImage`],
     ["linux-x86_64-appimage", `${product}_${version}_amd64.AppImage`],
+    ["linux-x86_64-deb", `${product}_${version}_amd64.deb`],
+    ["linux-x86_64-rpm", `${product}-${version}-1.x86_64.rpm`],
   ];
 }
 

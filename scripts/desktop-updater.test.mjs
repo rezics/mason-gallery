@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import {
   createHash,
   generateKeyPairSync,
+  getRelease,
   randomBytes,
   sign,
 } from "node:crypto";
@@ -156,6 +157,18 @@ function manifestFixture() {
 }
 
 describe("complete updater manifest", () => {
+  test("resolves draft releases through their numeric ID when get-by-tag is unavailable", () => {
+    const draft = { ...manifestFixture().release, draft: true };
+    const request = (args) => {
+      if (args[0] === "release") return "123\n";
+      if (args[1].endsWith("/releases/123")) return JSON.stringify(draft);
+      throw new Error("GitHub get-by-tag does not expose drafts");
+    };
+    expect(getRelease("v2.2.0", request).draft).toBe(true);
+    expect(() => getRelease("v2.2.0", () => "invalid-id")).toThrow(
+      "Invalid GitHub release ID",
+    );
+  });
   test("accepts a complete manifest", () => {
     const { release, manifest } = manifestFixture();
     expect(validateManifest(manifest, release)).toHaveLength(

@@ -18,6 +18,10 @@ on:
         description: "Only verify signing credentials against the configured public key; do not build or change releases"
         type: boolean
         default: false
+      assemble_only:
+        description: "Only assemble and verify updater metadata from already-built signed assets on an existing draft"
+        type: boolean
+        default: false
 
 concurrency:
   group: release-desktop-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -25,7 +29,7 @@ concurrency:
 
 jobs:
   release:
-    if: ${{ !inputs.repair_only && !inputs.verify_only }}
+    if: ${{ !inputs.repair_only && !inputs.verify_only && !inputs.assemble_only }}
     name: Build ${{ matrix.name }}
     permissions:
       contents: write
@@ -155,7 +159,7 @@ jobs:
 
   repair-updater:
     name: Repair existing updater metadata
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.repair_only && !inputs.verify_only }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.repair_only && !inputs.verify_only && !inputs.assemble_only }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -186,3 +190,20 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bun scripts/desktop-updater.mjs verify-signing
+
+  assemble-updater:
+    name: Assemble and verify existing draft updater
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.assemble_only && !inputs.verify_only && !inputs.repair_only }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-js
+      - name: Assemble and verify existing signed release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: bun scripts/desktop-updater.mjs assemble "$RELEASE_TAG"
