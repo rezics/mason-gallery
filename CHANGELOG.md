@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [2.3.0] - 2026-10-11
+
+### added
+- customize keyboard, mouse, and wheel bindings in Preferences → Controls & shortcuts ([#24](https://github.com/rezics/mason-gallery/issues/24))
+- Wheel navigation preset: the wheel changes images, and the left and right mouse buttons zoom
+- settings search that focuses the matching control
+
+### fixed
+- the Windows installer keeps the selected language on the system integration page
+- upgrading from v2.2.0 finds the previous publisher's install directory before uninstall
+- an explicitly chosen install directory is preserved
+
+### migration
+- saved settings move to schema 4 and keep the current viewer controls
+- v2.2.1 can install this release through the signed updater
+
 ## [2.2.1] - 2026-10-06
 
 ### fixed

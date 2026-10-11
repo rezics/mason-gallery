@@ -106,7 +106,7 @@ export default function SidebarHome() {
       </nav>
 
       <div className="mt-auto border-t border-border pt-3 text-xs text-muted-foreground">
-        {t("about:version")}: 2.2.1
+        {t("about:version")}: 2.3.0
       </div>
     </aside>
   );

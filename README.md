@@ -129,8 +129,8 @@ git pull --ff-only origin main
 task check
 task test
 
-git tag v2.2.1
-git push origin v2.2.1
+git tag v2.3.0
+git push origin v2.3.0
 ```
 
 The tag starts **Release Desktop**. Wait for all builds and the complete updater
