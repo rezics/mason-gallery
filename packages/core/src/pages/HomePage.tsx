@@ -423,7 +423,10 @@ export default function HomePage() {
           </div>
           <div className="flex flex-1 overflow-hidden">
             <FolderSidebar />
-            <div ref={scrollContainerRef} className="flex-1 overflow-auto">
+            <div
+              ref={scrollContainerRef}
+              className="min-w-0 flex-1 overflow-auto p-2"
+            >
               <WaterfallGrid
                 scrollContainerRef={scrollContainerRef}
                 images={images}

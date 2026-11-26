@@ -355,11 +355,11 @@ export default function WaterfallGrid({
     containerRef,
   });
 
-  if (images.length === 0 || width === 0) return <div className="p-2" />;
+  if (images.length === 0 || width === 0) return null;
 
   return (
     <GridSelectionContext.Provider value={{ onActivate }}>
-      <div className="p-2">{grid}</div>
+      {grid}
     </GridSelectionContext.Provider>
   );
 }

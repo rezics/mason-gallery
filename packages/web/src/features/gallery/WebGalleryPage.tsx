@@ -423,7 +423,7 @@ export function WebGalleryPage() {
             <WebFolderRail />
             <div
               ref={scrollContainerRef}
-              className="min-w-0 flex-1 overflow-auto bg-background"
+              className="min-w-0 flex-1 overflow-auto bg-background p-2"
             >
               <WaterfallGrid
                 onPositionerReady={onPositionerReady}
