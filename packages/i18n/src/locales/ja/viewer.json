@@ -5,5 +5,7 @@
   "revealInFolder": "フォルダーで表示",
   "fileName": "ファイル名",
   "dimensions": "サイズ",
-  "filePath": "パス"
+  "filePath": "パス",
+  "playSlideshow": "スライドショーを再生",
+  "pauseSlideshow": "スライドショーを一時停止"
 }

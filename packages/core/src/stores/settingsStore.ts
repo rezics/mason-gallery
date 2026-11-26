@@ -10,6 +10,7 @@ import {
 import {
   createDefaultSettings,
   settingsSchema,
+  slideshowIntervalSecondsSchema,
 } from "@/persistence/settingsSchema";
 import type { ColumnBreakpoints, Locale, SortMethod } from "@/types";
 import type {
@@ -31,6 +32,7 @@ interface SettingsState extends Settings {
   setFormats: (formats: string[]) => void;
   setSortMethod: (method: SortMethod) => void;
   setPageSize: (size: number) => void;
+  setSlideshowIntervalSeconds: (seconds: number) => void;
   setLanguage: (lang: Locale) => void;
   setTheme: (theme: ThemePreference) => void;
   setBreakpoints: (bp: ColumnBreakpoints) => void;
@@ -79,6 +81,7 @@ function toPersistedSettings(state: SettingsState): Settings {
     formats: state.formats,
     sortMethod: state.sortMethod,
     pageSize: state.pageSize,
+    slideshowIntervalSeconds: state.slideshowIntervalSeconds,
     language: state.language,
     theme: state.theme,
     breakpoints: state.breakpoints,
@@ -147,6 +150,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setPageSize: (pageSize) => {
     set({ pageSize });
+    persist(get());
+  },
+  setSlideshowIntervalSeconds: (seconds) => {
+    const interval = slideshowIntervalSecondsSchema.safeParse(seconds);
+    if (!interval.success || interval.data === get().slideshowIntervalSeconds) {
+      return;
+    }
+    set({ slideshowIntervalSeconds: interval.data });
     persist(get());
   },
   setLanguage: (language) => {

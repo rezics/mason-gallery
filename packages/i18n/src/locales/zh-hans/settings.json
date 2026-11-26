@@ -15,6 +15,8 @@
   "timeAsc": "时间 (最旧)",
   "timeDesc": "时间 (最新)",
   "pageSize": "每批图片数",
+  "slideshowIntervalSeconds": "自动翻页间隔",
+  "slideshowIntervalRange": "每张图片停留 {min}–{max} 秒",
   "language": "语言",
   "themeMode": "主题模式",
   "modeSystem": "跟随系统",

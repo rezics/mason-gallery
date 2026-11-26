@@ -183,12 +183,13 @@ describe("action bindings", () => {
     ).toBe(false);
   });
   test("migrates v3 without replacing user preferences and round-trips custom bindings", () => {
-    const { inputBindings: _, ...old } = createDefaultSettings();
+    const { inputBindings: _, slideshowIntervalSeconds: _interval, ...old } =
+      createDefaultSettings();
     const migrated = migrateSettingsEnvelope({
       version: 3,
       settings: { ...old, language: "ja", externalDropBehavior: "open-only" },
     });
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.settings.language).toBe("ja");
     expect(migrated.settings.externalDropBehavior).toBe("open-only");
     expect(migrated.settings.inputBindings).toEqual(defaultInputSettings());

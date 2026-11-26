@@ -10,6 +10,7 @@ import {
 
 function createV1Settings() {
   const {
+    slideshowIntervalSeconds: _slideshowIntervalSeconds,
     inputBindings: _inputBindings,
     autoCheckUpdates: _autoCheckUpdates,
     externalDropBehavior: _externalDropBehavior,
@@ -20,6 +21,7 @@ function createV1Settings() {
 
 function createV2Settings() {
   const {
+    slideshowIntervalSeconds: _slideshowIntervalSeconds,
     inputBindings: _inputBindings,
     externalDropBehavior: _externalDropBehavior,
     ...settings
@@ -32,8 +34,9 @@ describe("settings schema", () => {
     const settings = createDefaultSettings();
     const envelope = createSettingsEnvelope(settings);
 
-    expect(envelope.version).toBe(4);
-    expect(SETTINGS_SCHEMA_VERSION).toBe(4);
+    expect(envelope.version).toBe(5);
+    expect(SETTINGS_SCHEMA_VERSION).toBe(5);
+    expect(settings.slideshowIntervalSeconds).toBe(5);
     expect(settings.autoCheckUpdates).toBe(true);
     expect(settings.externalDropBehavior).toBe("add-and-open");
     expect(migrateSettingsEnvelope(envelope)).toEqual(envelope);
@@ -41,8 +44,8 @@ describe("settings schema", () => {
 
   test("rejects unsupported and unversioned persisted documents", () => {
     expect(() => migrateSettingsEnvelope({ settings: {} })).toThrow();
-    expect(() => migrateSettingsEnvelope({ version: 5, settings: {} })).toThrow(
-      "Unsupported settings schema version: 5",
+    expect(() => migrateSettingsEnvelope({ version: 6, settings: {} })).toThrow(
+      "Unsupported settings schema version: 6",
     );
   });
 
@@ -73,7 +76,7 @@ describe("settings schema", () => {
       settings: v1Settings,
     });
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.settings.autoCheckUpdates).toBe(true);
     expect(migrated.settings.externalDropBehavior).toBe("add-and-open");
     expect(migrated.settings.language).toBe("zh-hant");
@@ -94,7 +97,7 @@ describe("settings schema", () => {
       settings: v2Settings,
     });
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(SETTINGS_SCHEMA_V2_VERSION).toBe(2);
     expect(migrated.settings.autoCheckUpdates).toBe(false);
     expect(migrated.settings.externalDropBehavior).toBe("add-and-open");
@@ -114,12 +117,26 @@ describe("settings schema", () => {
       },
     });
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.settings.language).toBe(v1Settings.language);
     expect(migrated.settings.theme).toBe(v1Settings.theme);
     expect(
       (migrated.settings as unknown as Record<string, unknown>).themePreset,
     ).toBeUndefined();
+  });
+
+  test("adds the slideshow interval to v4 without changing saved preferences", () => {
+    const { slideshowIntervalSeconds: _, ...settings } = createDefaultSettings();
+    settings.theme = "dark";
+    settings.inputBindings = {
+      preset: "wheel-navigation",
+      overrides: { "viewer.next": [] },
+    };
+
+    expect(migrateSettingsEnvelope({ version: 4, settings })).toEqual({
+      version: 5,
+      settings: { ...settings, slideshowIntervalSeconds: 5 },
+    });
   });
 
   test("rejects the removed plaintext password mode", () => {

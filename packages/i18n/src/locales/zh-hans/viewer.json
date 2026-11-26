@@ -5,5 +5,7 @@
   "revealInFolder": "在文件夹中显示",
   "fileName": "文件名",
   "dimensions": "尺寸",
-  "filePath": "路径"
+  "filePath": "路径",
+  "playSlideshow": "开始自动翻页",
+  "pauseSlideshow": "暂停自动翻页"
 }

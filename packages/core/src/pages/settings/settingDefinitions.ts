@@ -53,6 +53,11 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
   ),
   field("gallery", "sortMethod", "settings:sortMethod"),
   field("gallery", "pageSize", "settings:pageSize"),
+  field(
+    "gallery",
+    "slideshowIntervalSeconds",
+    "settings:slideshowIntervalSeconds",
+  ),
   field("gallery", "showGridPosition", "settings:showGridPosition"),
   field(
     "gallery",

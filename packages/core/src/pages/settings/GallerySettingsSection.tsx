@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { NativeSelect as Select } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { usePlatform } from "@/context/PlatformContext";
 import { useI18n } from "@/i18n";
+import {
+  MAX_SLIDESHOW_INTERVAL_SECONDS,
+  MIN_SLIDESHOW_INTERVAL_SECONDS,
+  slideshowIntervalSecondsSchema,
+} from "@/persistence/settingsSchema";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { SortMethod } from "@/types";
 import type { ExternalDropBehavior } from "@/types/platform";
@@ -15,6 +21,11 @@ export function GallerySettingsSection() {
   const setSortMethod = useSettingsStore((s) => s.setSortMethod);
   const pageSize = useSettingsStore((s) => s.pageSize);
   const setPageSize = useSettingsStore((s) => s.setPageSize);
+  const slideshowInterval = useSettingsStore((s) => s.slideshowIntervalSeconds);
+  const setSlideshowInterval = useSettingsStore(
+    (s) => s.setSlideshowIntervalSeconds,
+  );
+  const [intervalDraft, setIntervalDraft] = useState<string | null>(null);
   const breakpoints = useSettingsStore((s) => s.breakpoints);
   const setBreakpoints = useSettingsStore((s) => s.setBreakpoints);
   const showGridPosition = useSettingsStore((s) => s.showGridPosition);
@@ -73,6 +84,35 @@ export function GallerySettingsSection() {
           step={10}
           value={pageSize}
           onChange={(event) => setPageSize(Number(event.target.value))}
+        />
+      </SettingsField>
+      <SettingsField
+        id="setting-slideshowIntervalSeconds"
+        label={t("settings:slideshowIntervalSeconds")}
+        hint={t("settings:slideshowIntervalRange", {
+          min: MIN_SLIDESHOW_INTERVAL_SECONDS,
+          max: MAX_SLIDESHOW_INTERVAL_SECONDS,
+        })}
+        invalid={
+          intervalDraft !== null &&
+          !slideshowIntervalSecondsSchema.safeParse(Number(intervalDraft))
+            .success
+        }
+      >
+        <Input
+          type="number"
+          min={MIN_SLIDESHOW_INTERVAL_SECONDS}
+          max={MAX_SLIDESHOW_INTERVAL_SECONDS}
+          step={1}
+          value={intervalDraft ?? slideshowInterval}
+          onChange={(event) => setIntervalDraft(event.target.value)}
+          onBlur={(event) => {
+            setSlideshowInterval(event.currentTarget.valueAsNumber);
+            setIntervalDraft(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
         />
       </SettingsField>
       <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">

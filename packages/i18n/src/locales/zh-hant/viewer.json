@@ -5,5 +5,7 @@
   "revealInFolder": "在資料夾中顯示",
   "fileName": "檔案名稱",
   "dimensions": "尺寸",
-  "filePath": "路徑"
+  "filePath": "路徑",
+  "playSlideshow": "開始自動翻頁",
+  "pauseSlideshow": "暫停自動翻頁"
 }

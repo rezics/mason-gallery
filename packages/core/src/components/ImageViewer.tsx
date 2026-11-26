@@ -3,6 +3,8 @@ import {
   ChevronRight,
   FolderOpen,
   Info,
+  Pause,
+  Play,
   RotateCcw,
   Trash2,
   X,
@@ -20,10 +22,12 @@ import {
 } from "react";
 import Lightbox, {
   type ControllerRef,
+  type SlideshowRef,
   type ZoomRef,
 } from "yet-another-react-lightbox";
 import Counter from "yet-another-react-lightbox/plugins/counter";
 import "yet-another-react-lightbox/plugins/counter.css";
+import Slideshow from "yet-another-react-lightbox/plugins/slideshow";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
@@ -85,13 +89,16 @@ export default function ImageViewer() {
   const removeImage = useViewerStore((s) => s.removeImage);
   const confirmDeleteSetting = useSettingsStore((s) => s.confirmDelete);
   const showDeleteToast = useSettingsStore((s) => s.showDeleteToast);
+  const slideshowInterval = useSettingsStore((s) => s.slideshowIntervalSeconds);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const controllerRef = useRef<ControllerRef>(null);
+  const slideshowRef = useRef<SlideshowRef>(null);
   const zoomRef = useRef<ZoomRef>(null);
   const deleting = useRef(false);
   const [zoomed, setZoomed] = useState(false);
+  const canPlaySlideshow = currentIndex < images.length - 1;
   useInputSuspension(confirmOpen || infoOpen);
   useEffect(() => {
     if (!isViewerOpen) {
@@ -100,6 +107,25 @@ export default function ImageViewer() {
       setZoomed(false);
     }
   }, [isViewerOpen]);
+
+  useEffect(() => {
+    if (!isViewerOpen) return;
+
+    const pauseSlideshow = () => slideshowRef.current?.pause();
+    const pauseWhenHidden = () => {
+      if (document.hidden) pauseSlideshow();
+    };
+    window.addEventListener("blur", pauseSlideshow);
+    document.addEventListener("visibilitychange", pauseWhenHidden);
+    return () => {
+      window.removeEventListener("blur", pauseSlideshow);
+      document.removeEventListener("visibilitychange", pauseWhenHidden);
+    };
+  }, [isViewerOpen]);
+
+  useEffect(() => {
+    if (!canPlaySlideshow) slideshowRef.current?.pause();
+  }, [canPlaySlideshow]);
 
   const currentImage = images[currentIndex];
   const canDelete =
@@ -151,6 +177,7 @@ export default function ImageViewer() {
 
   const requestDelete = useCallback(() => {
     if (!canDelete || deleting.current) return;
+    slideshowRef.current?.pause();
     if (confirmDeleteSetting) {
       setConfirmOpen(true);
     } else {
@@ -174,7 +201,10 @@ export default function ImageViewer() {
         );
     },
     "viewer.close": closeViewer,
-    "viewer.info": () => setInfoOpen(true),
+    "viewer.info": () => {
+      slideshowRef.current?.pause();
+      setInfoOpen(true);
+    },
     ...(canDelete ? { "viewer.delete": requestDelete } : {}),
     ...(canReveal
       ? {
@@ -200,7 +230,7 @@ export default function ImageViewer() {
 
   if (!isViewerOpen) return null;
 
-  const toolbarButtons: (string | ReactNode)[] = [];
+  const toolbarButtons: (string | ReactNode)[] = ["slideshow"];
 
   if (currentImage) {
     toolbarButtons.push(
@@ -268,11 +298,26 @@ export default function ImageViewer() {
             view: ({ index }) => setCurrentIndex(index),
             zoom: ({ zoom }) => setZoomed(zoom > 1),
           }}
-          plugins={[Counter, Zoom, ViewerInputPlugin]}
+          plugins={[Counter, Zoom, Slideshow, ViewerInputPlugin]}
+          slideshow={{ ref: slideshowRef, delay: slideshowInterval * 1000 }}
           zoom={{ ref: zoomRef, scrollToZoom: false, doubleClickDelay: 0 }}
           controller={{ ref: controllerRef, closeOnBackdropClick: true }}
           toolbar={{ buttons: toolbarButtons }}
           render={{
+            buttonSlideshow: ({ playing, play, pause }) => (
+              <ViewerButton
+                title={t(
+                  playing ? "viewer:pauseSlideshow" : "viewer:playSlideshow",
+                )}
+                disabled={!canPlaySlideshow || confirmOpen || infoOpen}
+                onClick={() => {
+                  if (playing) pause();
+                  else if (!document.hidden && !deleting.current) play();
+                }}
+              >
+                {playing ? <Pause /> : <Play />}
+              </ViewerButton>
+            ),
             buttonPrev: () => (
               <ViewerButton
                 className="yarl__navigation_prev"

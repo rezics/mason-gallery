@@ -175,6 +175,7 @@ export interface Settings {
   formats: string[];
   sortMethod: SortMethod;
   pageSize: number;
+  slideshowIntervalSeconds: number;
   language: Locale;
   theme: ThemePreference;
   breakpoints: ColumnBreakpoints;

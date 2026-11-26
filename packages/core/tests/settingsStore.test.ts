@@ -46,6 +46,22 @@ beforeEach(() => {
 });
 
 describe("settings persistence", () => {
+  test("persists a valid slideshow interval and ignores invalid changes", async () => {
+    const initialSettings = createDefaultSettings();
+    const { savedSettings } = createPlatform(initialSettings);
+    const setIntervalSeconds =
+      useSettingsStore.getState().setSlideshowIntervalSeconds;
+
+    setIntervalSeconds(12);
+    for (const invalid of [0, 1.5, 61, NaN]) setIntervalSeconds(invalid);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(useSettingsStore.getState().slideshowIntervalSeconds).toBe(12);
+    expect(savedSettings).toEqual([
+      { ...initialSettings, slideshowIntervalSeconds: 12 },
+    ]);
+  });
+
   test("persists disabled and custom bindings, restores defaults and hydrates the saved document", async () => {
     const { savedSettings } = createPlatform(createDefaultSettings());
     useSettingsStore.getState().setActionBindings("viewer.next", []);

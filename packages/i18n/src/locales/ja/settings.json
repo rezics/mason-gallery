@@ -15,6 +15,8 @@
   "timeAsc": "日時 (古い順)",
   "timeDesc": "日時 (新しい順)",
   "pageSize": "1 バッチあたりの画像数",
+  "slideshowIntervalSeconds": "スライドショーの間隔",
+  "slideshowIntervalRange": "1 枚あたり {min}〜{max} 秒",
   "language": "言語",
   "themeMode": "テーマモード",
   "modeSystem": "システム",

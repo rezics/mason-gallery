@@ -37,6 +37,7 @@ describe("settings metadata search", () => {
     );
     expect(search("滚轮翻图")[0]?.id).toBe("inputPreset");
     expect(search("上一张")[0]?.id).toBe("viewer.previous");
+    expect(search("自动翻页")[0]?.anchor).toBe("setting-slideshowIntervalSeconds");
     expect(search("翻页").some((entry) => entry.id === "inputPreset")).toBe(
       true,
     );

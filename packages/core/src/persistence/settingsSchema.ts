@@ -3,10 +3,20 @@ import { defaultInputSettings, inputSettingsSchema } from "@/input/bindings";
 import type { ColumnBreakpoints } from "@/types";
 import type { Settings } from "@/types/platform";
 
-export const SETTINGS_SCHEMA_VERSION = 4 as const;
+export const SETTINGS_SCHEMA_VERSION = 5 as const;
 export const SETTINGS_SCHEMA_V1_VERSION = 1 as const;
 export const SETTINGS_SCHEMA_V2_VERSION = 2 as const;
 export const SETTINGS_SCHEMA_V3_VERSION = 3 as const;
+export const SETTINGS_SCHEMA_V4_VERSION = 4 as const;
+
+const DEFAULT_SLIDESHOW_INTERVAL_SECONDS = 5;
+export const MIN_SLIDESHOW_INTERVAL_SECONDS = 1;
+export const MAX_SLIDESHOW_INTERVAL_SECONDS = 60;
+export const slideshowIntervalSecondsSchema = z
+  .number()
+  .int()
+  .min(MIN_SLIDESHOW_INTERVAL_SECONDS)
+  .max(MAX_SLIDESHOW_INTERVAL_SECONDS);
 
 const thumbnailSizesSchema = z
   .array(z.number().int().positive().max(4096))
@@ -106,14 +116,13 @@ const settingsV3Schema = z.object({
   externalDropBehavior: z.enum(["add-and-open", "open-only"]),
 });
 
-export const settingsSchema: z.ZodType<Settings> = z
-  .object({
-    ...settingsFields,
-    autoCheckUpdates: z.boolean(),
-    externalDropBehavior: z.enum(["add-and-open", "open-only"]),
-    inputBindings: inputSettingsSchema,
-  })
+const settingsV4Schema = settingsV3Schema
+  .extend({ inputBindings: inputSettingsSchema })
   .strict();
+
+export const settingsSchema: z.ZodType<Settings> = settingsV4Schema.extend({
+  slideshowIntervalSeconds: slideshowIntervalSecondsSchema,
+});
 
 export const settingsEnvelopeSchema = z
   .object({
@@ -128,6 +137,7 @@ const DEFAULT_SETTINGS: Settings = settingsSchema.parse({
   formats: [".webp", ".jxl", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".jfif"],
   sortMethod: "name-asc",
   pageSize: 50,
+  slideshowIntervalSeconds: DEFAULT_SLIDESHOW_INTERVAL_SECONDS,
   language: "en",
   theme: "system",
   breakpoints: {
@@ -186,9 +196,16 @@ function migrateV2Settings(settings: unknown): Settings {
 }
 
 function migrateV3Settings(settings: unknown): Settings {
-  return settingsSchema.parse({
+  return migrateV4Settings({
     ...settingsV3Schema.parse(settings),
     inputBindings: defaultInputSettings(),
+  });
+}
+
+function migrateV4Settings(settings: unknown): Settings {
+  return settingsSchema.parse({
+    ...settingsV4Schema.parse(settings),
+    slideshowIntervalSeconds: DEFAULT_SLIDESHOW_INTERVAL_SECONDS,
   });
 }
 
@@ -201,6 +218,7 @@ function migrateV3Settings(settings: unknown): Settings {
  * Version 3 adds `externalDropBehavior`, defaulting existing users to
  * add-and-open.
  * Version 4 adds input bindings while preserving the current viewer preset.
+ * Version 5 adds the slideshow interval.
  */
 export function migrateSettingsEnvelope(value: unknown): SettingsEnvelope {
   const header = z
@@ -224,6 +242,10 @@ export function migrateSettingsEnvelope(value: unknown): SettingsEnvelope {
 
   if (header.data.version === SETTINGS_SCHEMA_V3_VERSION) {
     return createSettingsEnvelope(migrateV3Settings(header.data.settings));
+  }
+
+  if (header.data.version === SETTINGS_SCHEMA_V4_VERSION) {
+    return createSettingsEnvelope(migrateV4Settings(header.data.settings));
   }
 
   if (header.data.version !== SETTINGS_SCHEMA_VERSION) {

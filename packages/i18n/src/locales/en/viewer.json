@@ -5,5 +5,7 @@
   "revealInFolder": "Reveal in folder",
   "fileName": "File name",
   "dimensions": "Dimensions",
-  "filePath": "Path"
+  "filePath": "Path",
+  "playSlideshow": "Play slideshow",
+  "pauseSlideshow": "Pause slideshow"
 }

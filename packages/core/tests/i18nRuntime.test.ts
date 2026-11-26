@@ -7,7 +7,13 @@ import {
 import { i18n } from "../src/i18n/index";
 import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from "../src/lib/projectLinks";
 
-const requiredNamespaces = ["settings", "menu", "update", "selection"] as const satisfies Namespace[];
+const requiredNamespaces = [
+  "settings",
+  "menu",
+  "update",
+  "selection",
+  "viewer",
+] as const satisfies Namespace[];
 
 describe("i18n runtime", () => {
   test("resolves Chinese locale resource keys instead of falling back to English", async () => {
@@ -40,6 +46,14 @@ describe("i18n runtime", () => {
     expect(resources.en.menu.feedback).toBeDefined();
     expect(resources.en.update.upToDate).toBeDefined();
     expect(resources.en.update.available.includes("{version}")).toBe(true);
+    for (const language of supportedLanguages) {
+      const intervalRange = i18n.getFixedT(language)(
+        "settings:slideshowIntervalRange",
+        { min: 1, max: 60 },
+      );
+      expect(intervalRange).toContain("60");
+      expect(intervalRange).not.toMatch(/\{.*\}/);
+    }
   });
 });
 
