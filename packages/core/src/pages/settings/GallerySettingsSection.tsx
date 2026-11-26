@@ -40,6 +40,9 @@ export function GallerySettingsSection() {
   const setExternalDropBehavior = useSettingsStore(
     (s) => s.setExternalDropBehavior,
   );
+  const intervalInvalid =
+    intervalDraft !== null &&
+    !slideshowIntervalSecondsSchema.safeParse(Number(intervalDraft)).success;
 
   return (
     <SettingsSection>
@@ -93,17 +96,14 @@ export function GallerySettingsSection() {
           min: MIN_SLIDESHOW_INTERVAL_SECONDS,
           max: MAX_SLIDESHOW_INTERVAL_SECONDS,
         })}
-        invalid={
-          intervalDraft !== null &&
-          !slideshowIntervalSecondsSchema.safeParse(Number(intervalDraft))
-            .success
-        }
+        invalid={intervalInvalid}
       >
         <Input
           type="number"
           min={MIN_SLIDESHOW_INTERVAL_SECONDS}
           max={MAX_SLIDESHOW_INTERVAL_SECONDS}
           step={1}
+          aria-invalid={intervalInvalid || undefined}
           value={intervalDraft ?? slideshowInterval}
           onChange={(event) => setIntervalDraft(event.target.value)}
           onBlur={(event) => {
