@@ -129,9 +129,10 @@ git pull --ff-only origin main
 task check
 task test
 
-git tag v2.3.0
-git push origin v2.3.0
+git tag v2.4.0
+git push origin v2.4.0
 ```
 
-The tag starts **Release Desktop**. Wait for all builds and the complete updater
-verification to succeed, then review and publish the draft GitHub Release.
+The tag starts **Release Desktop** and deploys the production Web Worker.
+Wait for all desktop builds and the complete updater verification to succeed,
+then review and publish the draft GitHub Release.

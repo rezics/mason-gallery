@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [2.4.0] - 2026-11-26
+
+### added
+- play and pause automatic image advancement from the single-image viewer, with a configurable interval in Settings → Gallery ([#27](https://github.com/rezics/mason-gallery/issues/27))
+
+### fixed
+- gallery columns now fit within the viewport without a horizontal scrollbar
+
 ## [2.3.0] - 2026-10-11
 
 ### added

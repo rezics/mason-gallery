@@ -1,6 +1,6 @@
 {
   "name": "@mason-gallery/monorepo",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "A multi-platform image viewer with masonry layout",
   "type": "module",
   "private": true,
